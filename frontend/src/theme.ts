@@ -118,18 +118,34 @@ export const type = { sm: 12, base: 14, lg: 16, xl: 20, "2xl": 24, "3xl": 32 };
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, "2xl": 32, "3xl": 48 };
 export const radius = { sm: 4, md: 8, lg: 12, pill: 999 };
 
+export type A11y = { highContrast: boolean; largeTouch: boolean; reducedMotion: boolean };
+
 export type Theme = {
   mode: "light" | "dark";
   colors: Colors;
   dense: boolean;
   /** density-aware spacing */
   sp: typeof spacing;
+  a11y: A11y;
+  /** multiplier for control heights (large-touch mode) */
+  touch: number;
 };
 
-export function buildTheme(themeKey: string, accentKey: string, dense: boolean): Theme {
+const contrasted = (c: Colors, mode: "light" | "dark"): Colors => ({
+  ...c,
+  onSurface: mode === "dark" ? "#FFFFFF" : "#000000",
+  muted: mode === "dark" ? "#CFD4DA" : "#3A4048",
+  border: mode === "dark" ? "#6A7079" : "#8A9098",
+  borderStrong: mode === "dark" ? "#9AA1A9" : "#4A5058",
+  divider: mode === "dark" ? "#6A7079" : "#8A9098",
+});
+
+export function buildTheme(themeKey: string, accentKey: string, dense: boolean, a11y: A11y = { highContrast: false, largeTouch: false, reducedMotion: false }): Theme {
   const f = dense ? 0.75 : 1;
   const sp = Object.fromEntries(Object.entries(spacing).map(([k, v]) => [k, Math.round(v * f)])) as typeof spacing;
-  return { mode: (THEMES[themeKey] ?? THEMES.midnight).mode, colors: buildColors(themeKey, accentKey), dense, sp };
+  const mode = (THEMES[themeKey] ?? THEMES.midnight).mode;
+  const base = buildColors(themeKey, accentKey);
+  return { mode, colors: a11y.highContrast ? contrasted(base, mode) : base, dense, sp, a11y, touch: a11y.largeTouch ? 1.25 : 1 };
 }
 
 export const ThemeContext = createContext<Theme>(buildTheme("midnight", "ochre", false));

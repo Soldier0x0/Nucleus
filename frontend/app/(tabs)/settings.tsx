@@ -1,16 +1,21 @@
 import React, { useState } from "react";
-import { Platform, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accents, radius, THEMES, useTheme } from "@/src/theme";
 import { geocode } from "@/src/core/online";
-import type { Place } from "@/src/core/types";
+import type { ModuleId, Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { CURRENCIES } from "@/src/core/format";
 import { emptyDB } from "@/src/core/defaults";
 import { withSampleData } from "@/src/core/sample";
-import { BackupFile, exportBackup, pickBackup } from "@/src/core/backup";
-import { biometricAvailable, clearPin, setPin } from "@/src/core/security";
+import { BackupFile, decryptBackup, exportBackup, mergeDB, mergePreview, pickBackup } from "@/src/core/backup";
+import { passwordStrength, type PasswordEnvelope } from "@/src/core/crypto";
+import { biometricAvailable, clearFailures, clearPin, setPin } from "@/src/core/security";
+import { MODULES } from "@/src/core/modules";
+import { EXPORTS, exportData, timeline } from "@/src/core/exports";
+import { scheduledCount } from "@/src/core/notify";
+import { useRouter } from "expo-router";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
 import { PinPad } from "@/src/components/PinPad";
@@ -63,12 +68,22 @@ export default function Settings() {
   const [pinErr, setPinErr] = useState<string>();
   const [pinKey, setPinKey] = useState(0);
   const [restore, setRestore] = useState<BackupFile | null>(null);
+  const [restoreMode, setRestoreMode] = useState<"replace" | "merge">("replace");
+  const [encBackup, setEncBackup] = useState<{ env: PasswordEnvelope; exportedAt: string } | null>(null);
+  const [restorePw, setRestorePw] = useState("");
+  const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [exportWarn, setExportWarn] = useState(false);
+  const [exportPw, setExportPw] = useState("");
+  const [exportEncrypt, setExportEncrypt] = useState(true);
+  const pwStrength = passwordStrength(exportPw);
   const sizeKb = (JSON.stringify(db).length / 1024).toFixed(1);
   const [city, setCity] = useState("");
   const [cityMatches, setCityMatches] = useState<Place[]>([]);
   const [showLog, setShowLog] = useState(false);
+  const [showExports, setShowExports] = useState(false);
+  const [diag, setDiag] = useState<null | { scheduled: number }>(null);
+  const router = useRouter();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -155,7 +170,8 @@ export default function Settings() {
                     setPinFlow("enter");
                   } else {
                     await clearPin();
-                    setSettings({ lockEnabled: false, biometricEnabled: false });
+                    await clearFailures();
+                    setSettings({ lockEnabled: false, biometricEnabled: false, moduleLocks: [] });
                     toast("App lock turned off", "lock-open-outline");
                   }
                 }}
@@ -165,35 +181,59 @@ export default function Settings() {
           />
           {s.lockEnabled ? (
             <>
-              <Row
-                icon="fingerprint"
-                label="Biometric unlock"
-                sub={Platform.OS === "web" ? "Available in the installed app" : "Fingerprint or face, PIN as fallback"}
-                right={
-                  <Switch
-                    testID="settings-biometric-switch"
-                    value={s.biometricEnabled}
-                    onValueChange={async (v) => {
-                      if (v && !(await biometricAvailable())) return toast("No enrolled biometrics on this device", "alert-circle-outline");
-                      setSettings({ biometricEnabled: v });
-                    }}
-                    {...sw}
-                  />
-                }
-              />
+              <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
+                <T v="label" style={{ marginBottom: 4 }}>How you unlock</T>
+                <T muted style={{ fontSize: 12, marginBottom: 8 }}>Your PIN always works as a fallback, so you can never be locked out of your own data.</T>
+                <Segmented
+                  testID="settings-unlock-method"
+                  value={s.unlockMethod}
+                  onChange={async (v) => {
+                    if (v !== "pin" && !(await biometricAvailable())) return toast("No enrolled biometrics on this device", "alert-circle-outline");
+                    setSettings({ unlockMethod: v, biometricEnabled: v !== "pin" });
+                  }}
+                  options={[{ value: "pin", label: "PIN" }, { value: "biometric", label: "Biometric" }, { value: "both", label: "Both" }]}
+                />
+              </View>
               <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
                 <T v="label" style={{ marginBottom: 8 }}>Re-lock after background</T>
                 <Segmented testID="settings-lock-timeout" value={String(s.lockTimeoutSec)} onChange={(v) => setSettings({ lockTimeoutSec: Number(v) })} options={[{ value: "0", label: "Instantly" }, { value: "30", label: "30 s" }, { value: "300", label: "5 min" }]} />
               </View>
+              <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
+                <T v="label" style={{ marginBottom: 4 }}>Ask again for these modules</T>
+                <T muted style={{ fontSize: 12, marginBottom: 8 }}>Opening them needs your PIN or biometrics again.</T>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {MODULES.filter((m) => m.status === "available").map((m) => {
+                    const on = (s.moduleLocks ?? []).includes(m.id as ModuleId);
+                    return (
+                      <Chip
+                        key={m.id}
+                        label={m.name}
+                        icon={on ? "lock-outline" : "lock-open-variant-outline"}
+                        selected={on}
+                        testID={`settings-module-lock-${m.id}`}
+                        onPress={() => setSettings({ moduleLocks: on ? (s.moduleLocks ?? []).filter((x) => x !== m.id) : [...(s.moduleLocks ?? []), m.id as ModuleId] })}
+                      />
+                    );
+                  })}
+                </View>
+              </View>
             </>
           ) : null}
+          <Row icon="content-copy" label="Clear clipboard after copying" sub="Wipes copied amounts after a minute" right={<Switch testID="settings-clipboard-switch" value={s.clipboardAutoClear} onValueChange={(v) => setSettings({ clipboardAutoClear: v })} {...sw} />} />
           <Row icon="eye-off-outline" label="Privacy mode" sub="Mask every amount until tapped" right={<Switch testID="settings-privacy-switch" value={s.privacyMode} onValueChange={(v) => setSettings({ privacyMode: v })} {...sw} />} />
           <Row icon="cellphone-screenshot" label="Block screenshots & hide in recents" sub="Installed app only" right={<Switch testID="settings-screenshot-switch" value={s.blockScreenshots} onValueChange={(v) => setSettings({ blockScreenshots: v })} {...sw} />} />
         </Section>
 
+        <Section title="Accessibility">
+          <Row first icon="contrast-circle" label="High contrast" sub="Stronger text, borders and dividers" right={<Switch testID="settings-contrast-switch" value={s.highContrast} onValueChange={(v) => setSettings({ highContrast: v })} {...sw} />} />
+          <Row icon="gesture-tap-button" label="Large touch targets" sub="Bigger buttons and chips" right={<Switch testID="settings-largetouch-switch" value={s.largeTouch} onValueChange={(v) => setSettings({ largeTouch: v })} {...sw} />} />
+          <Row icon="motion-outline" label="Reduce motion" sub="Skip tile animations and press effects" right={<Switch testID="settings-motion-switch" value={s.reducedMotion} onValueChange={(v) => setSettings({ reducedMotion: v })} {...sw} />} />
+        </Section>
+
         <Section title="Your data">
           <Row first icon="database-outline" label="Local data" sub={`${db.vehicles.length} vehicles · ${db.fuel.length} fuel · ${db.txns.length} transactions · ${sizeKb} KB`} testID="settings-data-summary" />
-          <Row icon="export-variant" label="Export everything" sub="One backup file you save or share yourself" testID="settings-export-button" onPress={() => setExportWarn(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row icon="shield-lock-outline" label="Encrypted on this device" sub="AES-256-GCM · key held in the Android Keystore" testID="settings-encryption-row" />
+          <Row icon="export-variant" label="Export everything" sub="Password-protected backup you save yourself" testID="settings-export-button" onPress={() => setExportWarn(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row
             icon="backup-restore"
             label="Restore from backup"
@@ -203,12 +243,21 @@ export default function Settings() {
             onPress={async () => {
               try {
                 const b = await pickBackup();
-                if (b) setRestore(b);
+                if (!b) return;
+                setRestoreMode("replace");
+                if (b.kind === "encrypted") {
+                  setRestorePw("");
+                  setEncBackup({ env: b.env, exportedAt: b.exportedAt });
+                } else setRestore(b.file);
               } catch (e: any) {
                 toast(e?.message ?? "Couldn't read that file", "alert-circle-outline");
               }
             }}
           />
+          <Row icon="file-export-outline" label="Export a table or calendar" sub="CSV per module · ICS for renewals and trips" testID="settings-exports-button" onPress={() => setShowExports(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row icon="timeline-text-outline" label="Timeline" sub={`${timeline(db).length} things have happened`} testID="settings-timeline-button" onPress={() => router.push("/timeline")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row icon="star-four-points-outline" label="Year in Review" sub="Your year, counted from your own records" testID="settings-review-button" onPress={() => router.push("/review")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row icon="stethoscope" label="Diagnostics" sub="Storage, reminders and network activity" testID="settings-diagnostics-button" onPress={async () => setDiag({ scheduled: await scheduledCount() })} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="flask-outline" label="Add sample data" sub="Explore insights with a demo workspace" testID="settings-sample-button" onPress={() => (update(withSampleData), toast("Sample data added", "flask-outline"))} right={<Icon name="plus" size={18} color={colors.muted} />} />
           <Row icon="delete-outline" label="Erase all data" sub="Cannot be undone" testID="settings-reset-button" onPress={() => setConfirmReset(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
         </Section>
@@ -257,22 +306,92 @@ export default function Settings() {
       </Sheet>
 
       <Sheet visible={exportWarn} onClose={() => setExportWarn(false)} title="Export backup" testID="export-sheet">
-        <View style={[styles.warn, { backgroundColor: colors.brandTertiary }]}>
-          <Icon name="alert-outline" size={20} color={colors.onBrandTertiary} />
-          <T color={colors.onBrandTertiary} style={{ flex: 1 }}>This backup file is not encrypted yet (password-protected backups arrive in Phase 2). Store it somewhere private.</T>
-        </View>
+        <Segmented
+          testID="export-mode"
+          value={exportEncrypt ? "enc" : "plain"}
+          onChange={(v) => setExportEncrypt(v === "enc")}
+          options={[{ value: "enc", label: "Password protected" }, { value: "plain", label: "Plain JSON" }]}
+        />
+        {exportEncrypt ? (
+          <View style={{ marginTop: 12 }}>
+            <T v="label" style={{ marginBottom: 6 }}>Backup password</T>
+            <TextInput
+              testID="export-password-input"
+              value={exportPw}
+              onChangeText={setExportPw}
+              secureTextEntry
+              autoCapitalize="none"
+              placeholder="A phrase you'll remember"
+              placeholderTextColor={colors.muted}
+              style={{ height: 48, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: 12, color: colors.onSurface }}
+            />
+            <View style={{ flexDirection: "row", gap: 4, marginTop: 8 }}>
+              {[0, 1, 2, 3].map((i) => (
+                <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i < pwStrength.score ? (pwStrength.score >= 3 ? colors.success : colors.warning) : colors.surfaceTertiary }} />
+              ))}
+            </View>
+            <T muted style={{ fontSize: 12, marginTop: 6 }} testID="export-password-strength">
+              {pwStrength.label} · {pwStrength.hint}
+            </T>
+          </View>
+        ) : (
+          <View style={[styles.warn, { backgroundColor: colors.brandTertiary, marginTop: 12 }]}>
+            <Icon name="alert-outline" size={20} color={colors.onBrandTertiary} />
+            <T color={colors.onBrandTertiary} style={{ flex: 1 }}>A plain file can be read by anything that opens it. Only use this if you need to inspect or convert your data.</T>
+          </View>
+        )}
         <T muted style={{ marginVertical: 12 }}>Includes all records, relationships, budgets, tiles and settings. Your PIN is never exported.</T>
         <Button
-          label="Export now"
+          label={busy ? "Encrypting…" : "Export now"}
           icon="export-variant"
           testID="export-confirm-button"
+          disabled={busy || (exportEncrypt && pwStrength.score < 1)}
           onPress={async () => {
+            setBusy(true);
             try {
-              const name = await exportBackup(db);
+              const name = await exportBackup(db, exportEncrypt ? exportPw : undefined);
               setExportWarn(false);
+              setExportPw("");
               toast(`Backup ready · ${name}`, "check-circle-outline");
             } catch {
               toast("Export failed", "alert-circle-outline");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      </Sheet>
+
+      <Sheet visible={!!encBackup} onClose={() => setEncBackup(null)} title="Encrypted backup" testID="restore-password-sheet">
+        <T muted style={{ marginBottom: 12 }}>Exported {encBackup ? new Date(encBackup.exportedAt).toLocaleString() : ""}. Enter the password you set when exporting.</T>
+        <TextInput
+          testID="restore-password-input"
+          value={restorePw}
+          onChangeText={setRestorePw}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholder="Backup password"
+          placeholderTextColor={colors.muted}
+          style={{ height: 48, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: 12, color: colors.onSurface }}
+        />
+        <Button
+          style={{ marginTop: 12 }}
+          label={busy ? "Decrypting…" : "Unlock backup"}
+          icon="lock-open-outline"
+          testID="restore-password-button"
+          disabled={busy || !restorePw}
+          onPress={async () => {
+            if (!encBackup) return;
+            setBusy(true);
+            try {
+              const file = await decryptBackup(encBackup.env, restorePw);
+              setEncBackup(null);
+              setRestorePw("");
+              setRestore(file);
+            } catch (e: any) {
+              toast(e?.message ?? "Couldn't open that backup", "alert-circle-outline");
+            } finally {
+              setBusy(false);
             }
           }}
         />
@@ -281,9 +400,18 @@ export default function Settings() {
       <Sheet visible={!!restore} onClose={() => setRestore(null)} title="Restore preview" testID="restore-sheet">
         {restore ? (
           <>
-            <T muted style={{ marginBottom: 10 }}>Exported {new Date(restore.exportedAt).toLocaleString()}</T>
-            <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
-              {Object.entries(restore.counts).map(([k, v], i) => (
+            <T muted style={{ marginBottom: 10 }}>
+              Exported {new Date(restore.exportedAt).toLocaleString()}
+              {restore.encrypted ? " · password protected" : ""}
+            </T>
+            <Segmented
+              testID="restore-mode"
+              value={restoreMode}
+              onChange={setRestoreMode}
+              options={[{ value: "replace", label: "Replace" }, { value: "merge", label: "Merge" }]}
+            />
+            <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary, marginTop: 12 }]}>
+              {Object.entries(restoreMode === "merge" ? mergePreview(db, restore.data) : restore.counts).map(([k, v], i) => (
                 <View key={k} style={[styles.row, { minHeight: 40 }, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
                   <T style={{ flex: 1, textTransform: "capitalize" }}>{k}</T>
                   <T v="mono">{v}</T>
@@ -291,22 +419,81 @@ export default function Settings() {
               ))}
             </View>
             <View style={[styles.warn, { backgroundColor: colors.brandTertiary, marginTop: 12 }]}>
-              <Icon name="swap-horizontal" size={20} color={colors.onBrandTertiary} />
-              <T color={colors.onBrandTertiary} style={{ flex: 1 }}>All current data on this device will be replaced. Your PIN and lock settings stay as they are.</T>
+              <Icon name={restoreMode === "merge" ? "merge" : "swap-horizontal"} size={20} color={colors.onBrandTertiary} />
+              <T color={colors.onBrandTertiary} style={{ flex: 1 }}>
+                {restoreMode === "merge"
+                  ? "Records are added to what you already have. If the same record exists in both, the one from the backup wins. Your settings stay as they are."
+                  : "All current data on this device will be replaced. Your PIN and lock settings stay as they are."}
+              </T>
             </View>
             <Button
               style={{ marginTop: 12 }}
-              label="Replace and restore"
-              icon="backup-restore"
+              label={restoreMode === "merge" ? "Merge into my data" : "Replace and restore"}
+              icon={restoreMode === "merge" ? "merge" : "backup-restore"}
               testID="restore-confirm-button"
               onPress={() => {
-                replace({ ...restore.data, settings: { ...restore.data.settings, onboarded: true, lockEnabled: s.lockEnabled, biometricEnabled: s.biometricEnabled } });
+                if (restoreMode === "merge") update((d) => mergeDB(d, restore.data));
+                else replace({ ...restore.data, settings: { ...restore.data.settings, onboarded: true, lockEnabled: s.lockEnabled, unlockMethod: s.unlockMethod, biometricEnabled: s.biometricEnabled, moduleLocks: s.moduleLocks } });
                 setRestore(null);
-                toast("Backup restored", "check-circle-outline");
+                toast(restoreMode === "merge" ? "Backup merged" : "Backup restored", "check-circle-outline");
               }}
             />
           </>
         ) : null}
+      </Sheet>
+
+      <Sheet visible={showExports} onClose={() => setShowExports(false)} title="Export a table" testID="exports-sheet">
+        <T muted style={{ marginBottom: 12 }}>CSV opens in any spreadsheet. The calendar file (.ics) adds your renewals, expiries and itinerary to a calendar app — one-way, nothing syncs back.</T>
+        <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+          {EXPORTS.map((e, i) => (
+            <Press
+              key={e.kind}
+              testID={`export-${e.kind}`}
+              disabled={e.count(db) === 0}
+              onPress={async () => {
+                try {
+                  const name = await exportData(db, e.kind);
+                  toast(`Saved ${name}`, "check-circle-outline");
+                } catch {
+                  toast("Export failed", "alert-circle-outline");
+                }
+              }}
+              style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }, e.count(db) === 0 && { opacity: 0.45 }]}
+            >
+              <Icon name={e.icon} size={20} color={colors.muted} />
+              <View style={{ flex: 1 }}>
+                <T v="label">{e.label}</T>
+                <T muted style={{ fontSize: 12 }}>{e.count(db)} row{e.count(db) === 1 ? "" : "s"} · .{e.ext}</T>
+              </View>
+              <Icon name="download-outline" size={18} color={colors.muted} />
+            </Press>
+          ))}
+        </View>
+      </Sheet>
+
+      <Sheet visible={!!diag} onClose={() => setDiag(null)} title="Diagnostics" testID="diagnostics-sheet">
+        <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+          {([
+            ["Encrypted document", `${sizeKb} KB`],
+            ["Transactions", String(db.txns.length)],
+            ["Fuel + services", `${db.fuel.length} + ${db.services.length}`],
+            ["Trips / appliances", `${db.trips.length} / ${db.appliances.length}`],
+            ["Notes / rules", `${db.notes.length} / ${db.rules.length}`],
+            ["Jars / debts / snapshots", `${db.funds.length} / ${db.debts.length} / ${db.netWorth.length}`],
+            ["Custom tools", String(db.customTools.length)],
+            ["Links between records", String(db.links.length)],
+            ["Attention marks kept", String(Object.keys(db.attention).length)],
+            ["Scheduled reminders", String(diag?.scheduled ?? 0)],
+            ["Network requests ever", String(db.netlog.length)],
+            ["Cached tool results", String(db.toolHistory.length)],
+          ] as [string, string][]).map(([k, v], i) => (
+            <View key={k} style={[styles.row, { minHeight: 40 }, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
+              <T style={{ flex: 1 }}>{k}</T>
+              <T v="mono">{v}</T>
+            </View>
+          ))}
+        </View>
+        <T muted style={{ fontSize: 12, marginTop: 12 }}>Reminders are counted from the phone&apos;s own scheduler. Nothing here is sent anywhere.</T>
       </Sheet>
 
       <Sheet visible={confirmReset} onClose={() => setConfirmReset(false)} title="Erase everything?" testID="reset-sheet">
@@ -318,6 +505,7 @@ export default function Settings() {
           testID="reset-confirm-button"
           onPress={async () => {
             await clearPin();
+            await clearFailures();
             replace(emptyDB());
             setConfirmReset(false);
           }}

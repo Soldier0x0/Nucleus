@@ -5,7 +5,8 @@ import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated"
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
-import { AttentionItem, attentionItems, visibleAttention } from "@/src/core/intelligence";
+import { AttentionItem } from "@/src/core/intelligence";
+import { allAttention, visibleAttention } from "@/src/core/attention";
 import { paySubscription } from "@/src/core/actions";
 import { addDays, todayISO } from "@/src/core/format";
 import { Button, EmptyState, Eyebrow, Icon, Press, StatusBadge, T } from "@/src/components/ui";
@@ -25,7 +26,7 @@ export default function Attention() {
   const toast = useToast();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const items = visibleAttention(db);
-  const hiddenCount = attentionItems(db).length - items.length;
+  const hiddenCount = allAttention(db).length - items.length;
   const [open, setOpen] = useState<AttentionItem | null>(null);
 
   const mark = (it: AttentionItem, status: "done" | "dismissed" | "snoozed") => {
@@ -111,7 +112,7 @@ export default function Attention() {
             testID="attention-restore-button"
             style={{ marginTop: 8 }}
             onPress={() => {
-              const keys = new Set(attentionItems(db).map((i) => i.key));
+              const keys = new Set(allAttention(db).map((i) => i.key));
               update((d) => ({ ...d, attention: Object.fromEntries(Object.entries(d.attention).filter(([k]) => !keys.has(k))) }));
             }}
           />

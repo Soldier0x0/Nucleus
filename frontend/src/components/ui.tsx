@@ -46,14 +46,15 @@ export function Eyebrow({ children, style, testID, numberOfLines = 1 }: { childr
 }
 
 export function Press({ style, onPress, haptic = true, children, disabled, ...rest }: PressableProps & { style?: StyleProp<ViewStyle>; haptic?: boolean; children?: React.ReactNode }) {
+  const { a11y } = useTheme();
   const s = useSharedValue(1);
   const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
     <APressable
       {...rest}
       disabled={disabled}
-      onPressIn={() => s.set(withTiming(0.97, { duration: 90 }))}
-      onPressOut={() => s.set(withTiming(1, { duration: 140 }))}
+      onPressIn={() => !a11y.reducedMotion && s.set(withTiming(0.97, { duration: 90 }))}
+      onPressOut={() => !a11y.reducedMotion && s.set(withTiming(1, { duration: 140 }))}
       onPress={(e: any) => {
         if (haptic) Haptics.selectionAsync().catch(() => {});
         onPress?.(e);
@@ -83,11 +84,11 @@ export function Card({ children, style, testID, onPress, tone = "default" }: { c
 }
 
 export function Button({ label, icon, onPress, kind = "primary", testID, style, disabled, small }: { label: string; icon?: string; onPress?: () => void; kind?: "primary" | "secondary" | "ghost" | "danger"; testID?: string; style?: StyleProp<ViewStyle>; disabled?: boolean; small?: boolean }) {
-  const { colors } = useTheme();
+  const { colors, touch } = useTheme();
   const bg = kind === "primary" ? colors.surfaceInverse : kind === "danger" ? colors.error : kind === "secondary" ? colors.surfaceTertiary : "transparent";
   const fg = kind === "primary" ? colors.onSurfaceInverse : kind === "danger" ? colors.onError : colors.onSurface;
   return (
-    <Press testID={testID} onPress={onPress} disabled={disabled} style={[styles.btn, { backgroundColor: bg, minHeight: small ? 40 : 50, paddingHorizontal: small ? 14 : 20 }, kind === "ghost" && { borderWidth: 1, borderColor: colors.borderStrong }, style]}>
+    <Press testID={testID} onPress={onPress} disabled={disabled} style={[styles.btn, { backgroundColor: bg, minHeight: Math.round((small ? 40 : 50) * touch), paddingHorizontal: small ? 14 : 20 }, kind === "ghost" && { borderWidth: 1, borderColor: colors.borderStrong }, style]}>
       {icon ? <Icon name={icon} size={18} color={fg} /> : null}
       <Text style={{ fontFamily: fonts.textSemi, fontSize: small ? 13 : 15, color: fg }}>{label}</Text>
     </Press>
@@ -95,22 +96,23 @@ export function Button({ label, icon, onPress, kind = "primary", testID, style, 
 }
 
 export function IconButton({ icon, onPress, testID, label, filled }: { icon: string; onPress?: () => void; testID?: string; label?: string; filled?: boolean }) {
-  const { colors } = useTheme();
+  const { colors, touch } = useTheme();
+  const size = Math.round(44 * touch);
   return (
-    <Press testID={testID} onPress={onPress} accessibilityLabel={label} style={[styles.iconBtn, { backgroundColor: filled ? colors.surfaceTertiary : "transparent" }]}>
+    <Press testID={testID} onPress={onPress} accessibilityLabel={label} style={[styles.iconBtn, { width: size, height: size, backgroundColor: filled ? colors.surfaceTertiary : "transparent" }]}>
       <Icon name={icon} size={22} />
     </Press>
   );
 }
 
 export function Chip({ label, selected, onPress, icon, testID }: { label: string; selected?: boolean; onPress?: () => void; icon?: string; testID?: string }) {
-  const { colors } = useTheme();
+  const { colors, touch } = useTheme();
   return (
     <Press
       testID={testID}
       onPress={onPress}
       accessibilityState={{ selected }}
-      style={[styles.chip, { backgroundColor: selected ? colors.surfaceInverse : colors.surfaceSecondary, borderColor: selected ? colors.surfaceInverse : colors.borderStrong }]}
+      style={[styles.chip, { height: Math.round(36 * touch), backgroundColor: selected ? colors.surfaceInverse : colors.surfaceSecondary, borderColor: selected ? colors.surfaceInverse : colors.borderStrong }]}
     >
       {icon ? <Icon name={icon} size={15} color={selected ? colors.onSurfaceInverse : colors.onSurface} /> : null}
       <Text numberOfLines={1} style={{ fontFamily: fonts.textMedium, fontSize: 13, color: selected ? colors.onSurfaceInverse : colors.onSurface }}>

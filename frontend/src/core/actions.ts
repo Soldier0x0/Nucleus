@@ -133,7 +133,7 @@ export function paySubscription(db: DB, id: string): DB {
 }
 
 export function deleteEntity(db: DB, ref: Ref): DB {
-  const key: Record<EntityKind, keyof DB> = { vehicle: "vehicles", fuel: "fuel", service: "services", txn: "txns", subscription: "subscriptions", trip: "trips", appliance: "appliances" };
+  const key: Record<EntityKind, keyof DB> = { vehicle: "vehicles", fuel: "fuel", service: "services", txn: "txns", subscription: "subscriptions", trip: "trips", appliance: "appliances", note: "notes", media: "media" };
   if (ref.kind === "vehicle") return deleteVehicle(db, ref.id);
   const list = (db[key[ref.kind]] as { id: string }[]).filter((x) => x.id !== ref.id);
   return dispatch({ ...db, [key[ref.kind]]: list }, [{ type: "entity.deleted", ref }]);
@@ -170,6 +170,10 @@ export function getEntity(db: DB, ref: Ref): any {
       return db.trips.find((x) => x.id === ref.id);
     case "appliance":
       return db.appliances.find((x) => x.id === ref.id);
+    case "note":
+      return db.notes.find((x) => x.id === ref.id);
+    case "media":
+      return db.media.find((x) => x.id === ref.id);
   }
 }
 

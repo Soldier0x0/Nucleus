@@ -4,6 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
+import { copyTemporary } from "@/src/core/clipboard";
 import { upsertSubscription, addTxn } from "@/src/core/actions";
 import { addDays, addMonths, daysBetween, fmtDate, money, num, parseISO, parseNum, todayISO, uid } from "@/src/core/format";
 import { DateField, Field, OptionSheet } from "./inputs";
@@ -12,9 +13,10 @@ import { Bar } from "./charts";
 import { useToast } from "./Toast";
 
 // ---------- shared result panel with actions ----------
-function Result({ label, value, breakdown, tool, send, testID }: { label: string; value: string; breakdown?: [string, string][]; tool: string; send?: { label: string; run: () => void }; testID?: string }) {
+export function Result({ label, value, breakdown, tool, send, testID }: { label: string; value: string; breakdown?: [string, string][]; tool: string; send?: { label: string; run: () => void }; testID?: string }) {
   const { colors } = useTheme();
   const { update } = useStore();
+  const autoClear = useStore().db.settings.clipboardAutoClear;
   const toast = useToast();
   const [open, setOpen] = useState(false);
   return (
@@ -33,7 +35,7 @@ function Result({ label, value, breakdown, tool, send, testID }: { label: string
       ) : null}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {breakdown ? <Button small kind="secondary" label={open ? "Hide breakdown" : "Breakdown"} icon={open ? "chevron-up" : "chevron-down"} onPress={() => setOpen(!open)} testID={`${tool}-breakdown-button`} /> : null}
-        <Button small kind="secondary" label="Copy" icon="content-copy" testID={`${tool}-copy-button`} onPress={async () => (await Clipboard.setStringAsync(value), toast("Copied", "content-copy"))} />
+        <Button small kind="secondary" label="Copy" icon="content-copy" testID={`${tool}-copy-button`} onPress={async () => (autoClear ? await copyTemporary(value) : await Clipboard.setStringAsync(value), toast(autoClear ? "Copied · clears in 1 min" : "Copied", "content-copy"))} />
         <Button small kind="secondary" label="Save" icon="history" testID={`${tool}-save-button`} onPress={() => (update((d) => ({ ...d, toolHistory: [{ id: uid(), tool, label, value, at: new Date().toISOString() }, ...d.toolHistory].slice(0, 50) })), toast("Saved to history", "history"))} />
         {send ? <Button small kind="secondary" label={send.label} icon="send-outline" testID={`${tool}-send-button`} onPress={send.run} /> : null}
       </View>

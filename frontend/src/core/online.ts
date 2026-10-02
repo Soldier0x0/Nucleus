@@ -4,7 +4,7 @@
  * Every request is written to the network log; results are cached for offline use.
  */
 import { Platform } from "react-native";
-import { storage } from "@/src/utils/storage";
+import { loadSecureDoc, saveSecureDoc } from "./crypto";
 import type { DB, NetLogEntry, Place } from "./types";
 import { uid } from "./format";
 
@@ -13,7 +13,7 @@ type Cache = Record<string, { at: string; data: any }>;
 let mem: Cache | null = null;
 
 async function cache(): Promise<Cache> {
-  if (!mem) mem = JSON.parse((await storage.getItem(CACHE_KEY)) ?? "{}");
+  if (!mem) mem = (await loadSecureDoc<Cache>(CACHE_KEY)) ?? {};
   return mem!;
 }
 
@@ -35,7 +35,7 @@ export async function onlineFetch<T = any>(online: boolean, log: Logger, service
     if (!r.ok) throw new Error(String(r.status));
     const data = await r.json();
     c[key] = { at: new Date().toISOString(), data };
-    storage.setItem(CACHE_KEY, JSON.stringify(c));
+    saveSecureDoc(CACHE_KEY, c);
     log({ id: uid(), at: new Date().toISOString(), service, query, ok: true });
     return { data, at: c[key].at, stale: false };
   } catch {

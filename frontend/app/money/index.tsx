@@ -12,6 +12,7 @@ import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconBut
 import { Bar, MonthBars, Ring } from "@/src/components/charts";
 import { BudgetSheet, SubscriptionSheet, TxnSheet } from "@/src/components/MoneyForms";
 import { WhySheet } from "@/src/components/WhySheet";
+import { ModuleGate } from "@/src/components/ModuleGate";
 
 type Tab = "overview" | "transactions" | "subscriptions";
 
@@ -43,7 +44,7 @@ export default function Money() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Money" testID="money-header" right={<IconButton icon="target" testID="money-budget-button" label="Budget" onPress={() => setSheet("budget")} />} />
+      <Header title="Money" testID="money-header" right={<View style={{ flexDirection: "row" }}><IconButton icon="chart-timeline-variant" testID="money-plan-button" label="Plan" onPress={() => router.push("/money/plan")} /><IconButton icon="target" testID="money-budget-button" label="Budget" onPress={() => setSheet("budget")} /></View>} />
       <View style={{ paddingHorizontal: sp.lg, paddingVertical: 10, backgroundColor: colors.surface }}>
         <Segmented testID="money-tabs" value={tab} onChange={setTab} options={[{ value: "overview", label: "Overview" }, { value: "transactions", label: "Activity" }, { value: "subscriptions", label: "Subs" }]} />
       </View>
@@ -193,6 +194,7 @@ export default function Money() {
       {sheet === "budget" ? <BudgetSheet visible onClose={() => setSheet(null)} /> : null}
       {sheet === "sub" ? <SubscriptionSheet visible onClose={() => setSheet(null)} sub={editSub} /> : null}
       <WhySheet visible={!!why} onClose={() => setWhy(null)} title={why?.title ?? ""} why={why?.why} />
+      <ModuleGate id="money" name="Money" icon="wallet-outline" />
     </View>
   );
 }

@@ -6,7 +6,7 @@ import { fonts, useTheme } from "@/src/theme";
 import { usesNativeTabs } from "@/src/navigation";
 import { Icon } from "@/src/components/ui";
 import { useStore } from "@/src/core/store";
-import { visibleAttention } from "@/src/core/intelligence";
+import { visibleAttention } from "@/src/core/attention";
 
 export default function TabsLayout() {
   const { colors } = useTheme();

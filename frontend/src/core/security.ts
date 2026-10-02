@@ -36,6 +36,34 @@ export async function clearPin() {
   await secureStorage.removeItem(LEGACY_PIN_KEY);
 }
 
+// ---------- wrong-PIN back-off ----------
+const BACKOFF_KEY = "nucleus.backoff.v1";
+export type Backoff = { fails: number; until: number };
+
+export async function readBackoff(): Promise<Backoff> {
+  try {
+    const raw = await secureStorage.getItem(BACKOFF_KEY);
+    return raw ? JSON.parse(raw) : { fails: 0, until: 0 };
+  } catch {
+    return { fails: 0, until: 0 };
+  }
+}
+
+/** 5 free attempts, then 30s, 60s, 120s … (capped at 30 min). */
+export async function registerFailure(): Promise<Backoff> {
+  const b = await readBackoff();
+  const fails = b.fails + 1;
+  const over = fails - 5;
+  const wait = over > 0 ? Math.min(30 * 2 ** (over - 1), 1800) : 0;
+  const next = { fails, until: wait ? Date.now() + wait * 1000 : 0 };
+  await secureStorage.setItem(BACKOFF_KEY, JSON.stringify(next));
+  return next;
+}
+
+export async function clearFailures() {
+  await secureStorage.removeItem(BACKOFF_KEY);
+}
+
 export async function biometricAvailable() {
   if (Platform.OS === "web") return false;
   try {

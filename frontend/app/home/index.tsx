@@ -13,6 +13,7 @@ import { Countdown } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
+import { ModuleGate } from "@/src/components/ModuleGate";
 
 export default function Home() {
   const { db, update } = useStore();
@@ -102,6 +103,7 @@ export default function Home() {
       <Sheet visible={!!logFor} onClose={() => setLogFor(null)} title={`Log: ${logFor?.name ?? ""}`} testID="maint-log-sheet" footer={<Button label="Mark done today" icon="check" testID="maint-log-save" onPress={() => { update((d) => logMaintenance(d, logFor!.a, logFor!.p, parseNum(cost) || 0)); setLogFor(null); toast(parseNum(cost) > 0 ? "Logged · expense added to Money" : "Logged", "check-circle-outline"); }} />}>
         <Field numeric label="Cost (optional)" unit={db.settings.currency} testID="maint-cost-input" value={cost} onChangeText={setCost} placeholder="0" hint="A cost creates a linked Money expense" />
       </Sheet>
+      <ModuleGate id="home" name="Home" icon="home-outline" />
     </View>
   );
 }

@@ -386,12 +386,3 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
 
   return items.sort((a, b) => b.score - a.score);
 }
-
-export function visibleAttention(db: DB, today = todayISO()) {
-  return attentionItems(db, today).filter((i) => {
-    const m = db.attention[i.key];
-    if (!m) return true;
-    if (m.status === "snoozed") return !!m.until && m.until <= today;
-    return false;
-  });
-}

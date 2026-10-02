@@ -80,5 +80,24 @@ export function search(db: DB, q: string): SearchGroup[] {
         items: subs.map((x) => ({ id: x.id, title: x.name, subtitle: `${money(x.amount, cur)} ${x.cycle} · renews ${fmtDate(x.nextRenewal)}`, icon: "autorenew", route: `/record/subscription/${x.id}` })),
       });
   }
+
+  if (on("notes")) {
+    const notes = db.notes.filter((n) => has(n.title, n.body, ...n.checklist.map((c) => c.text)));
+    if (notes.length)
+      groups.push({
+        title: "Notes & lists",
+        summary: `${notes.length} match${notes.length === 1 ? "" : "es"}`,
+        items: notes.slice(0, 6).map((n) => ({ id: n.id, title: n.title || "Untitled note", subtitle: n.checklist.length ? `${n.checklist.filter((c) => c.done).length}/${n.checklist.length} done` : n.body.slice(0, 60) || "Note", icon: "note-text-outline", route: `/notes?id=${n.id}` })),
+      });
+  }
+
+  if (on("rules")) {
+    const rs = db.rules.filter((r) => has(r.name, r.trigger.kind));
+    if (rs.length)
+      groups.push({
+        title: "Rules",
+        items: rs.map((r) => ({ id: r.id, title: r.name, subtitle: r.enabled ? "Active rule" : "Paused rule", icon: "source-branch", route: "/rules" })),
+      });
+  }
   return groups;
 }

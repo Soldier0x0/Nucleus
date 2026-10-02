@@ -13,7 +13,7 @@ import { LinkedSection } from "@/src/components/LinkedSection";
 import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
 
-const TITLES: Record<EntityKind, string> = { vehicle: "Vehicle", fuel: "Fuel entry", service: "Service record", txn: "Transaction", subscription: "Subscription", trip: "Trip", appliance: "Appliance" };
+const TITLES: Record<EntityKind, string> = { vehicle: "Vehicle", fuel: "Fuel entry", service: "Service record", txn: "Transaction", subscription: "Subscription", trip: "Trip", appliance: "Appliance", note: "Note", media: "Shelf item" };
 
 /** Generic record view: fields + relationships. Every entity kind gets this for free. */
 export default function RecordDetail() {
@@ -53,7 +53,7 @@ export default function RecordDetail() {
     headline = e.name;
     fields = [["Amount", money(e.amount, cur)], ["Cycle", e.cycle], ["Next renewal", fmtDate(e.nextRenewal)], ["Category", e.category], ["Status", e.active ? "Active" : "Paused"]];
   } else {
-    router.replace((kind === "vehicle" ? `/vehicles/${id}` : kind === "trip" ? `/travel/${id}` : "/home") as any);
+    router.replace((kind === "vehicle" ? `/vehicles/${id}` : kind === "trip" ? `/travel/${id}` : kind === "note" ? `/notes?id=${id}` : kind === "media" ? "/media" : "/home") as any);
     return null;
   }
 

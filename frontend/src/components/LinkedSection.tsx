@@ -5,8 +5,8 @@ import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { getEntity, linkedRefs, SERVICE_LABEL } from "@/src/core/actions";
 import type { Ref } from "@/src/core/types";
-import { fmtDate, money } from "@/src/core/format";
-import { Eyebrow, Icon, Press, T } from "./ui";
+import { fmtDate, money, uid } from "@/src/core/format";
+import { Button, Eyebrow, Icon, Press, T } from "./ui";
 
 export function describeRef(db: ReturnType<typeof useStore>["db"], ref: Ref) {
   const e = getEntity(db, ref);
@@ -26,15 +26,32 @@ export function describeRef(db: ReturnType<typeof useStore>["db"], ref: Ref) {
       return { icon: "bag-suitcase-outline", title: e.name, sub: `Trip · ${fmtDate(e.start)}`, route: `/travel/${e.id}` };
     case "appliance":
       return { icon: "washing-machine", title: e.name, sub: `Home · ${e.room}`, route: `/home` };
+    case "media":
+      return { icon: "filmstrip-box-multiple", title: e.title, sub: `Shelf · ${e.kind}`, route: `/media` };
+    case "note":
+      return { icon: "note-text-outline", title: e.title || "Untitled note", sub: `Note · ${fmtDate(e.updatedAt.slice(0, 10))}`, route: `/notes?id=${e.id}` };
   }
 }
 
 /** Relationship navigator shown on every record. */
 export function LinkedSection({ refTo }: { refTo: Ref }) {
-  const { db } = useStore();
+  const { db, update } = useStore();
   const { colors } = useTheme();
   const router = useRouter();
   const links = linkedRefs(db, refTo);
+  const notesOn = db.settings.modules.find((m) => m.id === "notes")?.enabled;
+
+  const addNote = () => {
+    const id = uid();
+    const now = new Date().toISOString();
+    update((d) => ({
+      ...d,
+      notes: [{ id, title: "", body: "", checklist: [], createdAt: now, updatedAt: now }, ...d.notes],
+      links: [...d.links, { id: uid(), from: refTo, to: { kind: "note" as const, id }, rel: "note", createdAt: now }],
+    }));
+    router.push(`/notes?id=${id}` as any);
+  };
+
   return (
     <View testID="linked-section" style={{ marginTop: 24 }}>
       <Eyebrow style={{ marginBottom: 8 }}>Linked · {links.length}</Eyebrow>
@@ -59,6 +76,7 @@ export function LinkedSection({ refTo }: { refTo: Ref }) {
           })}
         </View>
       )}
+      {notesOn && refTo.kind !== "note" ? <Button small kind="ghost" icon="note-plus-outline" label="Add a note" testID="linked-add-note" style={{ marginTop: 12, alignSelf: "flex-start" }} onPress={addNote} /> : null}
     </View>
   );
 }

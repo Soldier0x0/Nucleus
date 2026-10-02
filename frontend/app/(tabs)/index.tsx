@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,17 +6,22 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
-import { monthTotals, vehicleStats, visibleAttention } from "@/src/core/intelligence";
+import { monthTotals, vehicleStats } from "@/src/core/intelligence";
+import { visibleAttention } from "@/src/core/attention";
 import { daysBetween, fmtDate, monthKey, num, relDays, todayISO } from "@/src/core/format";
 import { Amount, Card, EmptyState, Eyebrow, Icon, Press, T, Button } from "@/src/components/ui";
 import { Gauge, Ring } from "@/src/components/charts";
 import { WeatherCard } from "@/src/components/WeatherCard";
 import { CaptureBar } from "@/src/components/CaptureBar";
+import { BoardSheet } from "@/src/components/BoardSheet";
+import { ChipRow, Chip } from "@/src/components/ui";
+import { useReminderSync } from "@/src/core/useReminders";
+import type { Board, TileId } from "@/src/core/types";
 import { homeSchedule, readiness, tripStatus } from "@/src/core/domains";
 
 export default function Today() {
   const { db, setSettings } = useStore();
-  const { colors, sp } = useTheme();
+  const { colors, sp, a11y } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -29,15 +34,19 @@ export default function Today() {
   const hour = d.getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const contentW = Math.min(width, 720) - sp.lg * 2;
-  const tiles = db.settings.tiles.filter((t) => t.enabled);
+  const boards = db.settings.boards;
+  const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
+  const tileIds: TileId[] = activeBoard ? activeBoard.tiles : db.settings.tiles.filter((t) => t.enabled).map((t) => t.id);
   const anyModule = db.settings.modules.some((m) => m.enabled);
+  const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
+  useReminderSync();
 
   const renderTile = (id: string, idx: number) => {
     const delay = 60 * idx;
     if (id === "attention") {
       const needs = count.urgent + count.upcoming;
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-attention-tile" onPress={() => router.push("/(tabs)/attention")} tone={needs ? "inverse" : "default"}>
             <Eyebrow style={{ color: needs ? colors.onSurfaceInverse : colors.muted, opacity: 0.8 }}>Attention</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, marginTop: 6 }}>
@@ -79,7 +88,7 @@ export default function Today() {
     if (id === "weather") {
       if (!db.settings.homeCity) return null;
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <WeatherCard place={db.settings.homeCity} testID="today-weather-tile" />
         </Animated.View>
       );
@@ -89,7 +98,7 @@ export default function Today() {
       if (!t) return null;
       const r = readiness(db, t);
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-trip-tile" onPress={() => router.push(`/travel/${t.id}`)}>
             <Eyebrow>Next trip</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 8 }}>
@@ -108,7 +117,7 @@ export default function Today() {
       const n = homeSchedule(db)[0];
       if (!n) return null;
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-home-tile" onPress={() => router.push("/home")}>
             <Eyebrow>Home · next maintenance</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
@@ -130,7 +139,7 @@ export default function Today() {
       const b = db.budget.monthly;
       const pct = b > 0 ? mt.spent / b : 0;
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-budget-tile" onPress={() => router.push("/money")}>
             <Eyebrow>Money · this month</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 10 }}>
@@ -156,7 +165,7 @@ export default function Today() {
       const v = db.vehicles.find((x) => x.id === db.settings.defaultVehicleId) ?? db.vehicles[0];
       if (!v)
         return (
-          <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+          <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
             <Card testID="today-vehicle-tile" onPress={() => router.push("/vehicles")}>
               <Eyebrow>Vehicles</Eyebrow>
               <T v="h2" style={{ marginTop: 6 }}>Add your first vehicle</T>
@@ -167,7 +176,7 @@ export default function Today() {
       const st = vehicleStats(db, v);
       const ins = v.insuranceExpiry ? daysBetween(today, v.insuranceExpiry) : undefined;
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-vehicle-tile" onPress={() => router.push(`/vehicles/${v.id}`)}>
             <Eyebrow>{v.name} · since service</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -193,7 +202,7 @@ export default function Today() {
       const subs = db.subscriptions.filter((s) => s.active).sort((a, b) => a.nextRenewal.localeCompare(b.nextRenewal)).slice(0, 3);
       if (!subs.length) return null;
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-subscriptions-tile" onPress={() => router.push("/money?tab=subscriptions")}>
             <Eyebrow>Next renewals</Eyebrow>
             {subs.map((s) => {
@@ -216,6 +225,29 @@ export default function Today() {
         </Animated.View>
       );
     }
+    if (id === "notes" && on("notes")) {
+      const pinned = db.notes.filter((n) => n.pinned).slice(0, 3);
+      if (!pinned.length) return null;
+      return (
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
+          <Card testID="today-notes-tile" onPress={() => router.push("/notes")}>
+            <Eyebrow>Pinned notes</Eyebrow>
+            {pinned.map((n) => {
+              const done = n.checklist.filter((c) => c.done).length;
+              return (
+                <View key={n.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
+                  <Icon name="note-text-outline" size={18} color={colors.muted} />
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <T v="label" numberOfLines={1}>{n.title || "Untitled"}</T>
+                    <T muted style={{ fontSize: 12 }} numberOfLines={1}>{n.checklist.length ? `${done}/${n.checklist.length} done` : n.body || "Note"}</T>
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
+        </Animated.View>
+      );
+    }
     if (id === "tools" && on("tools")) {
       const tools = [
         ["units", "swap-horizontal", "Units"],
@@ -224,7 +256,7 @@ export default function Today() {
         ["emi", "bank-outline", "EMI"],
       ];
       return (
-        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+        <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-tools-tile">
             <Eyebrow>Quick tools</Eyebrow>
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
@@ -261,17 +293,28 @@ export default function Today() {
         </Press>
         <CaptureBar />
       </View>
+      <View style={{ marginHorizontal: -4 }}>
+          <ChipRow testID="today-board-row">
+            <Chip label="Today" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
+            {boards.map((b) => (
+              <Chip key={b.id} label={b.name} icon={b.icon} selected={activeBoard?.id === b.id} testID={`today-board-${b.id}`} onPress={() => setSettings({ activeBoardId: b.id })} />
+            ))}
+            {activeBoard ? <Chip label="Edit" icon="pencil-outline" testID="today-board-edit" onPress={() => setBoardSheet({ board: activeBoard })} /> : null}
+            <Chip label="New board" icon="plus" testID="today-board-new" onPress={() => setBoardSheet({ board: null })} />
+        </ChipRow>
+      </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24, gap: sp.md, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         {!anyModule ? (
           <EmptyState testID="today-empty" icon="view-grid-plus-outline" title="Your workbench is empty" body="Turn on a module to start adding tiles here." action={<Button label="Open module library" icon="view-grid-outline" onPress={() => router.push("/(tabs)/modules")} testID="today-open-modules-button" />} />
         ) : (
-          tiles.map((t, i) => renderTile(t.id, i))
+          tileIds.map((t, i) => renderTile(t, i))
         )}
         <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
           <Icon name="tune-variant" size={18} color={colors.muted} />
           <T muted v="label">Customize Today</T>
         </Press>
       </ScrollView>
+      {boardSheet ? <BoardSheet board={boardSheet.board} onClose={() => setBoardSheet(null)} /> : null}
     </View>
   );
 }

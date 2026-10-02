@@ -8,6 +8,8 @@ import { useStore } from "@/src/core/store";
 import { Header } from "@/src/components/Header";
 import { Chip, ChipRow, Eyebrow, Icon, IconButton, T } from "@/src/components/ui";
 import { DatesTool, EmiTool, PercentTool, SplitTool, UnitsTool } from "@/src/components/tools";
+import { CookingTool, CustomToolRunner, GrowthTool, RandomTool, RoadTripTool, TimeTool } from "@/src/components/tools2";
+import { ModuleGate } from "@/src/components/ModuleGate";
 
 const TOOLS = [
   { id: "units", label: "Units", icon: "swap-horizontal", C: UnitsTool },
@@ -15,6 +17,11 @@ const TOOLS = [
   { id: "split", label: "Tip & split", icon: "account-group-outline", C: SplitTool },
   { id: "dates", label: "Dates", icon: "calendar-range", C: DatesTool },
   { id: "emi", label: "EMI", icon: "bank-outline", C: EmiTool },
+  { id: "growth", label: "Growth", icon: "trending-up", C: GrowthTool },
+  { id: "cooking", label: "Cooking", icon: "silverware-fork-knife", C: CookingTool },
+  { id: "time", label: "Time", icon: "clock-outline", C: TimeTool },
+  { id: "roadtrip", label: "Road trip", icon: "road-variant", C: RoadTripTool },
+  { id: "random", label: "Decide", icon: "dice-multiple-outline", C: RandomTool },
 ] as const;
 
 export default function Tools() {
@@ -22,8 +29,9 @@ export default function Tools() {
   const { db, update } = useStore();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
-  const [tool, setTool] = useState<string>(params.tool && TOOLS.some((t) => t.id === params.tool) ? params.tool : "units");
-  const active = TOOLS.find((t) => t.id === tool)!;
+  const [tool, setTool] = useState<string>(params.tool && (TOOLS.some((t) => t.id === params.tool) || db.customTools.some((t) => `custom:${t.id}` === params.tool)) ? params.tool : "units");
+  const active = TOOLS.find((t) => t.id === tool);
+  const customId = tool.startsWith("custom:") ? tool.slice(7) : null;
   const history = db.toolHistory.filter((h) => h.tool === tool).slice(0, 8);
 
   return (
@@ -33,10 +41,13 @@ export default function Tools() {
         {TOOLS.map((t) => (
           <Chip key={t.id} label={t.label} icon={t.icon} selected={tool === t.id} onPress={() => setTool(t.id)} testID={`tools-chip-${t.id}`} />
         ))}
+        {db.customTools.map((t) => (
+          <Chip key={t.id} label={t.name} icon={t.icon} selected={tool === `custom:${t.id}`} onPress={() => setTool(`custom:${t.id}`)} testID={`tools-chip-custom-${t.id}`} />
+        ))}
       </ChipRow>
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: sp.lg, paddingTop: 4, paddingBottom: insets.bottom + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <View key={tool} testID={`tool-${tool}`}>
-          <active.C />
+          {customId ? <CustomToolRunner toolId={customId} /> : active ? <active.C /> : null}
         </View>
         {history.length ? (
           <View style={{ marginTop: 20 }} testID="tools-history">
@@ -59,6 +70,7 @@ export default function Tools() {
           </View>
         ) : null}
       </KeyboardAwareScrollView>
+      <ModuleGate id="tools" name="Quick Tools" icon="calculator-variant-outline" />
     </View>
   );
 }

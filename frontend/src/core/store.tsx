@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { storage } from "@/src/utils/storage";
+import { decryptString, encryptString, isEncrypted } from "./crypto";
 import type { DB, Settings } from "./types";
 import { DB_KEY, emptyDB, LEGACY_DB_KEY, normalizeDB } from "./defaults";
 
@@ -23,24 +24,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Upgrade path: Nucleus data becomes the Nucleus data, nothing lost.
-    Promise.all([storage.getItem(DB_KEY), storage.getItem(LEGACY_DB_KEY)]).then(([cur, legacy]) => {
+    // Upgrade path: v1 (plaintext / Tessera) snapshots are read once and re-saved encrypted.
+    (async () => {
+      const [cur, legacy] = await Promise.all([storage.getItem(DB_KEY), storage.getItem(LEGACY_DB_KEY)]);
       const raw = cur ?? legacy;
       if (raw) {
         try {
-          setDb(normalizeDB(JSON.parse(raw)));
+          setDb(normalizeDB(JSON.parse(isEncrypted(raw) ? await decryptString(raw) : raw)));
         } catch {
           setDb(emptyDB());
         }
       }
+      if (legacy) storage.removeItem(LEGACY_DB_KEY);
       setReady(true);
-    });
+    })();
   }, []);
 
   useEffect(() => {
     if (!ready) return;
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => storage.setItem(DB_KEY, JSON.stringify(db)), 250);
+    timer.current = setTimeout(() => {
+      encryptString(JSON.stringify(db)).then((v) => storage.setItem(DB_KEY, v));
+    }, 250);
   }, [db, ready]);
 
   const update = useCallback((fn: (db: DB) => DB) => setDb((d) => fn(d)), []);

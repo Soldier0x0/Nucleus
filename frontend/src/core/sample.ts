@@ -99,5 +99,16 @@ export function withSampleData(db: DB): DB {
     { id: uid(), name: "Water purifier", brand: "Kent", room: "Kitchen", purchaseDate: addMonths(today, -14), warrantyUntil: addMonths(today, 10), createdAt: new Date().toISOString(), plans: [{ id: uid(), name: "Filter change", everyMonths: 3, lastDone: addDays(addMonths(today, -3), 12), cost: 1200 }] },
     { id: uid(), name: "Washing machine", brand: "LG", room: "Utility", warrantyUntil: addMonths(today, 30), createdAt: new Date().toISOString(), plans: [] },
   ] };
+
+  // notes & a couple of rules to show the automation sentence
+  const nowISO = new Date().toISOString();
+  next = { ...next, notes: [...next.notes,
+    { id: uid(), title: "Service centre numbers", body: "Daikin: 1800-22-xxxx\nCar workshop: ask for Rafiq", checklist: [], pinned: true, createdAt: nowISO, updatedAt: nowISO },
+    { id: uid(), title: "Before the Goa trip", body: "", checklist: [{ id: uid(), text: "Download offline maps", done: true }, { id: uid(), text: "Carry printed hotel booking", done: false }, { id: uid(), text: "Switch on travel insurance", done: false }], pinned: true, createdAt: nowISO, updatedAt: nowISO },
+  ] };
+  next = { ...next, rules: [...next.rules,
+    { id: uid(), name: "Renewals heads-up", trigger: { kind: "renewal", value: 5 }, actions: ["attention"], enabled: true, createdAt: nowISO },
+    { id: uid(), name: "Big spend check", trigger: { kind: "bigExpense", value: 5000 }, actions: ["attention"], enabled: true, createdAt: nowISO },
+  ] };
   return next;
 }

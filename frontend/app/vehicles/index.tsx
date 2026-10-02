@@ -10,6 +10,7 @@ import { Header } from "@/src/components/Header";
 import { Button, Card, EmptyState, Eyebrow, Icon, IconButton, T } from "@/src/components/ui";
 import { Bar } from "@/src/components/charts";
 import { VehicleSheet } from "@/src/components/VehicleSheet";
+import { ModuleGate } from "@/src/components/ModuleGate";
 
 export default function Vehicles() {
   const { db, setSettings } = useStore();
@@ -63,6 +64,7 @@ export default function Vehicles() {
         )}
       </ScrollView>
       {add ? <VehicleSheet visible={add} onClose={() => setAdd(false)} /> : null}
+      <ModuleGate id="vehicles" name="Vehicles" icon="car-side" />
     </View>
   );
 }

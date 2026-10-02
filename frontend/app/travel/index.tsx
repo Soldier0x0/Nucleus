@@ -15,6 +15,7 @@ import { Ring } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
+import { ModuleGate } from "@/src/components/ModuleGate";
 
 export function TripSheet({ visible, onClose, trip }: { visible: boolean; onClose: () => void; trip?: Trip }) {
   const { db, update } = useStore();
@@ -101,6 +102,7 @@ export default function Travel() {
         )}
       </ScrollView>
       {add ? <TripSheet visible onClose={() => setAdd(false)} /> : null}
+      <ModuleGate id="travel" name="Travel" icon="bag-suitcase-outline" />
     </View>
   );
 }
