@@ -11,6 +11,7 @@ import { gcm } from "@noble/ciphers/aes.js";
 import { pbkdf2Async } from "@noble/hashes/pbkdf2.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { secureStorage, storage } from "@/src/utils/storage";
+import { deviceKeyAction, writeReplacement, type KeySlot } from "./openDb";
 
 const DEK_KEY = "nucleus.dek.v1";
 const PREFIX = "NCE1."; // Nucleus Cipher Envelope v1
@@ -81,33 +82,110 @@ export function fromUtf8(b: Uint8Array) {
 
 // ---------- device key ----------
 let dek: Uint8Array | null = null;
+let creating: Promise<Uint8Array> | null = null;
+
+export class DataUnreadableError extends Error {
+  constructor(message = "Could not open saved data") {
+    super(message);
+    this.name = "DataUnreadableError";
+  }
+}
+
+function remember(key: Uint8Array) {
+  dek = key;
+  return key;
+}
+
+/** Read the key slot without creating or replacing anything. */
+export async function inspectDeviceKey(): Promise<KeySlot> {
+  if (dek?.length === 32) return "ok";
+  const existing = await secureStorage.getItem(DEK_KEY);
+  if (!existing) return "missing";
+  const bytes = fromB64(existing);
+  if (deviceKeyAction(bytes, "decrypt") !== "use") return "unusable";
+  remember(bytes);
+  return "ok";
+}
+
+/** Key for decryption. Missing or unusable keys are left untouched. */
+export async function readDeviceKey() {
+  const slot = await inspectDeviceKey();
+  if (slot === "ok" && dek?.length === 32) return dek;
+  throw new DataUnreadableError(slot === "missing" ? "Device key is missing" : "Device key is unusable");
+}
+
+/** Key for a new encryption. Creates one only when the slot is empty. */
+export function ensureDeviceKey(): Promise<Uint8Array> {
+  if (dek?.length === 32) return Promise.resolve(dek);
+  if (!creating) {
+    creating = (async () => {
+      const existing = await secureStorage.getItem(DEK_KEY);
+      const bytes = existing ? fromB64(existing) : null;
+      const action = deviceKeyAction(bytes, "encrypt");
+      switch (action) {
+        case "use":
+          return remember(bytes as Uint8Array);
+        case "create": {
+          const created = randomBytes(32);
+          await secureStorage.setItem(DEK_KEY, toB64(created));
+          return remember(created);
+        }
+        case "refuse":
+          throw new DataUnreadableError("Device key is unusable");
+        default: {
+          const unreachable: never = action;
+          return unreachable;
+        }
+      }
+    })().finally(() => {
+      creating = null;
+    });
+  }
+  return creating;
+}
 
 export async function deviceKey() {
-  if (dek) return dek;
-  const existing = await secureStorage.getItem(DEK_KEY);
-  if (existing) {
-    dek = fromB64(existing);
-    if (dek.length === 32) return dek;
-  }
-  dek = randomBytes(32);
-  await secureStorage.setItem(DEK_KEY, toB64(dek));
-  return dek;
+  return readDeviceKey();
 }
 
 /** True when a stored value is one of our AES-GCM envelopes. */
 export const isEncrypted = (s: string) => s.startsWith(PREFIX);
 
-export async function encryptString(plain: string) {
-  const key = await deviceKey();
+export function sealString(plain: string, key: Uint8Array) {
   const iv = randomBytes(12);
   const ct = gcm(key, iv).encrypt(toUtf8(plain));
   return `${PREFIX}${toB64(iv)}.${toB64(ct)}`;
 }
 
+export async function encryptString(plain: string) {
+  return sealString(plain, await ensureDeviceKey());
+}
+
 export async function decryptString(envelope: string) {
-  const [iv, ct] = envelope.slice(PREFIX.length).split(".");
-  const key = await deviceKey();
+  const parts = envelope.slice(PREFIX.length).split(".");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) throw new DataUnreadableError("Envelope is invalid");
+  const [iv, ct] = parts;
+  const key = await readDeviceKey();
   return fromUtf8(gcm(key, fromB64(iv)).decrypt(fromB64(ct)));
+}
+
+/**
+ * Overwrite the saved document. A missing or unusable key is written only
+ * after the new ciphertext is stored, so a failed write leaves the old key slot alone.
+ */
+export async function replaceStoredDocument(documentKey: string, legacyKey: string, plain: string) {
+  await writeReplacement(plain, {
+    inspect: inspectDeviceKey,
+    currentKey: readDeviceKey,
+    newKey: () => randomBytes(32),
+    seal: sealString,
+    putDocument: (payload) => storage.setItem(documentKey, payload),
+    putKey: async (key) => {
+      await secureStorage.setItem(DEK_KEY, toB64(key));
+      remember(key);
+    },
+    removeLegacy: () => storage.removeItem(legacyKey),
+  });
 }
 
 /** Read a JSON document that may be encrypted or (legacy) plaintext. */
