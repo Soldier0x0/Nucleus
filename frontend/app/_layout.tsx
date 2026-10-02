@@ -11,11 +11,12 @@ import { buildTheme, ThemeContext } from "@/src/theme";
 import { StoreProvider, useStore } from "@/src/core/store";
 import { ToastProvider } from "@/src/components/Toast";
 import { LockGate } from "@/src/components/LockGate";
+import { UnreadableData } from "@/src/components/UnreadableData";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Themed({ children }: { children: React.ReactNode }) {
-  const { db, ready } = useStore();
+  const { db, ready, unreadable } = useStore();
   const scheme = useColorScheme();
   const s = db.settings;
   const themeKey = s.theme === "system" ? (scheme === "light" ? "paper" : "midnight") : s.theme;
@@ -31,7 +32,7 @@ function Themed({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={theme}>
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
-      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>{children}</View>
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>{unreadable ? <UnreadableData /> : children}</View>
     </ThemeContext.Provider>
   );
 }
