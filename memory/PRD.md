@@ -23,6 +23,7 @@ Product name **Tessera**. MVP = Today, Attention Center with "Why?", Vehicles, M
 - Tested: iteration_1 passed core flows; PIN pad fast-typing fix applied after.
 
 ## v2 — Nucleus (2026-06, session 2)
+➡️ Detailed, ordered implementation plan for the remaining v2 features: `/app/memory/NEXT_STEPS.md`
 Approved plan: "Nucleus v2" full platform. Implemented this session:
 - Rename Tessera → Nucleus everywhere (app.json name/slug/scheme, com.nucleus.app); v1 storage + PIN migrate automatically
 - Themes Midnight (default)/AMOLED/Graphite/Dune/Paper/System × 6 accents (onboarding + settings)
