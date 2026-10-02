@@ -4,6 +4,7 @@
 # a phone and installed without Expo Go or a development server.
 #
 # Download it from the run's Artifacts section. The file is named nucleus.apk.
+# The APK contains only arm64-v8a, which is what current phones use.
 #
 # Signing:
 # - With no secrets, the APK is signed with the debug keystore that Expo puts in
@@ -57,7 +58,7 @@ jobs:
           else
             SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -print -quit)
           fi
-          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install \
             "platforms;android-36" \
             "build-tools;36.0.0" \
@@ -107,7 +108,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a
 
       - name: Collect the APK
         run: |
