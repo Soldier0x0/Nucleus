@@ -112,7 +112,7 @@ export default function Money() {
               <Eyebrow style={{ marginBottom: 8 }}>Insights · {insights.length}</Eyebrow>
               {insights.length === 0 ? (
                 <Card>
-                  <T muted>Insights appear once a category has 3+ months of history. Tessera compares months — nothing leaves your device.</T>
+                  <T muted>Insights appear once a category has 3+ months of history. Nucleus compares months — nothing leaves your device.</T>
                 </Card>
               ) : (
                 insights.map((ins) => (
@@ -158,7 +158,7 @@ export default function Money() {
               <T color={colors.onBrandTertiary} style={{ fontSize: 12 }}>{subs.filter((x) => x.active).length} active · ≈ {num(annual / 12, 0)} per month</T>
             </Card>
             {subs.length === 0 ? (
-              <EmptyState icon="autorenew" title="No subscriptions" body="Track renewals so Tessera can warn you before they charge." />
+              <EmptyState icon="autorenew" title="No subscriptions" body="Track renewals so Nucleus can warn you before they charge." />
             ) : (
               subs.map((x) => {
                 const d = daysBetween(todayISO(), x.nextRenewal);

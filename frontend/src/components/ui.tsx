@@ -36,10 +36,10 @@ export function T({ v = "body", muted, color, style, ...rest }: TextProps & { v?
 }
 
 /** Uppercase mono eyebrow label, the "instrument" voice of the UI. */
-export function Eyebrow({ children, style, testID }: { children: React.ReactNode; style?: StyleProp<TextStyle>; testID?: string }) {
+export function Eyebrow({ children, style, testID, numberOfLines = 1 }: { children: React.ReactNode; style?: StyleProp<TextStyle>; testID?: string; numberOfLines?: number }) {
   const { colors } = useTheme();
   return (
-    <Text testID={testID} style={[{ fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 1.2, color: colors.muted, textTransform: "uppercase" }, style]}>
+    <Text testID={testID} numberOfLines={numberOfLines} style={[{ fontFamily: fonts.monoMedium, fontSize: 11, letterSpacing: 1.2, color: colors.muted, textTransform: "uppercase" }, style]}>
       {children}
     </Text>
   );

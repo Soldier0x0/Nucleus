@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { Platform, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { accents, radius, useTheme } from "@/src/theme";
+import { accents, radius, THEMES, useTheme } from "@/src/theme";
+import { geocode } from "@/src/core/online";
+import type { Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { CURRENCIES } from "@/src/core/format";
@@ -64,6 +66,9 @@ export default function Settings() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [exportWarn, setExportWarn] = useState(false);
   const sizeKb = (JSON.stringify(db).length / 1024).toFixed(1);
+  const [city, setCity] = useState("");
+  const [cityMatches, setCityMatches] = useState<Place[]>([]);
+  const [showLog, setShowLog] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -74,7 +79,16 @@ export default function Settings() {
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <Section title="Appearance">
           <View style={{ padding: 12, gap: 12 }}>
-            <Segmented testID="settings-theme" value={s.theme} onChange={(v) => setSettings({ theme: v })} options={[{ value: "system", label: "System" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} />
+            <View style={{ marginHorizontal: -12 }}>
+              <ChipRow testID="settings-theme-row">
+                {[["system", "System", undefined], ...Object.entries(THEMES).map(([k, t]) => [k, t.name, t.swatch])].map(([k, n, sw]) => (
+                  <Press key={k} testID={`settings-theme-${k}`} onPress={() => setSettings({ theme: k as any })} accessibilityState={{ selected: s.theme === k }} style={[styles.swatchWrap, { borderColor: s.theme === k ? colors.onSurface : colors.border }]}>
+                    <View style={[styles.swatch, { backgroundColor: sw ?? colors.surfaceTertiary, borderWidth: 1, borderColor: colors.borderStrong }]}>{s.theme === k ? <Icon name="check" size={14} color={k === "paper" ? "#111418" : "#FFFFFF"} /> : null}</View>
+                    <T v="caption">{n}</T>
+                  </Press>
+                ))}
+              </ChipRow>
+            </View>
             <Segmented testID="settings-density" value={s.density} onChange={(v) => setSettings({ density: v })} options={[{ value: "comfortable", label: "Comfortable" }, { value: "dense", label: "Dense" }]} />
           </View>
           <View style={{ marginHorizontal: -4, paddingBottom: 4 }}>
@@ -87,6 +101,25 @@ export default function Settings() {
               ))}
             </ChipRow>
           </View>
+        </Section>
+
+        <Section title="Online (optional)">
+          <Row first icon="web" label="Online features" sub={s.online ? "On · rates, weather, holidays. Only queries leave the device." : "Off · no network requests at all"} right={<Switch testID="settings-online-switch" value={s.online} onValueChange={(v) => setSettings({ online: v })} {...sw} />} />
+          <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
+            <T v="label" style={{ marginBottom: 6 }}>Home city (weather)</T>
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <TextInput testID="settings-city-input" value={city} onChangeText={setCity} placeholder={s.homeCity?.name ?? "e.g. Bengaluru"} placeholderTextColor={colors.muted} style={{ flex: 1, height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+              <Button small label="Find" testID="settings-city-find" disabled={!s.online || !city.trim()} onPress={async () => setCityMatches(await geocode(s.online, (e) => update((d) => ({ ...d, netlog: [e, ...d.netlog].slice(0, 300) })), city))} />
+            </View>
+            {cityMatches.map((m, i) => (
+              <Press key={i} testID={`settings-city-result-${i}`} onPress={() => (setSettings({ homeCity: m }), setCityMatches([]), setCity(""), toast(`Home city: ${m.name}`, "map-marker-outline"))} style={{ paddingVertical: 10 }}>
+                <T numberOfLines={1}>{m.name}</T>
+              </Press>
+            ))}
+            {s.homeCity ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Current: {s.homeCity.name} (sent rounded to ~10 km)</T> : null}
+            {!s.online ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Turn Online on to search for a city.</T> : null}
+          </View>
+          <Row icon="format-list-bulleted" label="Network log" sub={`${db.netlog.length} request${db.netlog.length === 1 ? "" : "s"} ever made`} testID="settings-netlog-button" onPress={() => setShowLog(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
         </Section>
 
         <Section title="Defaults">
@@ -181,8 +214,8 @@ export default function Settings() {
         </Section>
 
         <Section title="About">
-          <Row first icon="view-grid-outline" label="Tessera 1.0 · MVP" sub="Local-first. No account, no cloud, no AI. Insights are rules + your history." />
-          <Row icon="wifi-off" label="Network" sub="Tessera makes no network requests with your data." />
+          <Row first icon="view-grid-outline" label="Nucleus 2.0" sub="Local-first. No account, no cloud, no AI. Insights are rules + your history." />
+          <Row icon="shield-check-outline" label="Your records never leave" sub="Online mode sends only queries (currency code, city). Weather by Open-Meteo.com (CC BY 4.0)." />
         </Section>
       </ScrollView>
 
@@ -209,6 +242,18 @@ export default function Settings() {
             }
           }}
         />
+      </Sheet>
+
+      <Sheet visible={showLog} onClose={() => setShowLog(false)} title="Network log" testID="netlog-sheet">
+        {db.netlog.length === 0 ? <T muted testID="netlog-empty">No requests have ever been made. Nucleus has been fully offline.</T> : db.netlog.slice(0, 100).map((e) => (
+          <View key={e.id} style={{ flexDirection: "row", gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+            <Icon name={e.ok ? "check-circle-outline" : "alert-circle-outline"} size={16} color={e.ok ? colors.success : colors.error} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <T v="label" numberOfLines={1}>{e.service}</T>
+              <T muted style={{ fontSize: 12 }} numberOfLines={1}>asked: {e.query} · {new Date(e.at).toLocaleString()}</T>
+            </View>
+          </View>
+        ))}
       </Sheet>
 
       <Sheet visible={exportWarn} onClose={() => setExportWarn(false)} title="Export backup" testID="export-sheet">

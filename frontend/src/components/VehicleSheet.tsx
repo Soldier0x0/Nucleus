@@ -75,7 +75,7 @@ export function VehicleSheet({ visible, onClose, vehicle }: { visible: boolean; 
         <Field style={{ flex: 1 }} numeric label="Current odometer" unit={dist} testID="vehicle-odometer-input" value={f.initialOdometer} onChangeText={(t) => set({ initialOdometer: t })} placeholder="0" />
         <Field style={{ flex: 1 }} numeric label="Service every" unit={dist} testID="vehicle-interval-input" value={f.serviceIntervalKm} onChangeText={(t) => set({ serviceIntervalKm: t })} placeholder={String(defaultInterval)} />
       </View>
-      <T muted style={{ fontSize: 12, marginTop: -4, marginBottom: 12 }}>After 3 logged services Tessera learns your real interval.</T>
+      <T muted style={{ fontSize: 12, marginTop: -4, marginBottom: 12 }}>After 3 logged services Nucleus learns your real interval.</T>
       <DateField label="Insurance expiry" optional testID="vehicle-insurance-date" value={f.insuranceExpiry} onChange={(v) => set({ insuranceExpiry: v })} />
       <DateField label="PUC / emission expiry" optional testID="vehicle-puc-date" value={f.pucExpiry} onChange={(v) => set({ pucExpiry: v })} />
     </Sheet>

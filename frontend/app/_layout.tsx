@@ -18,8 +18,9 @@ function Themed({ children }: { children: React.ReactNode }) {
   const { db, ready } = useStore();
   const scheme = useColorScheme();
   const s = db.settings;
-  const mode = s.theme === "system" ? (scheme === "dark" ? "dark" : "light") : s.theme;
-  const theme = useMemo(() => buildTheme(mode, s.accent, s.density === "dense"), [mode, s.accent, s.density]);
+  const themeKey = s.theme === "system" ? (scheme === "light" ? "paper" : "midnight") : s.theme;
+  const theme = useMemo(() => buildTheme(themeKey, s.accent, s.density === "dense"), [themeKey, s.accent, s.density]);
+  const mode = theme.mode;
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);

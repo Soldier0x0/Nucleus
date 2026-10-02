@@ -1,164 +1,340 @@
-# Tessera: A Local-First Personal Platform
+# Nucleus: The Private All-in-One Personal Platform (v2)
 
-Tessera is a private, offline Android app where you put together your own toolkit from modules (vehicles, money, quick tools), and those modules link to each other.
-It uses plain rules and your own history to point out what needs attention and why. It uses no AI, no cloud and no account.
-
-*(Name idea: a tessera is one tile in a mosaic. Each module is a tile, and together they make one picture. The design document lists other names to choose from.)*
+Nucleus (renamed from Tessera) is a private, encrypted personal platform for vehicles, money, travel, home, media and everyday tools. Every module links to the others, and plain rules point out what needs attention and why.
+It works fully offline. An optional "Online" switch, off by default, adds live currency rates, weather and holidays without ever sending your records.
 
 ---
 
 ## Who it's for
-- People who want one organized place for their car or bike, spending and everyday calculations, without sending data to anyone.
-- Privacy-minded users who don't trust cloud apps with financial or personal records.
-- Power users who want deep customization but still need things to work right away.
+- People who want one beautiful, organized place for their car, money, trips, home and media, without trusting a cloud company.
+- Privacy-minded users who want encryption, hidden amounts, a choice of PIN or biometric unlock, and a decoy mode.
+- Non-developers who want deep customization (themes, dashboards, custom tools, rules) without editing anything technical.
 
 ---
 
-## Core features and experience (MVP)
+## Core features and experience (built now)
 
-### 1. Today (home)
-- A short, visual summary first. Example: "3 things need attention", a budget ring showing 79% used, and a service gauge showing 4,700 km since the last service.
-- Each module shows a small summary tile. You tap it for details (overview → details → explanation → raw data).
-- A global search bar at the top.
+### 1. Rename and visual overhaul
+- **New name:** the app is renamed **Nucleus** everywhere: app name, icon text, lock screen, onboarding and backups.
+- **Dark-first premium look:**
+  - deep surfaces with soft depth
+  - subtle gradients
+  - a "hero" visual at the top of every module (gauge, ring, countdown, poster wall)
+  - smooth, staggered animations
+- **Themes:**
+  - Midnight (default dark)
+  - AMOLED Black
+  - Graphite
+  - Dune (warm dark)
+  - Paper (light)
+  - Follow system
+  - each theme can be combined with 6 accent colours
+- **Layout:**
+  - Density can be Comfortable or Dense.
+  - A large-touch option, reduced motion and high contrast are available.
+- **Text-overflow audit across every screen:**
+  - long names, large amounts and small phones are handled with truncation, wrapping or auto-shrinking
+  - chip rows scroll sideways and never wrap or squash
 
-### 2. Attention Center
-- One list across all modules, grouped into **Urgent / Upcoming / Info**. Examples: insurance expiring, PUC expiring, a service coming up, a subscription renewing, a budget limit reached, unusual spending.
-- Items are ranked by clear rules (how soon and how severe). They are never ranked by guesswork.
-- Every item has a **"Why?"** button. It shows the reasoning and the data behind it, for example: "Your last 4 service intervals averaged 5,150 km. You are at 4,700 km."
-- You can mark an item done, snooze it, or dismiss it.
+### 2. Today and Boards (custom dashboards)
+- **Today:**
+  - an Attention summary
+  - module tiles that you pick and reorder
+  - a global search bar
+  - an **Online on/off toggle** in the header
+  - current weather when Online is on
+- **Boards:** create extra dashboards such as "My Car", "Goa Trip" or "Home". Add tiles from any module, reorder them and choose a size (small, medium or large).
+- **Capture bar:** one quick-entry line using simple, fixed patterns. For example:
+  - `450 food lunch` becomes an expense
+  - `fuel 5.4L 560` becomes a fuel entry
+  - `netflix 649 monthly` becomes a subscription
+  - A preview shows what will be created before it is saved.
 
-### 3. Vehicles module
-- Add vehicles (car, bike, other) and choose a default one.
-- **Fuel log:** enter odometer, litres and either price or total. The missing value is filled in automatically. The app works out mileage, cost per km, monthly spend and a mileage trend chart.
-- **Service log:** the form changes with the service type. Engine oil asks for grade, quantity and odometer. Tyres ask for size, front/rear, brand and warranty. Other types ask for what fits them.
-- **Service interval estimate:** worked out from your own past services, with a plain explanation.
-- **Documents and dates:** insurance and PUC expiry dates feed the Attention Center.
-- **Vehicle dashboard:** a mileage gauge, a service countdown, expiry indicators and recent costs.
+### 3. Attention Center (all modules)
+- Urgent, Upcoming and Info, across vehicles, money, travel, home and your rules.
+- Every item has a **"Why?"** button showing the rule and the data behind it.
+- You can mark items done, snooze them, dismiss them or restore them.
+- **Quiet hours** stop reminders at night, except for urgent items.
 
-### 4. Money module
-- Income and expense entries with categories. Entry is quick, with a number pad, category chips and recent values.
-- Monthly budget plus optional budgets per category. Shown as a ring, then a category breakdown, then the individual transactions.
-- **Subscriptions:** cost, billing cycle, renewal date and annual cost. Renewals feed the Attention Center.
-- **Trend and anomaly insights:** for example "Electricity spending is trending up" or "Fuel this month is 34% above your 6-month average", each with "Why?".
+### 4. Vehicles (existing, polished)
+- Fuel log with automatic calculation of the missing value.
+- A service form that changes with the service type.
+- A service interval learned from your history.
+- Insurance and PUC countdowns, and a mileage trend chart.
+- **New:** total cost of ownership per km. Fuel used on a trip can also be logged as a trip expense.
 
-### 5. Cross-module links (the core idea)
-- A fuel entry or service cost can create a linked expense in Money automatically. This is on by default and you can turn it off.
-- Every record has a **"Linked"** section, so you can move between related items (Vehicle → Fuel → Expenses).
-- Search results are grouped by type. Searching "Activa", for example, shows the vehicle, 12 fuel entries, ₹8,420 spent and the next service.
+### 5. Money (existing, expanded)
+- Budget ring, category bars, monthly trends, quick entry, subscriptions, and insights with "Why?".
+- **New features:**
+  - **Sinking funds:** savings jars for goals such as insurance or a new phone.
+  - **Net worth:** assets minus liabilities, tracked over time.
+  - **Debts and loans:** with payoff progress.
+  - **Multi-currency:** live rates when Online is on, otherwise rates you enter manually.
+  - **Month-end projection:** based on how fast you are spending so far this month.
 
-### 6. Quick Tools
-- Unit converter, percentage/GST/discount, tip and bill split, date calculator, and an EMI/loan calculator.
-- The unit selector sits right next to the input. Values you used recently are remembered.
-- Results can be copied, saved to history, or sent to another module. For example, an EMI can become a recurring expense.
+### 6. Travel
+- **Trips** with a destination, dates, travellers and a budget.
+- **Trip card:** a countdown and a readiness ring. The ring combines packing done, documents present and whether a budget is set, for example "2 things need attention".
+- **Packing list:**
+  - templates: Weekend, Business, Beach, Trekking, International, Winter, Photography, Custom
+  - category progress bars
+  - an offer to reuse a previous trip's list
+- **Day-by-day itinerary:** a vertical timeline with times, places, bookings and notes.
+- **Trip expenses:**
+  - in any currency, converted to your home currency
+  - shown against the trip budget
+  - fuel logged for the trip links in automatically
+- **Road-trip calculator:** fuel needed, fuel cost, cost per km and cost per person.
+- **Documents checklist:** passport, visa, tickets and insurance, each with an optional expiry date that feeds Attention.
+- **When Online is on:** the destination's weather forecast, public holidays during the trip, and country facts (currency, time zone, plug type, driving side).
 
-### 7. Modules and customization
-- A module library where you turn modules on or off, hide them and reorder them. Turned-off modules disappear from Today, search and Attention.
-- You can choose and reorder the Today tiles.
-- Theme: light, dark or system, with a choice of accent color.
-- Density: Comfortable or Dense.
-- Defaults: currency, distance and fuel units, temperature, and 12h or 24h time.
+### 7. Home
+- **Appliances and inventory:** brand, model, serial number, room, purchase date and price.
+- **Warranties:** countdown bars. Expiring warranties appear in Attention.
+- **Maintenance plans:** "every 3 months" or "every 6 months" (AC, water purifier, filters, pest control), shown on a 90-day timeline. Logging a maintenance job can create a Money expense.
+- **Utilities:**
+  - meter readings and bills for electricity, water, LPG and internet
+  - a trend chart
+  - an estimated next bill shown as a range
+- **Chores:** recurring tasks, optionally assigned to family members.
+- **Room view:** cards for each room, showing a status for the items in it.
 
-### 8. Security and privacy
-- **Whole-app lock:** a PIN plus fingerprint or face unlock where the device supports it. The app locks again after a set time in the background.
-- **Privacy mode:** hides all amounts until you tap to show them.
-- The app's content is hidden in the recent-apps switcher. Screenshots are blocked where the device supports it.
-- No account and no network use. Data never leaves the device unless you export it.
+### 8. Notes & Lists
+- Quick notes and checklists, including shopping, to-do and chore lists.
+- Notes and lists can be linked to any record, such as a trip, vehicle or appliance.
+- Lists can be pinned to a Board.
 
-### 9. Backup
-- **Export everything** to a single backup file that you save or share yourself.
-- **Restore** from a backup file, with a preview of what will be replaced.
+### 9. Media shelf
+- Movies, TV, anime, books, games and music.
+- Statuses: want, in progress, completed, paused, dropped.
+- A poster grid with progress rings, covers picked from your photos, ratings, reviews, tags and collections.
+- Everything is entered manually. There are no online lookups.
 
-### 10. Design document (delivered alongside the app)
-A separate in-depth document covering:
-- a critique of the original concept (what was merged, removed or redesigned)
-- new ideas
-- product identity and naming options
-- information structure and navigation
-- visual language
-- full architecture: modules, events, relationships, rules, intelligence, search, dashboards, widgets, plugins and capabilities
-- security model and threat model
-- performance and battery strategy
-- UX for each module
-- roadmap and extensibility
+### 10. Tools (expanded)
+- **Existing tools:** units, GST/percentage, tip and bill split, dates, EMI.
+- **New tools:**
+  - cooking converter with serving scaling (for example 4 → 7 servings)
+  - time calculator ("7h 43m after 11:26 PM"), with time zones
+  - growth calculators: SIP, CAGR, compound interest, inflation
+  - randomizer: dice, coin, cards, teams, weighted pick
+  - saved decision wheels
+- **Dev Tools:**
+  - JSON formatter and validator
+  - Base64 and URL encode/decode
+  - JWT decoder
+  - UUID generator
+  - hashes
+  - timestamp converter
+  - regex tester
+  - text diff
+  - word, character and line count
+  - whitespace cleaner
+  - colour picker
+  - snippet library
+- **Custom Tool Builder:**
+  - name the tool
+  - add inputs (number, money, with units)
+  - write a formula
+  - choose outputs
+  - the tool then appears and behaves like a built-in tool
+  - results can be sent to Money
+
+### 11. Rules and reminders (When / If / Then)
+- A visual sentence builder. For example: "When a trip starts within 7 days, if packing is below 80%, then remind me and show it in Attention."
+- **Triggers:**
+  - dates (renewals, expiries, trip start)
+  - thresholds (budget %, km since service)
+  - events (fuel added, expense added)
+  - battery level
+- **Actions:**
+  - phone reminder notification
+  - add to Attention
+  - create a task or expense
+  - open a Board
+- **Dry run:** shows how often the rule would have fired in the last 90 days, before you save it.
+- Phone reminders are requested only when you create your first reminder rule.
+
+### 12. Phone Lab
+- **Sensor dashboard:** live graphs for the accelerometer, gyroscope, magnetometer, light and barometer, where the phone has them.
+- **Sensor recorder:** records for a set time and exports to CSV or JSON.
+- **Measurement tools:**
+  - compass
+  - light meter
+  - approximate sound meter (clearly labelled as an estimate)
+  - tone generator
+  - pitch detector
+- **Battery and device info:**
+  - battery level, charging state and health
+  - device and display information
+- **Tests:**
+  - display: solid colours, gradients, dead pixels
+  - multi-touch tester
+  - vibration test
+  - guided microphone, speaker and camera check
+- Sensors run only while their screen is open, and a visible timer shows during recordings.
+- Camera and microphone permission is requested only when that test is started.
+
+### 13. Profiles and security
+- **Multiple local profiles** (for example Personal, Work, Family). Each has its own data, modules, Boards and theme, completely separate from the others.
+- **Unlock choice:**
+  - Options: PIN only, biometric only, or both.
+  - A PIN is always set as a hidden backup, in case biometrics fail.
+  - Repeated wrong PINs cause an increasing wait.
+- **Decoy PIN (duress mode):**
+  - entering it opens a believable decoy profile with sample data
+  - nothing on screen shows that it is a decoy
+  - Opinion: not overkill. Because profiles exist anyway, it is a small, worthwhile addition.
+- **Extra lock per module:** for example, Money asks for biometric/PIN again before it opens.
+- **Encryption at rest:**
+  - all saved data is encrypted on the device
+  - the key is kept in the phone's secure hardware storage
+  - no data is stored as plain text
+- **Other protections:**
+  - privacy mode hides amounts
+  - screenshot blocking and hiding the app in the recent-apps switcher
+  - copied sensitive values are cleared from the clipboard after 60 seconds
+  - reminders on the lock screen hide amounts
+
+### 14. Online features (optional)
+- **The switch:**
+  - a single **Online** switch, OFF by default
+  - available in Settings and as a toggle on Today
+  - when it is off, the app makes no network requests at all
+- **Live currency rates:** used by the converter, multi-currency expenses and trips.
+- **Weather:**
+  - current conditions and a 7-day forecast for your city and for trip destinations
+  - air quality
+  - sunrise and sunset
+- **Public holidays by country:** used by the date calculator (working days), trip planning and the calendar.
+- **Country facts** for trip destinations.
+- **What leaves the device:**
+  - only the query itself: a currency code, a city name, or your location rounded to about 10 km
+  - never your records
+  - all requests use encrypted connections (HTTPS)
+  - results are cached so they still work offline afterwards
+- **Network log:** lists every request ever made (time, service, what was asked).
+
+### 15. Backup, export and Year in Review
+- **Encrypted backups:**
+  - password-protected by default, with a strength meter
+  - a preview is shown before restoring
+  - restore can replace your data or merge it with what is already there
+- **Exports:**
+  - CSV per module
+  - calendar (ICS) export of renewals, expiries and itineraries
+  - single record or module as JSON
+- **Year in Review:**
+  - a set of swipeable story cards: km driven, fuel spent, biggest spending category, trips taken, items completed, longest streaks
+  - each card can be saved or shared as an image
+  - amounts on the cards are hidden by default and can be turned on
+- **Timeline:** one chronological feed of everything you recorded, across all modules.
+- **Diagnostics:**
+  - storage per module
+  - active sensors
+  - scheduled reminders
+  - network log
+  - recent errors
 
 ---
 
 ## User flow
 1. **First launch:**
-   - choose defaults (currency, units, time format)
-   - choose modules (Vehicles, Money, Tools)
-   - set a PIN and optionally turn on biometric unlock
-2. **Unlock**, then land on **Today**.
-3. **Add a vehicle**, then log fuel. Mileage and cost appear right away, and a linked expense shows up in Money.
-4. **Set a budget and add expenses.** The ring fills, and insights appear once there is enough history.
-5. **Open Attention**, check "Why?" on any item, then mark it done or snooze it.
-6. **Use a quick tool**, then send the result to Money or save it.
-7. **Settings:** reorder modules and tiles, change theme and density, export a backup.
+   - welcome
+   - choose a theme
+   - choose units and currency
+   - choose modules
+   - choose an unlock method (PIN, biometric or both); optionally set a decoy PIN
+   - Online switch (left off unless turned on)
+   - start empty or explore with sample data
+2. **Unlock**, then **Today**: Attention summary, tiles, weather if Online is on, search, and the capture bar.
+3. **Plan a trip:**
+   - set the destination and dates
+   - pick a packing template or reuse a past list
+   - build the itinerary
+   - the readiness ring fills and Attention flags anything missing
+   - during the trip, expenses in any currency are added and converted
+4. **Home:** add an appliance with its warranty. A maintenance plan gets a timeline, and Attention warns before the warranty ends.
+5. **Rules:** build "When / If / Then", check the dry run, save. Reminders arrive on the phone.
+6. **Tools:** use built-in tools or build your own, and send results to Money.
+7. **Profiles:** switch between profiles from Settings. The decoy PIN opens the decoy profile.
+8. **Year in Review:** swipe through the cards and share them.
+9. **Settings:** themes, Online switch, security, encrypted backup, exports, diagnostics.
 
-**Navigation:** four tabs: **Today · Modules · Attention · Settings**. Search is reached from Today.
+**Navigation:** four tabs: **Today · Modules · Attention · Settings**. Boards, search, the capture bar and the timeline are reached from Today.
 
 ---
 
 ## UI/UX feel
-- Calm, precise and instrument-like. It should feel like a well-made workbench, not a busy dashboard.
-- Visuals come before text: rings, gauges, trend lines, timelines and countdown bars. Numbers back up the visuals rather than replace them.
-- Layouts are left-aligned with a clear order of importance. Each screen answers "what matters?" first.
-- Bottom sheets are used for quick entry. Touch targets are large and there are small press animations.
-- Status is never shown by color alone. Icons and labels are always used too.
-- Light and dark themes are both fully supported.
+- Dark-first, premium and calm. It should feel like a precision instrument, not a busy dashboard.
+- Every module opens with a hero visual (gauge, ring, countdown, poster wall, timeline). Numbers support the visuals, and details are revealed only when asked for.
+- Soft depth, subtle gradients, crisp monospaced figures, tick-marked rings and gauges.
+- Press animations, staggered entrances, satisfying haptics, and swipe actions on lists.
+- Bottom sheets are used for entry. Touch targets are large. Status always shows an icon and a label as well as a colour.
+- No text overflows on any screen size. Light themes are just as polished as dark ones.
 
 ---
 
 ## Implementation phases
 
-### Phase 1: MVP (built now)
+### Phase 1: Full platform (built now)
 Everything in "Core features" above:
-- Today, Attention Center with "Why?", Vehicles, Money and subscriptions
-- automatic cross-module links, grouped global search, five quick tools
-- module library, theme, density and defaults
-- whole-app PIN/biometric lock, privacy mode
-- full backup export and restore
-- the design document
+- the rename to Nucleus and the visual overhaul with themes
+- the overflow audit
+- Boards and the capture bar
+- Travel, Home, Notes & Lists, Media
+- the expanded Money and Tools
+- Dev Tools and the Custom Tool Builder
+- Rules with phone reminders
+- Phone Lab
+- profiles, the PIN/biometric choice and the decoy PIN
+- module locks and encryption at rest
+- online features with the Online switch and the network log
+- encrypted backups, CSV and calendar export
+- Year in Review, Timeline and Diagnostics
 
-### Phase 2: Broaden the platform
-- **Travel:** trips, packing templates, itinerary timeline, trip expenses linked to fuel and Money, and a trip readiness summary.
-- **Home:** appliances, warranties, maintenance schedules and utility tracking.
-- **Visual rule builder (When / If / Then):** with local reminder notifications.
-- Custom dashboards and multiple local profiles.
-- Password-encrypted backups, plus CSV and calendar (ICS) export.
-- Developer tools pack.
-- Per-module extra lock for Money.
+### Phase 2: Installed-app extras
+- Android home-screen widgets in small, medium and large sizes (countdown, budget, trip, maintenance, battery).
+- Home-screen shortcuts that open a favourite tool or Board.
+- An emergency card that can be read on the lock screen.
+- These need an installed app build and cannot run in the Expo Go preview.
 
-### Phase 3: Advanced platform
-- **Custom tool builder:** inputs, formula and output, which then behaves like a built-in tool.
-- Declarative module packs, with permissions granted one at a time.
-- Android home-screen widgets and shortcuts. These need an installed app build and won't run in the Expo Go preview.
-- Phone Lab: sensors, battery, display and touch tests.
-- Media library.
-- Network tools.
-- A self-diagnostics screen.
-- Tablet and landscape layouts.
+### Phase 3: Ecosystem
+- Shareable "packs": bundles of templates, custom tools, checklists and rules, shared by file or QR code, with permissions you approve one at a time.
+- Moving data between your own devices by file, with merging.
+- Kanban boards and a personal wiki with backlinks.
+- Network tools (ping, DNS lookup, local network scan) and an optional, clearly labelled receipt text scanner.
 
 ---
 
 ## Assumptions
-- **Product name:** "Tessera" replaces the working name.
-- **Platform:**
-  - Built so it runs well on Android first. It also works on iPhone.
-  - The Expo Go preview is used for testing. Screenshot blocking and app-switcher hiding only work fully in an installed app build.
-- **Storage:**
-  - All data is stored on the device only. No server is used, even though the workspace includes one.
-  - Uninstalling the app deletes the data unless a backup was exported first.
-- **Locale and units:**
-  - Defaults are INR, km, litres, °C and 12-hour time, all changeable in onboarding and Settings.
-  - Money uses one currency in the MVP.
-- **Profiles:** one profile in the MVP. Multiple profiles come in Phase 2.
-- **App lock:** the whole app is locked by PIN, with biometric unlock as an option. If you forget the PIN, the app can only be reset (data wiped) or restored from a backup. There is no recovery path.
-- **Backups:** the MVP backup file is not password-protected and the app warns about this. Encrypted backups come in Phase 2.
-- **Data entry:**
-  - All data is entered by hand. There is no bank or SMS import and no online lookups.
-  - No photos or attachments in the MVP.
-- **Insights:** they appear only when there is enough history (at least 3 services for an interval estimate, at least 3 months for spending trends). Until then the app says what data is still needed.
-- **Reminders:** reminders appear inside the app (Attention Center). Phone notifications come in Phase 2.
-- **Language:** English only.
-- **Design document:** the design document is delivered as a written document in the project. It is not shown inside the app.
+- **Building the APK:**
+  - Android APK/AAB builds are made through the platform's **Publish** button: Deploy → Generate Android build. No developer setup is needed.
+  - Automatic builds through GitHub Actions are **not** included. They need signing keys and build tooling maintained outside the platform.
+  - The code can still be saved to GitHub with "Save to GitHub".
+- **App identity:**
+  - The app's internal Android/iOS ID changes to match the new name (com.nucleus.app).
+  - This is safe because the app has not been published yet. After publishing, the ID must never change.
+- **Internet permission:** the installed app includes internet permission because the Online features need it. When the Online switch is off, no requests are made, and the network log shows this.
+- **Online data sources:**
+  - free public services that need no account or key: Frankfurter (currency), Open-Meteo (weather, air quality, place search), Nager.Date (holidays), REST Countries (country facts)
+  - weather data is credited in the app, as its licence requires
+  - if a service is down, the last cached data is shown with its date
+- **Location:** used only for local weather. It is requested only when "Use my location" is tapped and rounded to about 10 km. Typing a city works without location permission.
+- **Encryption and passwords:**
+  - All data is encrypted at rest on the device.
+  - Backups are protected by a password you choose. If that password is forgotten, the backup cannot be opened.
+  - The app-wide PIN still cannot be recovered. A forgotten PIN means erasing the data and restoring a backup.
+- **Decoy PIN:**
+  - It opens a separate decoy profile.
+  - It protects against someone looking over your shoulder or forcing you to unlock. It is not proof against forensic examination of the phone.
+- **Biometric only:** a PIN is still set during setup as a hidden fallback and is asked for only if biometrics fail or change.
+- **Reminders:** phone reminders are scheduled locally and work in the installed app. In the Expo Go preview they may be limited.
+- **Phone Lab:**
+  - Sensors and readings depend on the phone. Missing sensors are shown as "not available".
+  - Battery current, voltage and temperature, and detailed chip and RAM information, need an installed build or may not be exposed by the phone. Only what the phone allows is shown.
+  - The sound meter is an uncalibrated estimate.
+- **Media covers** come from your own photos. There are no online movie or book lookups.
+- **Language and data entry:** English only. Data is still entered by hand: no bank or SMS import.
+- **Profiles:** the existing data becomes the "Personal" profile, and nothing is lost in the upgrade.
+- **Defaults:** INR, km, litres, °C and 12-hour time, all changeable.
+- **Design document:** the existing design document is updated to the Nucleus name and the new scope.

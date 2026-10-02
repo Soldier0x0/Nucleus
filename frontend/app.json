@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Tessera",
-    "slug": "tessera",
+    "name": "Nucleus",
+    "slug": "nucleus",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "tessera",
+    "scheme": "nucleus",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tessera.app",
+      "bundleIdentifier": "com.nucleus.app",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Unlock Tessera quickly and privately"
+        "NSFaceIDUsageDescription": "Unlock Nucleus quickly and privately"
       }
     },
     "android": {
-      "package": "com.tessera.app",
+      "package": "com.nucleus.app",
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.USE_BIOMETRIC",

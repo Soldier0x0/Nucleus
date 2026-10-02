@@ -68,6 +68,17 @@ export const palettes = {
 export type Colors = typeof palettes.light;
 export const colors = palettes.light;
 
+const dk = (p: Partial<Colors>): Colors => ({ ...palettes.dark, ...p });
+
+/** Nucleus themes: 5 hand-tuned surfaces (+ "system"), each combinable with any accent. */
+export const THEMES: Record<string, { name: string; mode: "light" | "dark"; colors: Colors; swatch: string }> = {
+  midnight: { name: "Midnight", mode: "dark", swatch: "#0B0D12", colors: dk({ surface: "#0B0D12", surfaceSecondary: "#141821", surfaceTertiary: "#1E2330", border: "#232836", divider: "#232836", borderStrong: "#363C4D", muted: "#8B92A3" }) },
+  amoled: { name: "AMOLED", mode: "dark", swatch: "#000000", colors: dk({ surface: "#000000", surfaceSecondary: "#0D0D0E", surfaceTertiary: "#1A1A1C", border: "#1F1F22", divider: "#1F1F22", borderStrong: "#34343A" }) },
+  graphite: { name: "Graphite", mode: "dark", swatch: "#1A1C1E", colors: palettes.dark },
+  dune: { name: "Dune", mode: "dark", swatch: "#1F1912", colors: dk({ surface: "#15110C", onSurface: "#F3EDE4", surfaceSecondary: "#1F1912", surfaceTertiary: "#2A2219", border: "#30271C", divider: "#30271C", borderStrong: "#4A3D2C", muted: "#9C9080" }) },
+  paper: { name: "Paper", mode: "light", swatch: "#F6F7F9", colors: palettes.light },
+};
+
 /** User-selectable accents. Each defines its light & dark tonal set. No blue/purple by design. */
 export const accents: Record<string, { name: string; base: string; light2: string; tint: string; onTint: string; tintDark: string; onTintDark: string }> = {
   ochre: { name: "Ochre", base: "#D68E42", light2: "#ECAE6A", tint: "#FCEBDC", onTint: "#8E551B", tintDark: "#3E2B16", onTintDark: "#FCEBDC" },
@@ -78,8 +89,10 @@ export const accents: Record<string, { name: string; base: string; light2: strin
   rose: { name: "Rose", base: "#B85C72", light2: "#D58A9B", tint: "#F6E1E6", onTint: "#6E2A3A", tintDark: "#36202A", onTintDark: "#F6E1E6" },
 };
 
-export function buildColors(mode: "light" | "dark", accentKey: string): Colors {
-  const base = palettes[mode];
+export function buildColors(themeKey: string, accentKey: string): Colors {
+  const t = THEMES[themeKey] ?? THEMES.midnight;
+  const mode = t.mode;
+  const base = t.colors;
   const a = accents[accentKey] ?? accents.ochre;
   return {
     ...base,
@@ -113,11 +126,11 @@ export type Theme = {
   sp: typeof spacing;
 };
 
-export function buildTheme(mode: "light" | "dark", accentKey: string, dense: boolean): Theme {
+export function buildTheme(themeKey: string, accentKey: string, dense: boolean): Theme {
   const f = dense ? 0.75 : 1;
   const sp = Object.fromEntries(Object.entries(spacing).map(([k, v]) => [k, Math.round(v * f)])) as typeof spacing;
-  return { mode, colors: buildColors(mode, accentKey), dense, sp };
+  return { mode: (THEMES[themeKey] ?? THEMES.midnight).mode, colors: buildColors(themeKey, accentKey), dense, sp };
 }
 
-export const ThemeContext = createContext<Theme>(buildTheme("light", "ochre", false));
+export const ThemeContext = createContext<Theme>(buildTheme("midnight", "ochre", false));
 export const useTheme = () => useContext(ThemeContext);

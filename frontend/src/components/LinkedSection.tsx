@@ -22,6 +22,10 @@ export function describeRef(db: ReturnType<typeof useStore>["db"], ref: Ref) {
       return { icon: "swap-vertical", title: `${e.type === "income" ? "Income" : "Expense"} · ${e.category}`, sub: `${fmtDate(e.date)} · ${money(e.amount, cur)}`, route: `/record/txn/${e.id}` };
     case "subscription":
       return { icon: "autorenew", title: e.name, sub: `Subscription · ${money(e.amount, cur)}`, route: `/record/subscription/${e.id}` };
+    case "trip":
+      return { icon: "bag-suitcase-outline", title: e.name, sub: `Trip · ${fmtDate(e.start)}`, route: `/travel/${e.id}` };
+    case "appliance":
+      return { icon: "washing-machine", title: e.name, sub: `Home · ${e.room}`, route: `/home` };
   }
 }
 

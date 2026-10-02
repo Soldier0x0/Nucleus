@@ -3,7 +3,9 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { Platform } from "react-native";
 import { secureStorage } from "@/src/utils/storage";
 
-const PIN_KEY = "tessera.pin.v1";
+const PIN_KEY = "nucleus.pin.v1";
+const LEGACY_PIN_KEY = "tessera.pin.v1";
+const readPin = async () => (await secureStorage.getItem(PIN_KEY)) ?? (await secureStorage.getItem(LEGACY_PIN_KEY));
 
 async function hash(pin: string, salt: string) {
   // Iterated SHA-256 (key stretching) — PIN hash lives in Android Keystore-backed SecureStore.
@@ -19,11 +21,11 @@ export async function setPin(pin: string) {
 }
 
 export async function hasPin() {
-  return !!(await secureStorage.getItem(PIN_KEY));
+  return !!(await readPin());
 }
 
 export async function verifyPin(pin: string) {
-  const raw = await secureStorage.getItem(PIN_KEY);
+  const raw = await readPin();
   if (!raw) return false;
   const { salt, h } = JSON.parse(raw);
   return (await hash(pin, salt)) === h;
@@ -31,6 +33,7 @@ export async function verifyPin(pin: string) {
 
 export async function clearPin() {
   await secureStorage.removeItem(PIN_KEY);
+  await secureStorage.removeItem(LEGACY_PIN_KEY);
 }
 
 export async function biometricAvailable() {
@@ -44,6 +47,6 @@ export async function biometricAvailable() {
 
 export async function biometricUnlock() {
   if (Platform.OS === "web") return false;
-  const r = await LocalAuthentication.authenticateAsync({ promptMessage: "Unlock Tessera", cancelLabel: "Use PIN", disableDeviceFallback: true });
+  const r = await LocalAuthentication.authenticateAsync({ promptMessage: "Unlock Nucleus", cancelLabel: "Use PIN", disableDeviceFallback: true });
   return r.success;
 }

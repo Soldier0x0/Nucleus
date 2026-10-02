@@ -1,8 +1,8 @@
-# Tessera — Product & Architecture Design Document (Part 1 of 2)
+# Nucleus — Product & Architecture Design Document (Part 1 of 2)
 
 > A local-first personal platform. Your data, your tiles, your rules. No cloud, no account, no AI.
 
-This document answers §49 of the brief (A–K). Part 1 covers critique, new ideas, identity, information architecture, UX and the per-module visual design. Part 2 (`TESSERA_DESIGN_PART2.md`) covers technical architecture, intelligence, security, performance, roadmap and extensibility.
+This document answers §49 of the brief (A–K). Part 1 covers critique, new ideas, identity, information architecture, UX and the per-module visual design. Part 2 (`NUCLEUS_DESIGN_PART2.md`) covers technical architecture, intelligence, security, performance, roadmap and extensibility.
 
 The MVP in this repository is a working Expo/React Native implementation of the core of this design (Today, Attention + Why, Vehicles, Money, Quick Tools, module library, links, search, lock, privacy, backup). Where the document describes the *target* Android-native architecture, it says so explicitly and maps the MVP's equivalents.
 
@@ -14,7 +14,7 @@ The MVP in this repository is a working Expo/React Native implementation of the 
 
 The brief describes a platform (modules, plugins, workflows, profiles, dashboards, widgets, themes, rules) *and* ~120 features. History is unkind to this shape: the platform consumes all engineering time, the features stay shallow, and the user experiences a configuration tool rather than something useful on day one.
 
-**Decision:** Tessera is a *product with a platform inside*, never the reverse. Every platform capability must be justified by at least two first-party modules that need it **before** it is generalized. Example: the relationship layer exists in the MVP because Vehicles→Money already needs it; the generic plugin runtime does not exist yet because no first-party module needs it.
+**Decision:** Nucleus is a *product with a platform inside*, never the reverse. Every platform capability must be justified by at least two first-party modules that need it **before** it is generalized. Example: the relationship layer exists in the MVP because Vehicles→Money already needs it; the generic plugin runtime does not exist yet because no first-party module needs it.
 
 ### A.2 Contradictions in the brief
 
@@ -22,7 +22,7 @@ The brief describes a platform (modules, plugins, workflows, profiles, dashboard
 |---|---|
 | "Highly customizable" vs "simple by default" | Customization is *layered*: (1) sensible defaults, (2) toggles/reorder in place, (3) visual editors, (4) declarative packs. 95% of users never pass layer 2. Nothing in layer 3–4 is required to get value. |
 | "Visually rich" vs "resource-efficient" | Visuals are vector, static and computed from cached aggregates. No continuous animation loops, no live re-computation on scroll. Charts render from pre-aggregated monthly buckets, never raw rows. |
-| "No INTERNET permission" vs "optional network modules" | The core APK declares no INTERNET permission. Network features ship as a *separate companion APK* ("Tessera Link") talking over a signed, permission-protected bound service. Android permissions are per-APK, so this is the only honest way to guarantee the core cannot exfiltrate. |
+| "No INTERNET permission" vs "optional network modules" | The core APK declares no INTERNET permission. Network features ship as a *separate companion APK* ("Nucleus Link") talking over a signed, permission-protected bound service. Android permissions are per-APK, so this is the only honest way to guarantee the core cannot exfiltrate. |
 | "Plugins" vs "security" | No executable third-party code in-process, ever. Plugins are declarative packs interpreted by the core (see Part 2 §E.13). |
 | "Intelligent" vs "explainable" | Only use techniques whose output can be explained in one sentence plus a table of the data used. That rules out opaque models and rules *in* medians, moving averages, simple regression, thresholds, z-scores, and explicit rule chains. |
 | "Profiles" vs "relationships across everything" | Profiles are hard isolation boundaries (separate databases). Cross-profile relations are not allowed. If users want shared data, they share via export/import, explicitly. |
@@ -37,7 +37,7 @@ The brief describes a platform (modules, plugins, workflows, profiles, dashboard
 - **Percentage, GST, Markup, Margin, Profit, Discount** → one **Percent & Tax** tool with modes (done in MVP).
 - **CAGR, SIP, compound interest, inflation, purchasing power** → one **Growth** tool with modes. EMI/amortization stays separate because it has a distinct output (schedule) and feeds Money.
 - **Sound meter (approximate SPL).** Keep, but under Phone Lab with a mandatory "uncalibrated estimate" label and a calibration offset field. Never display "dB SPL" — display "dB (est.)".
-- **"Indexed files".** Tessera should not index the user's file system. Attachments are *imported* (copied into the app's storage) via the Storage Access Framework. No broad storage permission. This removes a large security and performance surface.
+- **"Indexed files".** Nucleus should not index the user's file system. Attachments are *imported* (copied into the app's storage) via the Storage Access Framework. No broad storage permission. This removes a large security and performance surface.
 - **Multiple themes as *named visual modes* ("Information-heavy", "Material-inspired", …).** These overlap and multiply QA. Replace with 3 orthogonal axes: **Theme** (light/dark/system/AMOLED), **Accent** (palette), **Density** (comfortable/dense) + accessibility toggles (large touch, high contrast, reduced motion). 4 × 6 × 2 is already 48 combinations to test.
 
 ### A.4 Things to merge
@@ -92,11 +92,11 @@ The roadmap (Part 2 §J) ships **3 modules** in the MVP, done properly, and grow
 3. **The Ledger of Self (Timeline).** A unified, chronological, cross-module timeline of everything you recorded. Filterable by entity/tag. It's the "raw data" layer of progressive disclosure and an excellent audit trail.
 4. **Capture Bar.** A single quick-entry surface (long-press the Today tab or a widget) that parses a tiny deterministic grammar: `fuel 5.4L 560 26310` → Fuel entry; `450 food lunch` → Expense; `netflix 649 monthly` → Subscription. Grammar is fixed, documented and shown as you type. No AI.
 5. **Readiness scores.** For any "upcoming event" entity (trip, service visit, renewal), a deterministic checklist-derived % (documents present, packing complete, budget set). Shown as a ring.
-6. **Cost-of-ownership per entity.** Because every expense can link to an entity, Tessera can show *true cost* per vehicle, appliance, subscription, trip — "your Activa cost ₹2.31/km all-in over 14 months". This is a killer derived value the brief hinted at but didn't name.
+6. **Cost-of-ownership per entity.** Because every expense can link to an entity, Nucleus can show *true cost* per vehicle, appliance, subscription, trip — "your Activa cost ₹2.31/km all-in over 14 months". This is a killer derived value the brief hinted at but didn't name.
 7. **Projections with uncertainty bands.** Forecasts show a band (min/max of the method's residuals) instead of a single number. "Next electricity bill: ₹2,700–2,900".
 8. **Rule dry-run.** Before saving a rule, show "Over the last 90 days this would have fired 4 times" using the event log. Prevents noisy automations.
 9. **Data health.** A screen listing data-quality issues: odometer going backwards, duplicate transactions on the same day/amount, subscriptions with no payment for 2 cycles. Deterministic, actionable.
-10. **Tessera "Packs".** Shareable declarative bundles (templates + custom tools + checklists + rules), e.g. "Indian two-wheeler owner pack", "Monsoon home pack". Signed, previewed, capability-scoped.
+10. **Nucleus "Packs".** Shareable declarative bundles (templates + custom tools + checklists + rules), e.g. "Indian two-wheeler owner pack", "Monsoon home pack". Signed, previewed, capability-scoped.
 11. **Time-boxed sensor sessions.** Hardware tools always run as a *session* with a visible timer and a stop button; data saved as an artifact. No hidden sensor use ever.
 12. **"Quiet hours" for Attention.** Rule-based suppression: no notifications 22:00–07:00 unless Urgent.
 13. **Local "receipt" attachments with on-device OCR (optional, not AI-generative).** ML Kit text recognition is on-device; still, it's a model — it should be an opt-in, separate module, clearly labelled. Default: off. (Flagged as a deliberate exception to discuss, not assumed.)
@@ -120,12 +120,12 @@ The roadmap (Part 2 §J) ships **3 modules** in the MVP, done properly, and grow
 ## D. Product identity
 
 ### D.1 Concept
-**Tessera** — a tessera is a single tile in a mosaic. Each module, each record, each insight is a tile; together they form the picture of your life admin. The metaphor scales: tiles (records) → panels (modules) → mosaic (Today board).
+**Nucleus** — a nucleus is a single tile in a mosaic. Each module, each record, each insight is a tile; together they form the picture of your life admin. The metaphor scales: tiles (records) → panels (modules) → mosaic (Today board).
 
 ### D.2 Naming directions
 | Name | Angle | Notes |
 |---|---|---|
-| **Tessera** (chosen) | Mosaic of tiles | Distinctive, short, metaphor maps to modularity. |
+| **Nucleus** (chosen) | Mosaic of tiles | Distinctive, short, metaphor maps to modularity. |
 | Workbench | Craft / tools | Clear but generic; trademark-crowded. |
 | Ledgerline | Records + timeline | Leans finance-heavy. |
 | Almanac | Personal reference | Warm, but implies static content. |

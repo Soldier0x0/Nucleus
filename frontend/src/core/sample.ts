@@ -2,6 +2,7 @@
 import type { DB, FuelEntry, ServiceEntry, Subscription, Txn, Vehicle } from "./types";
 import { addDays, addMonths, monthKey, todayISO, uid } from "./format";
 import { addFuel, addService } from "./actions";
+import { addTripExpense, newDocs, packFromTemplate } from "./domains";
 
 export function withSampleData(db: DB): DB {
   const today = todayISO();
@@ -77,5 +78,26 @@ export function withSampleData(db: DB): DB {
     { id: uid(), name: "Broadband", amount: 799, cycle: "monthly", nextRenewal: addDays(today, 19), category: "Bills", active: true },
   ];
   next = { ...next, subscriptions: [...next.subscriptions, ...subs], budget: { monthly: 45000, categories: { Food: 6000, Shopping: 4000 } } };
+
+  // travel: a trip in 5 days, partly packed, 1 document missing
+  const packing = packFromTemplate("Beach").map((p, i) => ({ ...p, done: i % 3 !== 0 }));
+  const docs = newDocs().map((d, i) => ({ ...d, have: i !== 3 }));
+  const trip = { id: uid(), name: "Goa 2026", destination: "Goa, India", place: { name: "Panaji, Goa, India", lat: 15.49, lon: 73.83, country: "India", countryCode: "IN" }, start: addDays(today, 5), end: addDays(today, 9), travellers: 2, budget: 30000, packing, docs, createdAt: new Date().toISOString(),
+    itinerary: [
+      { id: uid(), date: addDays(today, 5), time: "08:00", title: "Train to Madgaon", place: "Platform 4" },
+      { id: uid(), date: addDays(today, 5), time: "14:00", title: "Check-in · Beach resort" },
+      { id: uid(), date: addDays(today, 6), time: "10:30", title: "Old Goa churches", place: "Velha Goa" },
+      { id: uid(), date: addDays(today, 6), time: "20:00", title: "Dinner at Fisherman's Wharf" },
+    ] };
+  next = { ...next, trips: [...next.trips, trip] };
+  next = addTripExpense(next, trip.id, { id: uid(), type: "expense", amount: 4200, category: "Travel", date: addDays(today, -10), note: "Train tickets" });
+  next = addTripExpense(next, trip.id, { id: uid(), type: "expense", amount: 8400, category: "Travel", date: addDays(today, -8), note: "Resort advance" });
+
+  // home: AC with warranty ending soon + overdue service, purifier filter
+  next = { ...next, appliances: [...next.appliances,
+    { id: uid(), name: "Bedroom AC", brand: "Daikin", model: "FTKF50", room: "Bedroom", purchaseDate: addMonths(today, -23), price: 42000, warrantyUntil: addDays(today, 21), createdAt: new Date().toISOString(), plans: [{ id: uid(), name: "AC service", everyMonths: 6, lastDone: addDays(addMonths(today, -6), -4), cost: 800 }] },
+    { id: uid(), name: "Water purifier", brand: "Kent", room: "Kitchen", purchaseDate: addMonths(today, -14), warrantyUntil: addMonths(today, 10), createdAt: new Date().toISOString(), plans: [{ id: uid(), name: "Filter change", everyMonths: 3, lastDone: addDays(addMonths(today, -3), 12), cost: 1200 }] },
+    { id: uid(), name: "Washing machine", brand: "LG", room: "Utility", warrantyUntil: addMonths(today, 30), createdAt: new Date().toISOString(), plans: [] },
+  ] };
   return next;
 }

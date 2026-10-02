@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { storage } from "@/src/utils/storage";
 import type { DB, Settings } from "./types";
-import { DB_KEY, emptyDB, normalizeDB } from "./defaults";
+import { DB_KEY, emptyDB, LEGACY_DB_KEY, normalizeDB } from "./defaults";
 
 type Store = {
   db: DB;
@@ -23,7 +23,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    storage.getItem(DB_KEY).then((raw) => {
+    // Upgrade path: Nucleus data becomes the Nucleus data, nothing lost.
+    Promise.all([storage.getItem(DB_KEY), storage.getItem(LEGACY_DB_KEY)]).then(([cur, legacy]) => {
+      const raw = cur ?? legacy;
       if (raw) {
         try {
           setDb(normalizeDB(JSON.parse(raw)));

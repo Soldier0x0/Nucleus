@@ -1,4 +1,4 @@
-# Tessera — Product & Architecture Design Document (Part 2 of 2)
+# Nucleus — Product & Architecture Design Document (Part 2 of 2)
 
 Technical architecture, local intelligence, security, performance, roadmap and extensibility.
 
@@ -158,7 +158,7 @@ attention:
 
 ### E.14 Capability / permission system
 
-Two layers: **Android runtime permissions** (requested contextually: camera when scanning, mic for pitch, etc.; never at launch) and **Tessera capabilities** (internal grants between modules/packs and data). Grants are stored per profile, revocable in Settings → Capabilities, and every use is logged to the event log ("Electricity pack created 1 expense").
+Two layers: **Android runtime permissions** (requested contextually: camera when scanning, mic for pitch, etc.; never at launch) and **Nucleus capabilities** (internal grants between modules/packs and data). Grants are stored per profile, revocable in Settings → Capabilities, and every use is logged to the event log ("Electricity pack created 1 expense").
 
 ### E.15 Profiles
 
@@ -166,7 +166,7 @@ One SQLCipher database **per profile** with its own data key. Profile switch clo
 
 ### E.16 Backup / restore / import / export
 
-**Backup format** `tessera-backup-YYYY-MM-DD.tess` = ZIP:
+**Backup format** `nucleus-backup-YYYY-MM-DD.tess` = ZIP:
 ```
 manifest.json          {format, app_version, created_at, profiles:[…], modules:{id:schemaVersion}, counts, sha256 per file}
 profiles/<id>/data.jsonl.zst     one line per row: {kind, uid, v, fields}
@@ -176,7 +176,7 @@ attachments/<sha256>             content-addressed, deduplicated
 ```
 Encrypted variant: the whole ZIP is wrapped with Tink streaming AEAD; key = Argon2id(passphrase, salt, m=64MB,t=3) → AES-256-GCM-HKDF. Restore shows a preview (counts, date, modules), runs per-module migrations, and supports **Replace** or **Merge** (merge by uid with last-writer-wins on `updated_at`, tombstones respected).
 
-Exports: per record/module/board → JSON, CSV (one file per entity kind), Markdown (notes/wiki), ICS (renewals, expiries, itineraries), PDF (via Android print framework, user-initiated). Imports: CSV with a column-mapping sheet and dry-run preview; ICS; Tessera packs.
+Exports: per record/module/board → JSON, CSV (one file per entity kind), Markdown (notes/wiki), ICS (renewals, expiries, itineraries), PDF (via Android print framework, user-initiated). Imports: CSV with a column-mapping sheet and dry-run preview; ICS; Nucleus packs.
 
 MVP: single JSON backup with format tag, counts preview and replace-restore; PIN never exported.
 
@@ -218,7 +218,7 @@ All components are pure functions over local data except the scheduler. Every ou
 | Smart defaults | Last value / mode of last 10 / frequency ordering | 1 | "Last used" label |
 | Reuse suggestion | Same-kind entity with highest Jaccard tag/category similarity, or most recent | 1 | "Based on Goa 2025 (same tags)" |
 
-Rules for honesty: if the minimum data is not met, show **what's needed**, not a guess (MVP: "Log 2 more services and Tessera will learn your real interval").
+Rules for honesty: if the minimum data is not met, show **what's needed**, not a guess (MVP: "Log 2 more services and Nucleus will learn your real interval").
 
 ### F.3 Prioritization
 
@@ -275,7 +275,7 @@ MVP: PIN stored as salted, iterated SHA-256 in SecureStore (Keystore-backed on A
 - **Files:** attachments imported via SAF/photo picker into app-private storage; shares through `FileProvider` with temporary URI grants; temp files deleted on completion.
 - **Crash logs:** local only, PII-scrubbed (no field values, only stack + module id), user-initiated export.
 - **Debug builds:** separate applicationId; release builds strip logging (`-assumenosideeffects` for `Log`), no StrictMode leaks.
-- **Optional network (Tessera Link APK):** currency rates, map tiles. Separate APK with INTERNET, receives *requests* from core containing only what's needed (currency codes), never user data. Each request logged in core.
+- **Optional network (Nucleus Link APK):** currency rates, map tiles. Separate APK with INTERNET, receives *requests* from core containing only what's needed (currency codes), never user data. Each request logged in core.
 
 ---
 
@@ -302,7 +302,7 @@ MVP: PIN stored as salted, iterated SHA-256 in SecureStore (Keystore-backed on A
 | **1 · MVP (built)** | Today, Attention + Why, Vehicles, Money + Subscriptions, Quick Tools (5), module library, Today layout, links, grouped search, lock/biometric/privacy, backup/restore, sample data | Registry, event reactors, links, attention rules, why-model, design system |
 | **2 · Broaden** | SQLite/SQLCipher migration · Travel (trips, packing templates, itinerary timeline, trip expenses, readiness) · Home (appliances, warranties, maintenance plans, utilities) · Rules builder + local notifications · Boards & profiles · Encrypted backups, CSV/ICS · Dev Tools · per-module lock · Capture bar · Timeline | Recurring/Expiring/Maintenance/Checklist primitives, rule engine, scheduler, notification projection |
 | **3 · Advanced** | Custom tool builder · Declarative packs + capability broker · Widgets & shortcuts (native build) · Phone Lab · Media · Diagnostics · Tablet/landscape layouts · Data health · Year in review | Expression language, pack loader/signing, Glance widgets, sensor sessions |
-| **4 · Ecosystem** | Pack sharing (file/QR), Tessera Link companion APK (rates, maps), merge-restore across devices (manual sync via file), optional on-device OCR module | IPC contracts, merge semantics |
+| **4 · Ecosystem** | Pack sharing (file/QR), Nucleus Link companion APK (rates, maps), merge-restore across devices (manual sync via file), optional on-device OCR module | IPC contracts, merge semantics |
 
 Dependency order: data spine → events → links → attention → (rules ← scheduler) → boards/widgets → packs.
 
@@ -325,3 +325,12 @@ In the MVP this contract is visible in miniature: adding a module = add a manife
 
 ## Appendix: MVP assumptions recap
 INR/km/L/°C/12h defaults (changeable) · single profile · single currency · manual entry only · in-app reminders only (no push) · unencrypted JSON backup with warning · PIN-only recovery via erase + restore · English only · screenshot blocking and recents hiding effective only in installed builds.
+
+---
+
+## v2 update (Nucleus)
+- Renamed Tessera → Nucleus (app id `com.nucleus.app`; v1 data and PIN migrate automatically).
+- Themes: Midnight (default), AMOLED, Graphite, Dune, Paper, System × 6 accents.
+- **Online layer** (`src/core/online.ts`): single switch, OFF by default; when off `onlineFetch` makes no request. Services: Frankfurter (rates), Open-Meteo (geocoding, weather, air quality), Nager.Date (holidays), REST Countries (facts). Coordinates rounded to 0.1° (~10 km). Every request is appended to the network log; responses cached for offline reuse with "cached" labelling.
+- **Travel** (trips, templates, reuse, itinerary timeline, documents with expiry, multi-currency trip expenses linked to Money, readiness = 0.5 packing + 0.3 docs + 0.2 budget) and **Home** (appliances, warranties, maintenance plans with 90-day timeline, logged costs → Money) now feed Attention with Why.
+- **Capture bar** grammar (`src/core/capture.ts`) with live preview.

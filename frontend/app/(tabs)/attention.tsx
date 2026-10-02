@@ -55,7 +55,7 @@ export default function Attention() {
       </View>
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         {items.length === 0 ? (
-          <EmptyState testID="attention-empty" icon="check-all" title="All caught up" body="Nothing needs you right now. Tessera checks expiry dates, service intervals, renewals, budgets and spending patterns whenever your data changes." />
+          <EmptyState testID="attention-empty" icon="check-all" title="All caught up" body="Nothing needs you right now. Nucleus checks expiry dates, service intervals, renewals, budgets and spending patterns whenever your data changes." />
         ) : (
           GROUPS.map((g) => {
             const list = items.filter((i) => i.severity === g.sev);

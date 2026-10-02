@@ -54,8 +54,8 @@ export const MODULES: ModuleManifest[] = [
     capabilities: ["clipboard.write"],
     status: "available",
   },
-  { id: "travel", name: "Travel", icon: "bag-suitcase-outline", description: "Trips, packing templates, itinerary timeline, trip readiness.", entities: [], emits: [], consumes: [], capabilities: [], status: "planned", phase: 2 },
-  { id: "home", name: "Home", icon: "home-outline", description: "Appliances, warranties, maintenance and utilities.", entities: [], emits: [], consumes: [], capabilities: [], status: "planned", phase: 2 },
+  { id: "travel", name: "Travel", icon: "bag-suitcase-outline", route: "/travel", description: "Trips, packing templates, itinerary, documents, trip expenses.", entities: ["trip"], emits: ["trip.starting"], consumes: [], capabilities: ["storage.local", "attention.publish", "network.optional"], status: "available" },
+  { id: "home", name: "Home", icon: "home-outline", route: "/home", description: "Appliances, warranties and maintenance plans.", entities: ["appliance"], emits: ["warranty.expiring", "maintenance.due"], consumes: [], capabilities: ["storage.local", "attention.publish"], status: "available" },
   { id: "rules", name: "Rules", icon: "source-branch", description: "Visual When / If / Then automations with local reminders.", entities: [], emits: [], consumes: [], capabilities: [], status: "planned", phase: 2 },
   { id: "dev", name: "Dev Tools", icon: "code-braces", description: "JSON, Base64, regex, hashes, timestamps, diff.", entities: [], emits: [], consumes: [], capabilities: [], status: "planned", phase: 2 },
   { id: "builder", name: "Tool Builder", icon: "puzzle-outline", description: "Make your own calculators from inputs and a formula.", entities: [], emits: [], consumes: [], capabilities: [], status: "planned", phase: 3 },
@@ -67,6 +67,9 @@ export const moduleById = (id: string) => MODULES.find((m) => m.id === id)!;
 
 export const TILE_META: Record<string, { name: string; module?: string; icon: string }> = {
   attention: { name: "Attention summary", icon: "bell-outline" },
+  weather: { name: "Weather (Online)", icon: "weather-partly-cloudy" },
+  trip: { name: "Next trip", module: "travel", icon: "bag-suitcase-outline" },
+  home: { name: "Home maintenance", module: "home", icon: "home-outline" },
   budget: { name: "Budget ring", module: "money", icon: "chart-donut" },
   vehicle: { name: "Vehicle gauge", module: "vehicles", icon: "speedometer" },
   subscriptions: { name: "Next renewals", module: "money", icon: "autorenew" },

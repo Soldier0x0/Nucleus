@@ -5,7 +5,8 @@ import { File, Paths } from "expo-file-system";
 import type { DB } from "./types";
 import { normalizeDB } from "./defaults";
 
-export const BACKUP_FORMAT = "tessera-backup";
+export const BACKUP_FORMAT = "nucleus-backup";
+const ACCEPTED = [BACKUP_FORMAT, "tessera-backup"];
 
 export type BackupFile = {
   format: typeof BACKUP_FORMAT;
@@ -30,7 +31,7 @@ export function buildBackup(db: DB): BackupFile {
 
 export async function exportBackup(db: DB) {
   const json = JSON.stringify(buildBackup(db), null, 2);
-  const name = `tessera-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const name = `nucleus-backup-${new Date().toISOString().slice(0, 10)}.json`;
   if (Platform.OS === "web") {
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -45,13 +46,13 @@ export async function exportBackup(db: DB) {
   if (file.exists) file.delete();
   file.create();
   file.write(json);
-  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: "Save Tessera backup" });
+  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "application/json", dialogTitle: "Save Nucleus backup" });
   return name;
 }
 
 export function parseBackup(text: string): BackupFile {
   const obj = JSON.parse(text);
-  if (obj?.format !== BACKUP_FORMAT || !obj.data) throw new Error("This file is not a Tessera backup.");
+  if (!ACCEPTED.includes(obj?.format) || !obj.data) throw new Error("This file is not a Nucleus backup.");
   const data = normalizeDB(obj.data);
   return { ...obj, data, counts: countsOf(data) };
 }

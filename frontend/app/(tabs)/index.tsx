@@ -10,9 +10,12 @@ import { monthTotals, vehicleStats, visibleAttention } from "@/src/core/intellig
 import { daysBetween, fmtDate, monthKey, num, relDays, todayISO } from "@/src/core/format";
 import { Amount, Card, EmptyState, Eyebrow, Icon, Press, T, Button } from "@/src/components/ui";
 import { Gauge, Ring } from "@/src/components/charts";
+import { WeatherCard } from "@/src/components/WeatherCard";
+import { CaptureBar } from "@/src/components/CaptureBar";
+import { homeSchedule, readiness, tripStatus } from "@/src/core/domains";
 
 export default function Today() {
-  const { db } = useStore();
+  const { db, setSettings } = useStore();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -69,6 +72,55 @@ export default function Today() {
                 </T>
               </View>
             ))}
+          </Card>
+        </Animated.View>
+      );
+    }
+    if (id === "weather") {
+      if (!db.settings.homeCity) return null;
+      return (
+        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+          <WeatherCard place={db.settings.homeCity} testID="today-weather-tile" />
+        </Animated.View>
+      );
+    }
+    if (id === "trip" && on("travel")) {
+      const t = [...db.trips].filter((x) => tripStatus(x) !== "past").sort((a, b) => a.start.localeCompare(b.start))[0];
+      if (!t) return null;
+      const r = readiness(db, t);
+      return (
+        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+          <Card testID="today-trip-tile" onPress={() => router.push(`/travel/${t.id}`)}>
+            <Eyebrow>Next trip</Eyebrow>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 8 }}>
+              <Ring value={r.score} size={80} stroke={8}><T v="mono" style={{ fontSize: 13 }}>{num(r.score * 100, 0)}%</T></Ring>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <T v="h2" numberOfLines={1}>{t.name}</T>
+                <T v="mono" style={{ fontSize: 13 }}>{r.daysToStart > 0 ? `starts in ${r.daysToStart} days` : "happening now"}</T>
+                <T muted style={{ fontSize: 12 }} numberOfLines={1}>{r.missing.length ? `${r.missing.length} need attention · ${r.missing[0]}` : "All set"}</T>
+              </View>
+            </View>
+          </Card>
+        </Animated.View>
+      );
+    }
+    if (id === "home" && on("home")) {
+      const n = homeSchedule(db)[0];
+      if (!n) return null;
+      return (
+        <Animated.View key={id} entering={FadeInDown.delay(delay).duration(260)}>
+          <Card testID="today-home-tile" onPress={() => router.push("/home")}>
+            <Eyebrow>Home · next maintenance</Eyebrow>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
+              <View style={[styles.daybox, { backgroundColor: n.days <= 7 ? colors.brandTertiary : colors.surfaceTertiary }]}>
+                <T v="monoLg" style={{ fontSize: 16 }}>{n.days < 0 ? "!" : n.days}</T>
+                <T muted style={{ fontSize: 9 }}>{n.days < 0 ? "late" : "days"}</T>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <T v="label" numberOfLines={1}>{n.p.name}</T>
+                <T muted style={{ fontSize: 12 }} numberOfLines={1}>{n.a.name} · {fmtDate(n.due)}</T>
+              </View>
+            </View>
           </Card>
         </Animated.View>
       );
@@ -198,15 +250,16 @@ export default function Today() {
             <Eyebrow>{d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short" })}</Eyebrow>
             <T v="title" testID="today-title">{greeting}</T>
           </View>
-          <Press testID="today-privacy-indicator" onPress={() => router.push("/(tabs)/settings")} style={[styles.lockChip, { borderColor: colors.border }]}>
-            <Icon name="wifi-off" size={14} color={colors.muted} />
-            <T v="caption" muted>Offline</T>
+          <Press testID="today-online-toggle" accessibilityState={{ checked: db.settings.online }} onPress={() => setSettings({ online: !db.settings.online })} style={[styles.lockChip, { borderColor: db.settings.online ? colors.success : colors.border }]}>
+            <Icon name={db.settings.online ? "web" : "wifi-off"} size={14} color={db.settings.online ? colors.success : colors.muted} />
+            <T v="caption" muted={!db.settings.online} color={db.settings.online ? colors.success : undefined}>{db.settings.online ? "Online" : "Offline"}</T>
           </Press>
         </View>
         <Press testID="today-search-bar" onPress={() => router.push("/search")} style={[styles.search, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
           <Icon name="magnify" size={20} color={colors.muted} />
-          <T muted style={{ flex: 1 }}>Search everything — vehicles, spends, tools</T>
+          <T muted style={{ flex: 1 }} numberOfLines={1}>Search everything — vehicles, trips, spends</T>
         </Press>
+        <CaptureBar />
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24, gap: sp.md, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         {!anyModule ? (

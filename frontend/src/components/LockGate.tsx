@@ -29,8 +29,8 @@ export function LockGate() {
   // Screenshot / recents protection (Android FLAG_SECURE; iOS screen-record blur).
   useEffect(() => {
     if (Platform.OS === "web") return;
-    if (s.blockScreenshots) ScreenCapture.preventScreenCaptureAsync("tessera").catch(() => {});
-    else ScreenCapture.allowScreenCaptureAsync("tessera").catch(() => {});
+    if (s.blockScreenshots) ScreenCapture.preventScreenCaptureAsync("nucleus").catch(() => {});
+    else ScreenCapture.allowScreenCaptureAsync("nucleus").catch(() => {});
   }, [s.blockScreenshots]);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function LockGate() {
       <View style={[styles.mark, { backgroundColor: colors.surfaceInverse }]}>
         <Icon name="view-grid-outline" size={28} color={colors.onSurfaceInverse} />
       </View>
-      <Eyebrow style={{ marginTop: 16 }}>Tessera is locked</Eyebrow>
+      <Eyebrow style={{ marginTop: 16 }}>Nucleus is locked</Eyebrow>
       <T v="title" style={{ marginTop: 6, marginBottom: 28 }}>
         Enter your PIN
       </T>
@@ -94,7 +94,7 @@ export function LockGate() {
       <View style={{ flex: 1 }} />
       <Button kind="ghost" small label="Forgot PIN?" testID="lock-forgot-button" onPress={() => setForgot(true)} />
       <Sheet visible={forgot} onClose={() => setForgot(false)} title="Forgot your PIN?" testID="forgot-sheet">
-        <T style={{ marginBottom: 16 }}>Tessera has no account and no recovery server — that&apos;s what keeps your data private. The only way back in is to erase this device&apos;s Tessera data. You can then restore from a backup file you exported earlier.</T>
+        <T style={{ marginBottom: 16 }}>Nucleus has no account and no recovery server — that&apos;s what keeps your data private. The only way back in is to erase this device&apos;s Nucleus data. You can then restore from a backup file you exported earlier.</T>
         <Button
           kind="danger"
           icon="delete-forever-outline"

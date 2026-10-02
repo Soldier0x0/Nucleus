@@ -3,6 +3,7 @@
  * statistics -> forecasts/anomalies -> attention items (prioritized) -> "Why?" explanations.
  */
 import type { DB, Vehicle } from "./types";
+import { homeSchedule, readiness, tripStatus } from "./domains";
 import { addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
 
 export type Fact = { label: string; value: string };
@@ -10,7 +11,7 @@ export type Why = { summary: string; facts: Fact[]; rule: string; ranking: strin
 export type Severity = "urgent" | "upcoming" | "info";
 export type AttentionItem = {
   key: string;
-  module: "vehicles" | "money";
+  module: "vehicles" | "money" | "travel" | "home";
   severity: Severity;
   icon: string;
   title: string;
@@ -75,7 +76,7 @@ export function serviceEstimate(db: DB, v: Vehicle) {
       ];
   const explanation = fromHistory
     ? `Your last ${intervals.length} service intervals averaged about ${num(interval, 0)} km. You are ${num(since, 0)} km past the last service.`
-    : `Using your configured interval of ${num(interval, 0)} km. Log ${3 - svc.length} more general/oil service${3 - svc.length === 1 ? "" : "s"} and Tessera will learn your real interval.`;
+    : `Using your configured interval of ${num(interval, 0)} km. Log ${3 - svc.length} more general/oil service${3 - svc.length === 1 ? "" : "s"} and Nucleus will learn your real interval.`;
   return { interval, fromHistory, intervals, since, remaining, lastOdo, count: svc.length, facts, explanation, lastDate: svc[svc.length - 1]?.date };
 }
 
@@ -305,6 +306,81 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
 
     for (const ins of moneyInsights(db)) {
       items.push({ key: ins.key, module: "money", severity: "info", icon: ins.icon, title: ins.title, subtitle: ins.kind === "anomaly" ? "Unusual compared with your history" : "Pattern in your history", score: 100 + (ins.kind === "anomaly" ? 20 : 10), route: "/money", why: ins.why });
+    }
+  }
+
+  if (on("travel")) {
+    for (const t of db.trips.filter((x) => tripStatus(x) === "upcoming")) {
+      const r = readiness(db, t);
+      if (r.daysToStart <= 14 && r.score < 1) {
+        const sev: Severity = r.daysToStart <= 3 ? "urgent" : "upcoming";
+        items.push({
+          key: `trip:${t.id}:${Math.round(r.score * 10)}`,
+          module: "travel",
+          severity: sev,
+          icon: "bag-suitcase-outline",
+          title: `${t.name} starts ${r.daysToStart === 0 ? "today" : r.daysToStart === 1 ? "tomorrow" : `in ${r.daysToStart} days`} · ${r.missing.length} thing${r.missing.length > 1 ? "s" : ""} need attention`,
+          subtitle: r.missing.join(" · "),
+          score: SEV_WEIGHT[sev] + Math.max(0, 30 - r.daysToStart),
+          route: `/travel/${t.id}`,
+          why: {
+            summary: `Readiness is ${num(r.score * 100, 0)}% with ${r.daysToStart} days to go.`,
+            facts: [
+              { label: "Packing done", value: `${num(r.packPct * 100, 0)}% (weight 50%)` },
+              { label: "Documents present", value: `${num(r.docPct * 100, 0)}% (weight 30%)` },
+              { label: "Budget set", value: r.budgetOk ? "Yes (20%)" : "No (0 of 20%)" },
+            ],
+            rule: "Shown when a trip starts within 14 days and readiness is below 100%. Urgent within 3 days.",
+            ranking: rankText(sev, "days to departure"),
+          },
+        });
+      }
+      for (const d of t.docs.filter((x) => x.expiry && x.expiry <= t.end)) {
+        items.push({
+          key: `tripdoc:${d.id}:${d.expiry}`,
+          module: "travel",
+          severity: "urgent",
+          icon: "passport",
+          title: `${d.name} expires before ${t.name} ends`,
+          subtitle: `Expiry ${fmtDate(d.expiry)} · trip ends ${fmtDate(t.end)}`,
+          score: 320,
+          route: `/travel/${t.id}`,
+          why: { summary: `${d.name} is valid until ${fmtDate(d.expiry)}, but the trip runs until ${fmtDate(t.end)}.`, facts: [{ label: "Document expiry", value: fmtDate(d.expiry) }, { label: "Trip end", value: fmtDate(t.end) }], rule: "Urgent whenever a trip document expires on or before the last day of the trip.", ranking: rankText("urgent", "trip date") },
+        });
+      }
+    }
+  }
+
+  if (on("home")) {
+    for (const a of db.appliances) {
+      if (!a.warrantyUntil) continue;
+      const d = daysBetween(today, a.warrantyUntil);
+      if (d < -30 || d > 30) continue;
+      items.push({
+        key: `warranty:${a.id}:${a.warrantyUntil}`,
+        module: "home",
+        severity: d <= 7 ? "urgent" : "upcoming",
+        icon: "shield-check-outline",
+        title: d < 0 ? `${a.name} warranty ended` : `${a.name} warranty ends in ${d} days`,
+        subtitle: `${a.room} · ${fmtDate(a.warrantyUntil)}`,
+        score: (d <= 7 ? 300 : 200) + Math.max(0, 30 - d),
+        route: "/home",
+        why: { summary: `Warranty recorded for ${a.name} runs until ${fmtDate(a.warrantyUntil)}. Book any free repairs before it ends.`, facts: [{ label: "Warranty until", value: fmtDate(a.warrantyUntil) }, { label: "Days remaining", value: String(d) }], rule: "Upcoming within 30 days of warranty end, urgent within 7.", ranking: rankText(d <= 7 ? "urgent" : "upcoming", "days remaining") },
+      });
+    }
+    for (const x of homeSchedule(db).filter((s) => s.days <= 7)) {
+      const sev: Severity = x.days < 0 ? "urgent" : "upcoming";
+      items.push({
+        key: `maint:${x.p.id}:${x.p.lastDone}`,
+        module: "home",
+        severity: sev,
+        icon: "wrench-clock",
+        title: x.days < 0 ? `${x.a.name}: ${x.p.name} overdue by ${-x.days} days` : `${x.a.name}: ${x.p.name} due ${x.days === 0 ? "today" : `in ${x.days} days`}`,
+        subtitle: `Every ${x.p.everyMonths} months · last ${fmtDate(x.p.lastDone)}`,
+        score: SEV_WEIGHT[sev] + Math.min(60, Math.max(0, -x.days + 20)),
+        route: "/home",
+        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, urgent once overdue.", ranking: rankText(sev, "due date") },
+      });
     }
   }
 

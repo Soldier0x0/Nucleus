@@ -1,8 +1,42 @@
 /**
- * Tessera shared data model.
+ * Nucleus shared data model.
  * Every record is an "entity" of a known kind; cross-module relationships live in `links`.
  */
-export type EntityKind = "vehicle" | "fuel" | "service" | "txn" | "subscription";
+export type EntityKind = "vehicle" | "fuel" | "service" | "txn" | "subscription" | "trip" | "appliance";
+
+export type PackItem = { id: string; name: string; category: string; done: boolean };
+export type ItineraryItem = { id: string; date: string; time: string; title: string; place?: string; note?: string };
+export type TripDoc = { id: string; name: string; have: boolean; expiry?: string };
+export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string };
+export type Trip = {
+  id: string;
+  name: string;
+  destination: string;
+  place?: Place;
+  start: string;
+  end: string;
+  travellers: number;
+  budget: number;
+  packing: PackItem[];
+  itinerary: ItineraryItem[];
+  docs: TripDoc[];
+  createdAt: string;
+};
+export type MaintPlan = { id: string; name: string; everyMonths: number; lastDone: string; cost?: number };
+export type Appliance = {
+  id: string;
+  name: string;
+  brand?: string;
+  model?: string;
+  serial?: string;
+  room: string;
+  purchaseDate?: string;
+  price?: number;
+  warrantyUntil?: string;
+  plans: MaintPlan[];
+  createdAt: string;
+};
+export type NetLogEntry = { id: string; at: string; service: string; query: string; ok: boolean };
 export type Ref = { kind: EntityKind; id: string };
 
 export type Vehicle = {
@@ -51,6 +85,8 @@ export type Txn = {
   category: string;
   date: string;
   note?: string;
+  origAmount?: number;
+  origCurrency?: string;
 };
 
 export type Subscription = {
@@ -69,9 +105,10 @@ export type Budget = { monthly: number; categories: Record<string, number> };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
-export type ModuleId = "vehicles" | "money" | "tools";
+export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools";
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
-export type TileId = "attention" | "budget" | "vehicle" | "subscriptions" | "tools";
+export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools";
+export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper";
 
 export type Settings = {
   onboarded: boolean;
@@ -80,7 +117,9 @@ export type Settings = {
   volumeUnit: "L" | "gal";
   tempUnit: "C" | "F";
   timeFormat: "12h" | "24h";
-  theme: "system" | "light" | "dark";
+  theme: ThemeKey;
+  online: boolean;
+  homeCity?: Place;
   accent: string;
   density: "comfortable" | "dense";
   privacyMode: boolean;
@@ -105,6 +144,9 @@ export type DB = {
   txns: Txn[];
   subscriptions: Subscription[];
   links: Link[];
+  trips: Trip[];
+  appliances: Appliance[];
+  netlog: NetLogEntry[];
   budget: Budget;
   attention: Record<string, AttentionMark>;
   toolHistory: ToolHistoryItem[];

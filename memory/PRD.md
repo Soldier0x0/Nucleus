@@ -22,6 +22,20 @@ Product name **Tessera**. MVP = Today, Attention Center with "Why?", Vehicles, M
 - Settings: theme/accent/density, defaults, auto-link toggle, PIN lock + biometric + timeout, privacy mode, screenshot block, export/restore, sample data, erase
 - Tested: iteration_1 passed core flows; PIN pad fast-typing fix applied after.
 
+## v2 — Nucleus (2026-06, session 2)
+Approved plan: "Nucleus v2" full platform. Implemented this session:
+- Rename Tessera → Nucleus everywhere (app.json name/slug/scheme, com.nucleus.app); v1 storage + PIN migrate automatically
+- Themes Midnight (default)/AMOLED/Graphite/Dune/Paper/System × 6 accents (onboarding + settings)
+- Online switch (Today header + Settings, off by default), network log, home-city weather (Open-Meteo, AQI, sunrise/sunset), live FX rates (Frankfurter), holidays (Nager.Date), country facts (REST Countries), offline cache
+- Travel module: trips, readiness ring + Why, packing templates/reuse/category bars, day itinerary timeline, documents with expiry, multi-currency trip expenses (linked to Money), destination weather/holidays/facts
+- Home module: appliances (room, brand, model, serial, price, warranty), warranty countdowns, maintenance plans w/ 90-day timeline, "Done" logs cost → Money; room filter
+- Attention: trip readiness, trip-doc expiry, warranty, maintenance rules
+- Capture bar on Today (expense / income / fuel / subscription grammar with preview)
+- Today tiles: weather, next trip, home maintenance; sample data includes trip + appliances
+- Design docs renamed to /app/docs/NUCLEUS_DESIGN*.md
+
+NOT yet built from v2 plan (carry over): Boards (custom dashboards), Notes & Lists, Media shelf, Money expansion (sinking funds, net worth, debts, multi-currency general, month-end projection), new Tools (cooking, time, growth, randomizer, wheels), Dev Tools, Custom Tool Builder, Rules + phone reminders + quiet hours, Phone Lab, multiple profiles + decoy PIN, unlock-method choice + PIN back-off, per-module lock, encryption at rest, clipboard auto-clear, encrypted backups + merge restore, CSV/ICS export, Year in Review, Timeline, Diagnostics, utilities/chores/room view in Home, road-trip calculator, high-contrast/large-touch/reduced-motion settings.
+
 ## Backlog
 - P1: SQLite/SQLCipher migration, encrypted backups, Travel module, Home module, Rules builder + local notifications, CSV/ICS export, per-module lock, capture bar, timeline
 - P2: Boards & profiles, Dev Tools, custom tool builder, declarative packs, widgets (native build), Phone Lab, Media, diagnostics, tablet layouts

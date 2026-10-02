@@ -1,6 +1,7 @@
 import type { DB, Settings } from "./types";
 
-export const DB_KEY = "tessera.db.v1";
+export const DB_KEY = "nucleus.db.v1";
+export const LEGACY_DB_KEY = "tessera.db.v1";
 
 export const defaultSettings: Settings = {
   onboarded: false,
@@ -9,7 +10,8 @@ export const defaultSettings: Settings = {
   volumeUnit: "L",
   tempUnit: "C",
   timeFormat: "12h",
-  theme: "system",
+  theme: "midnight",
+  online: false,
   accent: "ochre",
   density: "comfortable",
   privacyMode: false,
@@ -21,12 +23,17 @@ export const defaultSettings: Settings = {
   modules: [
     { id: "vehicles", enabled: true, hidden: false },
     { id: "money", enabled: true, hidden: false },
+    { id: "travel", enabled: true, hidden: false },
+    { id: "home", enabled: true, hidden: false },
     { id: "tools", enabled: true, hidden: false },
   ],
   tiles: [
     { id: "attention", enabled: true },
+    { id: "weather", enabled: true },
+    { id: "trip", enabled: true },
     { id: "budget", enabled: true },
     { id: "vehicle", enabled: true },
+    { id: "home", enabled: true },
     { id: "subscriptions", enabled: true },
     { id: "tools", enabled: true },
   ],
@@ -45,6 +52,9 @@ export function emptyDB(): DB {
     txns: [],
     subscriptions: [],
     links: [],
+    trips: [],
+    appliances: [],
+    netlog: [],
     budget: { monthly: 0, categories: {} },
     attention: {},
     toolHistory: [],
@@ -56,6 +66,9 @@ export function emptyDB(): DB {
 export function normalizeDB(raw: any): DB {
   const base = emptyDB();
   const s = { ...base.settings, ...(raw?.settings ?? {}) };
+  // v1 (Nucleus) theme values -> Nucleus themes
+  if ((s.theme as string) === "light") s.theme = "paper";
+  if ((s.theme as string) === "dark") s.theme = "midnight";
   const knownMods = base.settings.modules.map((m) => m.id);
   s.modules = [
     ...(raw?.settings?.modules ?? []).filter((m: any) => knownMods.includes(m.id)),

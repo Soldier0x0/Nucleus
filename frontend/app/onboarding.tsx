@@ -3,7 +3,7 @@ import { Platform, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInRight } from "react-native-reanimated";
-import { radius, useTheme } from "@/src/theme";
+import { radius, THEMES, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { CURRENCIES } from "@/src/core/format";
 import { MODULES } from "@/src/core/modules";
@@ -53,14 +53,14 @@ export default function Onboarding() {
               </View>
               <Eyebrow style={{ marginTop: 24 }}>Local-first personal platform</Eyebrow>
               <T v="title" style={{ fontSize: 34, marginTop: 6 }}>
-                Tessera
+                Nucleus
               </T>
               <T muted style={{ marginTop: 8, fontSize: 16, lineHeight: 23 }}>
-                Your own toolkit, one tile at a time. Modules that talk to each other, rules that explain themselves.
+                Your private all-in-one: vehicles, money, travel, home and tools. Modules that talk to each other, rules that explain themselves.
               </T>
               <View style={{ marginTop: 24, gap: 14 }}>
                 {[
-                  ["wifi-off", "Works fully offline", "No account, no cloud, no network permission needed."],
+                  ["wifi-off", "Works fully offline", "No account, no cloud. Optional Online mode is off by default."],
                   ["shield-lock-outline", "Your data stays here", "Stored only on this device. You decide what leaves."],
                   ["lightbulb-on-outline", "Smart, not AI", "Insights come from plain rules and your own history — always with a “Why?”."],
                 ].map(([i, t, b]) => (
@@ -84,6 +84,14 @@ export default function Onboarding() {
               <T v="title" style={{ marginTop: 6, marginBottom: 20 }}>
                 How do you measure things?
               </T>
+              <T v="label" style={{ marginBottom: 4 }}>Theme</T>
+              <View style={{ marginHorizontal: -16 }}>
+                <ChipRow testID="onboarding-theme-row">
+                  {Object.entries(THEMES).map(([k, t]) => (
+                    <Chip key={k} label={t.name} selected={s.theme === k} onPress={() => setSettings({ theme: k as any })} testID={`onboarding-theme-${k}`} />
+                  ))}
+                </ChipRow>
+              </View>
               <T v="label" style={{ marginBottom: 4 }}>
                 Currency
               </T>
