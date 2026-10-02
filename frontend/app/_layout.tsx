@@ -1,0 +1,64 @@
+import React, { useEffect, useMemo } from "react";
+import { useColorScheme, View } from "react-native";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
+import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import { buildTheme, ThemeContext } from "@/src/theme";
+import { StoreProvider, useStore } from "@/src/core/store";
+import { ToastProvider } from "@/src/components/Toast";
+import { LockGate } from "@/src/components/LockGate";
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function Themed({ children }: { children: React.ReactNode }) {
+  const { db, ready } = useStore();
+  const scheme = useColorScheme();
+  const s = db.settings;
+  const mode = s.theme === "system" ? (scheme === "dark" ? "dark" : "light") : s.theme;
+  const theme = useMemo(() => buildTheme(mode, s.accent, s.density === "dense"), [mode, s.accent, s.density]);
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync().catch(() => {});
+  }, [ready]);
+  if (!ready) return null;
+  return (
+    <ThemeContext.Provider value={theme}>
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>{children}</View>
+    </ThemeContext.Provider>
+  );
+}
+
+export default function RootLayout() {
+  // Fonts + icon font are pre-warmed here so icons render on first paint (incl. Expo Go Android).
+  const [loaded, error] = useFonts({
+    "Inter-Regular": require("../assets/fonts/Inter-Regular.ttf"),
+    "Inter-Medium": require("../assets/fonts/Inter-Medium.ttf"),
+    "Inter-SemiBold": require("../assets/fonts/Inter-SemiBold.ttf"),
+    "Inter-Bold": require("../assets/fonts/Inter-Bold.ttf"),
+    "JetBrainsMono-Regular": require("../assets/fonts/JetBrainsMono-Regular.ttf"),
+    "JetBrainsMono-Medium": require("../assets/fonts/JetBrainsMono-Medium.ttf"),
+    "JetBrainsMono-Bold": require("../assets/fonts/JetBrainsMono-Bold.ttf"),
+    MaterialDesignIcons: require("@react-native-vector-icons/material-design-icons/fonts/MaterialDesignIcons.ttf"),
+  });
+  if (!loaded && !error) return null;
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <KeyboardProvider>
+          <StoreProvider>
+            <Themed>
+              <ToastProvider>
+                <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
+                <LockGate />
+              </ToastProvider>
+            </Themed>
+          </StoreProvider>
+        </KeyboardProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}

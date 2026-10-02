@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Tessera",
+    "slug": "tessera",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tessera",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tessera.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Unlock Tessera quickly and privately"
+      }
+    },
+    "android": {
+      "package": "com.tessera.app",
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sharing",
+      "@react-native-vector-icons/material-design-icons"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

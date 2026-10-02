@@ -1,0 +1,38 @@
+{
+  "summary": "Tessera frontend (Expo web preview) tested end-to-end on mobile viewport (390x844). Onboarding, Today tiles, Attention (groups, Why sheet, Done/Snooze/Dismiss, Restore toast), Vehicles (list, detail, Why ~5,150km, Log fuel with auto-total hint, service adaptive form for oil & tyre), fuel->linked Money expense creation (Fuel category went from ₹561 → ₹1,061), Money (overview, add txn via numpad, categories, save), Search (grouped results for 'Activa', tool suggestion for 'gst'), Quick Tools (Units/Percent/Split/Dates/EMI chips; EMI shows ₹10,500.93; emi-send-button present), Settings (theme/density/accent/currency/units, privacy switch masks amounts as ••••• on Today), and PIN sheet opens from settings-lock-switch. Deprecated RN warning: props.pointerEvents is deprecated (minor). TestID naming inconsistency: review expected percent-amount-input/percent-rate-input but code uses percent-a-input/percent-b-input (also PIN sheet keys are settings-pin-key-* not pin-key-*). After enabling App Lock and entering 1234 twice, page reload did NOT show the lock-screen (LockGate did not engage) — needs verification whether PIN was saved and whether lock-timeout gate triggers on web reload.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "LockGate on reload", "issue": "After settings-lock-switch -> enter PIN 1234 twice in settings-pin-sheet (keys settings-pin-key-*), page reload shows Settings directly; lock-screen testID is absent. Either PIN confirmation step did not complete (sheet remained open after first 4 presses) or lock-timeout keeps gate open. Needs retest with explicit confirmation of PIN save state and verification of unlock flow.", "testID": "lock-screen", "priority": "HIGH"},
+      {"component": "Tools / Percent", "issue": "TestIDs for Percentage inputs are percent-a-input and percent-b-input, but the review playbook expected percent-amount-input/percent-rate-input. Please align naming OR update the playbook.", "testID": "percent-a-input", "priority": "LOW"},
+      {"component": "PIN sheet keypad", "issue": "Review playbook expected pin-key-1..9/0 but actual testIDs are settings-pin-key-1..9/0 (settings PIN sheet) and lock-pin-key-* (lock gate). Align or document.", "testID": "settings-pin-key-*", "priority": "LOW"},
+      {"component": "Fuel sheet", "issue": "fuel-total-input remains empty while 'Calculated total: 500' is shown as helper text (autocalc works as derived label, not as input value). Users may be unsure that total was auto-filled. Consider auto-filling or clarifying copy.", "testID": "fuel-total-input", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "Deprecation: pointerEvents prop", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Fired on sheet overlays. Reference: likely in Sheet.tsx or related overlay components."}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Verify PIN set/confirm flow: ensure sheet transitions from 'enter PIN' to 'confirm PIN' after 4 digits and persists lock=true. Then verify LockGate renders lock-screen on reload (regardless of lock-timeout).",
+    "Replace deprecated pointerEvents prop usage with style.pointerEvents in overlay/sheet components to silence the RN warning.",
+    "Decide between aligning testIDs with the test playbook (percent-amount-input/percent-rate-input, pin-key-*) or updating the playbook to match current code. Prefer updating code to match widely-used names.",
+    "Consider auto-populating fuel-total-input value when litres*price is computed (currently shown only as a helper label)."
+  ],
+  "critical_code_review_comments": [
+    "Linked expenses from fuel save correctly reflect in Money overview (Fuel ₹561 → ₹1,061 after adding 5L @ ₹100 = ₹500). Auto-link + Money ingestion works.",
+    "Why sheets expose summary/facts/rule testIDs cleanly and provide Done/Snooze/Open-related-module actions.",
+    "Vehicle Why interval learning ('~5,150 km') text matches sample data expectation.",
+    "Service sheet correctly swaps detail fields for kind oil (grade/quantity) vs tyre (size/position/brand/warranty). Good adaptive design.",
+    "Search groups and summaries render; 'gst' correctly surfaces Quick Tools + Percentage & GST entries."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "~90% (lock-screen reload path needs retest; everything else verified)"},
+  "seed_data_creation": "Used in-app Explore with sample data (Activa + Swift, sample transactions and subscriptions).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Clear localStorage before each independent scenario. Onboarding steps: 3 x onboarding-next-button then onboarding-finish-sample-button (or onboarding-finish-empty-button). Mobile viewport 390x844. Note PIN sheet testIDs are settings-pin-key-*, LockGate uses lock-screen + lock-pin-key-* + lock-pin-error + lock-forgot-button. Percentage inputs are percent-a-input / percent-b-input. For the lock-screen retest, after enabling lock + entering PIN twice, confirm sheet closes and settings-lock-switch is ON, then set lock-timeout to immediate if available, then reload and assert lock-screen is present.",
+  "rca_of_issue": "LockGate not engaging on reload: hypothesis 1) PIN confirmation second-entry didn't commit because sheet was still open after fast consecutive presses (needs small wait between first 4 and second 4 to allow transition to confirm step); hypothesis 2) default lock-timeout keeps the app unlocked for a window after a reload, bypassing LockGate. Please check security.ts/store.tsx handling of lock state hydration on app start."
+}

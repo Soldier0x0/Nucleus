@@ -1,0 +1,108 @@
+import React from "react";
+import { ScrollView, StyleSheet, Switch, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+import { radius, useTheme } from "@/src/theme";
+import { useStore } from "@/src/core/store";
+import { usesNativeTabs } from "@/src/navigation";
+import { MODULES, moduleById, TILE_META } from "@/src/core/modules";
+import { Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
+
+function move<T>(arr: T[], i: number, dir: -1 | 1) {
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return arr;
+  const a = [...arr];
+  [a[i], a[j]] = [a[j], a[i]];
+  return a;
+}
+
+export default function Modules() {
+  const { db, setSettings } = useStore();
+  const { colors, sp } = useTheme();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const bottomChrome = usesNativeTabs ? insets.bottom : 0;
+  const s = db.settings;
+  const planned = MODULES.filter((m) => m.status === "planned");
+  const sw = { trackColor: { true: colors.brandPrimary, false: colors.surfaceTertiary }, thumbColor: colors.surfaceSecondary };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <View style={{ paddingTop: insets.top + 8, paddingHorizontal: sp.lg, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        <Eyebrow>Your toolkit</Eyebrow>
+        <T v="title" testID="modules-title">Modules</T>
+      </View>
+      <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        <Eyebrow style={{ marginBottom: 8 }}>Installed · {s.modules.length}</Eyebrow>
+        {s.modules.map((ms, i) => {
+          const m = moduleById(ms.id);
+          return (
+            <View key={ms.id} testID={`module-card-${ms.id}`} style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: ms.enabled ? 1 : 0.7 }]}>
+              <Press testID={`module-open-${ms.id}`} disabled={!ms.enabled} onPress={() => router.push(m.route as any)} style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                <View style={[styles.ic, { backgroundColor: ms.enabled ? colors.surfaceInverse : colors.surfaceTertiary }]}>
+                  <Icon name={m.icon} size={22} color={ms.enabled ? colors.onSurfaceInverse : colors.muted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <T v="label">{m.name}</T>
+                  <T muted style={{ fontSize: 12 }} numberOfLines={2}>
+                    {ms.enabled ? m.description : "Off · not loaded, not searched"}
+                  </T>
+                </View>
+              </Press>
+              <View style={{ alignItems: "center" }}>
+                <Switch testID={`module-toggle-${ms.id}`} value={ms.enabled} onValueChange={(v) => setSettings({ modules: s.modules.map((x) => (x.id === ms.id ? { ...x, enabled: v } : x)) })} {...sw} />
+              </View>
+              <View>
+                <IconButton icon="chevron-up" testID={`module-up-${ms.id}`} label="Move up" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: move(s.modules, i, -1) }))} />
+                <IconButton icon="chevron-down" testID={`module-down-${ms.id}`} label="Move down" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: move(s.modules, i, 1) }))} />
+              </View>
+            </View>
+          );
+        })}
+
+        <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>Today layout</Eyebrow>
+        <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+          {s.tiles.map((t, i) => {
+            const meta = TILE_META[t.id];
+            const modOff = meta.module && !s.modules.find((m) => m.id === meta.module)?.enabled;
+            return (
+              <View key={t.id} testID={`tile-row-${t.id}`} style={[styles.tileRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
+                <Icon name={meta.icon} size={20} color={colors.muted} />
+                <View style={{ flex: 1 }}>
+                  <T v="label">{meta.name}</T>
+                  {modOff ? <T muted style={{ fontSize: 12 }}>Module is off</T> : null}
+                </View>
+                <IconButton icon="arrow-up" testID={`tile-up-${t.id}`} label="Move up" onPress={() => setSettings({ tiles: move(s.tiles, i, -1) })} />
+                <IconButton icon="arrow-down" testID={`tile-down-${t.id}`} label="Move down" onPress={() => setSettings({ tiles: move(s.tiles, i, 1) })} />
+                <Switch testID={`tile-toggle-${t.id}`} value={t.enabled} onValueChange={(v) => setSettings({ tiles: s.tiles.map((x) => (x.id === t.id ? { ...x, enabled: v } : x)) })} {...sw} />
+              </View>
+            );
+          })}
+        </View>
+
+        <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>On the roadmap</Eyebrow>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          {planned.map((m) => (
+            <View key={m.id} testID={`planned-module-${m.id}`} style={[styles.planned, { borderColor: colors.borderStrong }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Icon name={m.icon} size={22} color={colors.muted} />
+                <T v="mono" muted style={{ fontSize: 10 }}>PHASE {m.phase}</T>
+              </View>
+              <T v="label" style={{ marginTop: 8 }}>{m.name}</T>
+              <T muted style={{ fontSize: 12 }} numberOfLines={3}>{m.description}</T>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: radius.lg, paddingLeft: 12, paddingVertical: 4, marginBottom: 10 },
+  ic: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  list: { borderWidth: 1, borderRadius: radius.lg },
+  tileRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 12, paddingRight: 8, minHeight: 56 },
+  planned: { width: "48%", flexGrow: 1, borderWidth: 1, borderStyle: "dashed", borderRadius: radius.lg, padding: 12 },
+});

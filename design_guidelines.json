@@ -1,0 +1,214 @@
+{
+  "app_name": "Tessera",
+  "personality": "5 Brutalist Mobile (Softened for Calm Utility)",
+  "personality_one_liner": "A calm, precise, instrument-like workbench that prioritizes modular data density and mono-spaced visuals over decorative flair.",
+  "color": {
+    "light": {
+      "surface": "#F6F7F9",
+      "onSurface": "#111418",
+      "surfaceSecondary": "#FFFFFF",
+      "onSurfaceSecondary": "#111418",
+      "surfaceTertiary": "#EAECEF",
+      "onSurfaceTertiary": "#111418",
+      "surfaceInverse": "#111418",
+      "onSurfaceInverse": "#FFFFFF",
+      "brand": "#D68E42",
+      "brandPrimary": "#D68E42",
+      "onBrandPrimary": "#FFFFFF",
+      "brandSecondary": "#ECAE6A",
+      "onBrandSecondary": "#111418",
+      "brandTertiary": "#FCEBDC",
+      "onBrandTertiary": "#8E551B",
+      "success": "#378B5F",
+      "onSuccess": "#FFFFFF",
+      "warning": "#D68E42",
+      "onWarning": "#FFFFFF",
+      "error": "#C94F4F",
+      "onError": "#FFFFFF",
+      "info": "#4A6E82",
+      "onInfo": "#FFFFFF",
+      "border": "#E2E4E8",
+      "borderStrong": "#C2C6CC",
+      "divider": "#E2E4E8",
+      "muted": "#687079",
+      "onBrand": "#FFFFFF"
+    },
+    "dark": {
+      "surface": "#101112",
+      "onSurface": "#F0F2F5",
+      "surfaceSecondary": "#1A1C1E",
+      "onSurfaceSecondary": "#F0F2F5",
+      "surfaceTertiary": "#25282B",
+      "onSurfaceTertiary": "#F0F2F5",
+      "surfaceInverse": "#F0F2F5",
+      "onSurfaceInverse": "#101112",
+      "brand": "#D68E42",
+      "brandPrimary": "#D68E42",
+      "onBrandPrimary": "#101112",
+      "brandSecondary": "#ECAE6A",
+      "onBrandSecondary": "#101112",
+      "brandTertiary": "#3E2B16",
+      "onBrandTertiary": "#FCEBDC",
+      "success": "#44AB75",
+      "onSuccess": "#101112",
+      "warning": "#ECAE6A",
+      "onWarning": "#101112",
+      "error": "#DE5C5C",
+      "onError": "#101112",
+      "info": "#5B879F",
+      "onInfo": "#101112",
+      "border": "#2A2D30",
+      "borderStrong": "#41464B",
+      "divider": "#2A2D30",
+      "muted": "#8A9198",
+      "onBrand": "#101112"
+    }
+  },
+  "typography": {
+    "displayFontFamily": "JetBrains Mono",
+    "textFontFamily": "Inter",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Handle spacing correctly dont have extra spaces where its not required, handle padding and margin corectly and subtle for buttons and components",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 4,
+    "md": 8,
+    "lg": 12,
+    "pill": 999
+  },
+  "shadow_tier": 0,
+  "navigation": "bottom_tabs",
+  "icon_set": "MaterialIcons",
+  "glassmorphism": {
+    "enabled": false,
+    "do's": [],
+    "dont's": [
+      "Do not use blur/glass, use solid surfaceSecondary or borders for elevation"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Today Home",
+      "purpose": "A modular dashboard answering 'what matters?' first with attention summaries and visual-heavy tiles (rings, gauges).",
+      "states": {
+        "loading": "Skeleton grids representing modular tiles",
+        "empty": "Empty workbench illustration with 'Add Module' CTA",
+        "error": "Inline module error state with retry icon"
+      },
+      "layout": "Left-aligned header. Global search bar at top. Grid of modular summary tiles below. Visuals (SVG rings/gauges) take precedence over text. Use thick structural dividers and mono-spaced metrics."
+    },
+    {
+      "name": "Attention Center",
+      "purpose": "Groups Urgent, Upcoming, and Info items, offering a 'Why?' explanation sheet and resolution actions.",
+      "states": {
+        "loading": "List skeletons",
+        "empty": "Clean 'All caught up' workbench graphic in center",
+        "error": "Retry block"
+      },
+      "layout": "Strict list layout categorized by Urgent/Upcoming/Info. Each row has clear actions (done/snooze/dismiss). Tapping an item opens a bottom sheet with 'Why?' explanation. Status icons always accompany text."
+    },
+    {
+      "name": "Vehicles Module",
+      "purpose": "Dashboard for vehicle mileage, service countdowns, and fuel logs with trend charts.",
+      "states": {
+        "loading": "Chart and gauge skeletons",
+        "empty": "Add Vehicle CTA",
+        "error": "Failed to load telemetry data"
+      },
+      "layout": "Top section: Vehicle selector. Main: Dashboard with prominent SVG mileage gauge and service countdown bars. Bottom: Fuel log history. Left-aligned mono-spaced numbers."
+    },
+    {
+      "name": "Money Module",
+      "purpose": "Budget ring, category breakdowns, and transactions with a quick-entry numpad.",
+      "states": {
+        "loading": "Donut chart skeleton",
+        "empty": "Set Budget CTA",
+        "error": "Data fetch error"
+      },
+      "layout": "Large SVG budget ring at the top. Category breakdown bars beneath. Sticky 'Quick Entry' FAB opens a bottom sheet with a custom numpad and category chips."
+    },
+    {
+      "name": "Quick Tools",
+      "purpose": "Fast utility calculators (unit converter, date calc, EMI) acting as a workbench.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Segmented controls or a side-scrolling list of tool chips. Content area updates immediately based on tool selection. High data density, dense numpads."
+    },
+    {
+      "name": "Settings & Module Library",
+      "purpose": "Manage app theme, accent colors, density modes, and enable/reorder modules.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Standard categorized settings list. Module library uses drag-and-drop handles for reordering. Theme and accent pickers are inline horizontal scrolling lists."
+    }
+  ],
+  "images": {
+    "attention_empty": {
+      "url": "https://images.unsplash.com/photo-1631396326628-3105f48b6f2b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwyfHxjbGVhbiUyMG1pbmltYWxpc3QlMjBvcmdhbml6ZWQlMjB3b3JrYmVuY2h8ZnJ8MHx8fHwxNzkwOTM0OTA5fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Clean organized workbench"
+    },
+    "today_empty": {
+      "url": "https://images.unsplash.com/photo-1426927308491-6380b6a9936f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxjbGVhbiUyMG1pbmltYWxpc3QlMjBvcmdhbml6ZWQlMjB3b3JrYmVuY2h8ZnJ8MHx8fHwxNzkwOTM0OTA5fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Assorted tools on a workbench"
+    },
+    "mosaic_bg": {
+      "url": "https://images.pexels.com/photos/12583159/pexels-photo-12583159.jpeg",
+      "alt": "Abstract geometric wave mosaic for Tessera theme"
+    }
+  },
+  "haptics": {
+    "events": {
+      "button_press": "light",
+      "module_reorder": "medium",
+      "tab_change": "light",
+      "quick_entry_numpad": "light",
+      "attention_swipe": "medium",
+      "bottom_sheet_open": "light"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the user's explicit choices: 'Tessera' product name, Comfortable/Dense density modes, and status NEVER shown by color alone (always pair with icons).",
+    "This app is a local-first utility. Emphasize a 'workbench' feel: calm, precise, instrument-like. Avoid 'SaaS dashboard' clutter.",
+    "Visuals (SVG rings, gauges, trend lines, countdown bars) must be placed BEFORE text in the hierarchy.",
+    "Use 'JetBrains Mono' for all data, metrics, and gauges, and 'Inter' for UI labels. Download the TTF files from Google Fonts GitHub directly into the assets folder.",
+    "Use @react-native-vector-icons/MaterialIcons as requested. Do NOT use emojis.",
+    "Charts must be implemented natively using react-native-svg.",
+    "Implement the UI with a left-aligned layout and clear hierarchy. Use Bottom Sheets (@gorhom/bottom-sheet) extensively for quick entries.",
+    "Shadows should be removed (tier 0). Rely on subtle borders (1pt max) and background tonal shifts to separate modules and lists.",
+    "Allow user to select accent color; the default defined here is an earthy Ochre (#D68E42). Do not use blue or purple for any accents.",
+    "Research takeaway: Soft card stacks with rigid internal data structure provide the best balance between calm usability and data density. Prioritize modular content."
+  ]
+}
