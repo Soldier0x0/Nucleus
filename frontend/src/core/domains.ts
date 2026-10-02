@@ -1,6 +1,6 @@
 /** Travel + Home domain logic (pure). */
-import type { Appliance, DB, MaintPlan, PackItem, Trip, TripDoc, Txn } from "./types";
-import { addMonths, daysBetween, todayISO, uid } from "./format";
+import type { Appliance, Chore, DB, MaintPlan, PackItem, Trip, TripDoc, Txn, UtilityBill, UtilityKind } from "./types";
+import { addDays, addMonths, daysBetween, todayISO, uid } from "./format";
 
 export const PACK_TEMPLATES: Record<string, Record<string, string[]>> = {
   Weekend: { Clothing: ["T-shirts", "Jeans", "Sleepwear", "Underwear"], Toiletries: ["Toothbrush", "Deodorant"], Electronics: ["Phone charger", "Earphones"], Documents: ["ID card", "Wallet"] },
@@ -85,4 +85,49 @@ export function logMaintenance(db: DB, applianceId: string, planId: string, cost
     next = { ...next, txns: [...next.txns, txn], links: [...next.links, link({ kind: "appliance", id: a.id }, { kind: "txn", id: txn.id }, "maintenance")] };
   }
   return next;
+}
+
+export const UTILITY_KINDS: { id: UtilityKind; label: string; unit: string; icon: string }[] = [
+  { id: "electricity", label: "Electricity", unit: "kWh", icon: "flash" },
+  { id: "water", label: "Water", unit: "kL", icon: "water" },
+  { id: "lpg", label: "LPG", unit: "kg", icon: "fire" },
+  { id: "internet", label: "Internet", unit: "", icon: "web" },
+];
+
+export function utilityEstimate(bills: UtilityBill[], kind: UtilityKind) {
+  const rows = bills.filter((b) => b.kind === kind).sort((a, b) => a.date.localeCompare(b.date));
+  const last = rows[rows.length - 1];
+  const earlier = rows.slice(0, -1).slice(-3);
+  const usual = earlier.length ? earlier.reduce((s, b) => s + b.amount, 0) / earlier.length : undefined;
+  return { rows, last, usual };
+}
+
+export function choreDueDate(c: Chore, today = todayISO()) {
+  return daysBetween(today, addDays(c.lastDone, c.everyDays));
+}
+
+export function completeChore(db: DB, id: string): DB {
+  const today = todayISO();
+  return { ...db, chores: db.chores.map((c) => (c.id === id ? { ...c, lastDone: today } : c)) };
+}
+
+export type RoomStatus = "urgent" | "upcoming" | "ok";
+
+export function roomSummaries(db: DB, today = todayISO()) {
+  return ROOMS.map((room) => {
+    const appliances = db.appliances.filter((a) => a.room === room);
+    const chores = db.chores.filter((c) => c.room === room);
+    if (!appliances.length && !chores.length) return null;
+    const maintDays = appliances.flatMap((a) => a.plans.map((p) => daysBetween(today, nextDue(p))));
+    const maintLate = maintDays.some((d) => d < 0);
+    const maintSoon = maintDays.some((d) => d >= 0 && d <= 7);
+    const choreLate = chores.some((c) => choreDueDate(c, today) < 0);
+    const choreSoon = chores.some((c) => {
+      const d = choreDueDate(c, today);
+      return d >= 0 && d <= 1;
+    });
+    const warrantySoon = appliances.some((a) => a.warrantyUntil && daysBetween(today, a.warrantyUntil) <= 30 && daysBetween(today, a.warrantyUntil) >= 0);
+    const status: RoomStatus = maintLate || choreLate ? "urgent" : maintSoon || choreSoon || warrantySoon ? "upcoming" : "ok";
+    return { room, appliances: appliances.length, chores: chores.length, status };
+  }).filter((x): x is { room: string; appliances: number; chores: number; status: RoomStatus } => !!x);
 }

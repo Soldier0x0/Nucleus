@@ -66,13 +66,13 @@ export function Press({ style, onPress, haptic = true, children, disabled, ...re
   );
 }
 
-export function Card({ children, style, testID, onPress, tone = "default" }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; testID?: string; onPress?: () => void; tone?: "default" | "tint" | "inverse" }) {
+export function Card({ children, style, testID, onPress, onLongPress, tone = "default" }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; testID?: string; onPress?: () => void; onLongPress?: () => void; tone?: "default" | "tint" | "inverse" }) {
   const { colors, sp } = useTheme();
   const bg = tone === "tint" ? colors.brandTertiary : tone === "inverse" ? colors.surfaceInverse : colors.surfaceSecondary;
   const base: ViewStyle = { backgroundColor: bg, borderRadius: radius.lg, borderWidth: 1, borderColor: tone === "default" ? colors.border : "transparent", padding: sp.lg };
-  if (onPress)
+  if (onPress || onLongPress)
     return (
-      <Press testID={testID} onPress={onPress} style={[base, style]}>
+      <Press testID={testID} onPress={onPress} onLongPress={onLongPress} delayLongPress={320} style={[base, style]}>
         {children}
       </Press>
     );

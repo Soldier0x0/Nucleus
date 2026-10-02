@@ -53,13 +53,19 @@ export function relDays(n: number) {
   return `in ${n} days`;
 }
 
-const SYMBOLS: Record<string, string> = { INR: "₹", USD: "$", EUR: "€", GBP: "£", JPY: "¥", AUD: "A$", AED: "AED ", SGD: "S$" };
+const SYMBOLS: Record<string, string> = {
+  INR: "₹", USD: "$", EUR: "€", GBP: "£", AED: "AED ", AUD: "A$", BDT: "৳", BRL: "R$",
+  CAD: "C$", CHF: "CHF ", CNY: "¥", DKK: "kr ", HKD: "HK$", IDR: "Rp ", JPY: "¥", KRW: "₩",
+  KWD: "KD ", LKR: "Rs ", MXN: "MX$", MYR: "RM ", NOK: "kr ", NPR: "Rs ", NZD: "NZ$", PHP: "₱",
+  PKR: "Rs ", PLN: "zł ", QAR: "QR ", SAR: "SAR ", SEK: "kr ", SGD: "S$", THB: "฿", TRY: "₺", ZAR: "R ",
+};
+const ZERO_DECIMALS = new Set(["JPY", "KRW", "IDR", "VND"]);
 export const CURRENCIES = Object.keys(SYMBOLS);
 
 export function money(n: number, cur: string, opts: { decimals?: boolean } = {}) {
   const sym = SYMBOLS[cur] ?? `${cur} `;
   const abs = Math.abs(n);
-  const dec = opts.decimals ?? abs < 100;
+  const dec = ZERO_DECIMALS.has(cur) ? false : (opts.decimals ?? abs < 100);
   const locale = cur === "INR" ? "en-IN" : "en-US";
   let body: string;
   try {

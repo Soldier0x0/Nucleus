@@ -44,10 +44,10 @@ export const MODULES: ModuleManifest[] = [
   },
   {
     id: "tools",
-    name: "Quick Tools",
+    name: "Tools",
     icon: "calculator-variant-outline",
     route: "/tools",
-    description: "Units, percentage & GST, bill split, dates and EMI.",
+    description: "Units, GST, bill split, dates, EMI, cooking and time.",
     entities: ["tool.history"],
     emits: ["tool.emi.result"],
     consumes: [],
@@ -61,7 +61,8 @@ export const MODULES: ModuleManifest[] = [
   { id: "dev", name: "Dev Tools", icon: "code-braces", route: "/dev", description: "JSON, Base64, URL, JWT, hashes, timestamps, regex, diff, colour.", entities: [], emits: [], consumes: [], capabilities: ["clipboard.write"], status: "available" },
   { id: "builder", name: "Tool Builder", icon: "puzzle-outline", route: "/builder", description: "Make your own calculators from inputs and a formula.", entities: ["tool.custom"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
   { id: "lab", name: "Phone Lab", icon: "chip", route: "/lab", description: "Sensors, battery, display and touch tests — live only while open.", entities: [], emits: [], consumes: [], capabilities: ["sensors.read"], status: "available" },
-  { id: "media", name: "Media shelf", icon: "filmstrip-box-multiple", route: "/media", description: "Movies, series, books and games — progress, ratings and reviews.", entities: ["media"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
+  { id: "media", name: "Media", icon: "filmstrip-box-multiple", route: "/media", description: "Movies, series, books and games — progress, ratings and reviews.", entities: ["media"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
+  { id: "papers", name: "Papers", icon: "file-document-outline", route: "/papers", description: "Licence, registration, insurance, passport and FASTag — the page and the date it expires.", entities: ["paper"], emits: ["paper.expiring"], consumes: [], capabilities: ["storage.local", "attention.publish"], status: "available" },
 ];
 
 export const moduleById = (id: string) => MODULES.find((m) => m.id === id)!;
@@ -75,5 +76,5 @@ export const TILE_META: Record<string, { name: string; module?: string; icon: st
   vehicle: { name: "Vehicle gauge", module: "vehicles", icon: "speedometer" },
   subscriptions: { name: "Next renewals", module: "money", icon: "autorenew" },
   notes: { name: "Pinned notes", module: "notes", icon: "note-text-outline" },
-  tools: { name: "Quick tools", module: "tools", icon: "calculator-variant-outline" },
+  tools: { name: "Tools", module: "tools", icon: "calculator-variant-outline" },
 };

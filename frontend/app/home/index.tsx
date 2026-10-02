@@ -4,11 +4,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { homeSchedule, logMaintenance, ROOMS, upsertAppliance } from "@/src/core/domains";
+import { applianceOwnership } from "@/src/core/life";
+import { HomeLife } from "@/src/components/HomeLife";
 import { deleteEntity } from "@/src/core/actions";
 import type { Appliance } from "@/src/core/types";
-import { addMonths, daysBetween, fmtDate, num, parseNum, todayISO, uid } from "@/src/core/format";
+import { addMonths, daysBetween, fmtDate, money, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
-import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Segmented, StatusBadge, T } from "@/src/components/ui";
+import { Button, Card, Chip, ChipRow, Eyebrow, Icon, IconButton, Segmented, StatusBadge, T } from "@/src/components/ui";
 import { Countdown } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
 import { DateField, Field } from "@/src/components/inputs";
@@ -35,7 +37,7 @@ export default function Home() {
       <Header title="Home" testID="home-header" right={<IconButton icon="plus" testID="home-add-button" label="Add appliance" onPress={() => setEdit("new")} />} />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 24, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         {db.appliances.length === 0 ? (
-          <EmptyState testID="home-empty" icon="home-outline" title="Your home, organized" body="Add appliances with warranties and maintenance plans — Nucleus warns you before anything is due." action={<Button label="Add appliance" icon="plus" onPress={() => setEdit("new")} testID="home-empty-add-button" />} />
+          <HomeLife showEmpty={db.utilities.length === 0 && db.chores.length === 0} onAddAppliance={() => setEdit("new")} />
         ) : (
           <>
             <Card tone={next && next.days <= 7 ? "inverse" : "default"} testID="home-hero">
@@ -69,6 +71,8 @@ export default function Home() {
               </Card>
             ) : null}
 
+            <HomeLife showEmpty={false} />
+
             <ChipRow testID="home-room-row">
               {["All", ...ROOMS.filter((r) => db.appliances.some((a) => a.room === r))].map((r) => <Chip key={r} label={r} selected={room === r} onPress={() => setRoom(r)} testID={`home-room-${r}`} />)}
             </ChipRow>
@@ -92,6 +96,7 @@ export default function Home() {
                     </View>
                   ) : null}
                   {a.plans.length ? <T muted style={{ fontSize: 12, marginTop: 8 }}>{a.plans.length} plan{a.plans.length > 1 ? "s" : ""} · {a.plans.map((p) => `${p.name} /${p.everyMonths}mo`).join(", ")}</T> : null}
+                  {(() => { const own = applianceOwnership(db, a.id); return own && own.total > 0 ? <T muted style={{ fontSize: 12, marginTop: 4 }}>True cost {money(own.total, db.settings.currency)}{own.repairs ? ` · repairs ${money(own.repairs, db.settings.currency)}` : ""}</T> : null; })()}
                 </Card>
               );
             })}

@@ -304,6 +304,31 @@ Everything in "Core features" above:
 - Kanban boards and a personal wiki with backlinks.
 - Network tools (ping, DNS lookup, local network scan) and an optional, clearly labelled receipt text scanner.
 
+### Life desk (approved and in the app)
+These use records you already keep. None of them call a model.
+- Papers: licence, registration, insurance, passport, FASTag, with an expiry that reaches Attention.
+- A month of dates already stored (insurance, renewals, trips, chores, warranties, papers).
+- True cost of a vehicle (fuel, service, other linked spend) and of an appliance (price plus repairs).
+- Money left this week, from the monthly budget and what is already spent.
+- Household names, used on chores and papers. No contact sync.
+- Wear parts (tyres, battery, chain, brakes) and home shop notes (filter size, paint code).
+- A photo on an expense, a utility bill, or a paper. The photo is stored; the text on it is not read.
+- Data health: a backwards odometer, or the same expense entered twice.
+- Sharing a line such as `450 food lunch` into the capture bar. The grammar is fixed. It does not classify with ML or AI.
+- A morning line on the home screen.
+- An emergency card on the lock screen, only when you turn it on.
+- Hybrid fuel (petrol-electric and diesel-electric) and a side view chosen from the model name (Activa is a scooter, a Duke is a naked bike, a City is a sedan). The drawing is original. It is not a photograph of that model.
+- The home board is the lasting layout. A named board, such as a trip, is temporary. The tab can stay Today.
+
+### Explicitly not in the product
+- Habit tracker.
+- Password vault.
+- A chat assistant. That would need an on-device or cloud model, and both fight the battery and the local-first rule.
+- Receipt text scanning and a network scanner stay in Phase 3 and stay off unless asked for again.
+
+### Later, not a backend
+- Copying an encrypted backup between your own devices (file merge already exists). A cloud account that syncs by itself is not part of this app.
+
 ---
 
 ## Assumptions
@@ -319,7 +344,7 @@ Everything in "Core features" above:
   - free public services that need no account or key: Frankfurter (currency), Open-Meteo (weather, air quality, place search), Nager.Date (holidays), REST Countries (country facts)
   - weather data is credited in the app, as its licence requires
   - if a service is down, the last cached data is shown with its date
-- **Location:** used only for local weather. It is requested only when "Use my location" is tapped and rounded to about 10 km. Typing a city works without location permission.
+- **Location:** used only for local weather. A saved city is sent rounded to about 1 km, and the forecast prefers a land cell. Typing a city works without location permission.
 - **Encryption and passwords:**
   - All data is encrypted at rest on the device.
   - Backups are protected by a password you choose. If that password is forgotten, the backup cannot be opened.

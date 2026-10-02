@@ -48,7 +48,7 @@ type UnitDef = { label: string; f: number };
 const UNITS: Record<string, Record<string, UnitDef>> = {
   Length: { mm: { label: "Millimetre", f: 0.001 }, cm: { label: "Centimetre", f: 0.01 }, m: { label: "Metre", f: 1 }, km: { label: "Kilometre", f: 1000 }, in: { label: "Inch", f: 0.0254 }, ft: { label: "Foot", f: 0.3048 }, yd: { label: "Yard", f: 0.9144 }, mi: { label: "Mile", f: 1609.344 } },
   Weight: { mg: { label: "Milligram", f: 1e-6 }, g: { label: "Gram", f: 0.001 }, kg: { label: "Kilogram", f: 1 }, t: { label: "Tonne", f: 1000 }, oz: { label: "Ounce", f: 0.0283495 }, lb: { label: "Pound", f: 0.453592 } },
-  Volume: { ml: { label: "Millilitre", f: 0.001 }, L: { label: "Litre", f: 1 }, tsp: { label: "Teaspoon", f: 0.00492892 }, tbsp: { label: "Tablespoon", f: 0.0147868 }, cup: { label: "Cup (US)", f: 0.236588 }, gal: { label: "Gallon (US)", f: 3.78541 }, m3: { label: "Cubic metre", f: 1000 } },
+  Volume: { ml: { label: "Millilitre", f: 0.001 }, L: { label: "Litre", f: 1 }, tsp: { label: "Teaspoon", f: 0.00492892 }, tbsp: { label: "Tablespoon", f: 0.0147868 }, cup: { label: "Cup (US)", f: 0.236588 }, gal: { label: "Gallon (US)", f: 3.78541 }, "gal UK": { label: "Gallon (UK)", f: 4.54609 }, m3: { label: "Cubic metre", f: 1000 } },
   Temperature: { C: { label: "Celsius", f: 1 }, F: { label: "Fahrenheit", f: 1 }, K: { label: "Kelvin", f: 1 } },
   Speed: { "km/h": { label: "km per hour", f: 1 / 3.6 }, "m/s": { label: "metre per second", f: 1 }, mph: { label: "miles per hour", f: 0.44704 }, kn: { label: "Knot", f: 0.514444 } },
   Area: { "m²": { label: "Square metre", f: 1 }, "ft²": { label: "Square foot", f: 0.092903 }, acre: { label: "Acre", f: 4046.86 }, ha: { label: "Hectare", f: 10000 }, "km²": { label: "Square km", f: 1e6 } },

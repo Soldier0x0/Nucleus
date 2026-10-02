@@ -4,14 +4,15 @@
  */
 import type { DB, Vehicle } from "./types";
 import { homeSchedule, readiness, tripStatus } from "./domains";
-import { addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
+import { lifeAlerts } from "./life";
+import { addDays, addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
 
 export type Fact = { label: string; value: string };
 export type Why = { summary: string; facts: Fact[]; rule: string; ranking: string };
 export type Severity = "urgent" | "upcoming" | "info";
 export type AttentionItem = {
   key: string;
-  module: "vehicles" | "money" | "travel" | "home";
+  module: "vehicles" | "money" | "travel" | "home" | "papers";
   severity: Severity;
   icon: string;
   title: string;
@@ -382,6 +383,37 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, urgent once overdue.", ranking: rankText(sev, "due date") },
       });
     }
+    for (const c of db.chores) {
+      const due = addDays(c.lastDone, c.everyDays);
+      const d = daysBetween(today, due);
+      if (d > 1) continue;
+      const sev: Severity = d < 0 ? "urgent" : "upcoming";
+      items.push({
+        key: `chore:${c.id}:${c.lastDone}`,
+        module: "home",
+        severity: sev,
+        icon: "broom",
+        title: d < 0 ? `${c.name} overdue by ${-d} days` : d === 0 ? `${c.name} is due today` : `${c.name} is due tomorrow`,
+        subtitle: [c.room, c.assignee, `every ${c.everyDays} days`].filter(Boolean).join(" · "),
+        score: SEV_WEIGHT[sev] + Math.min(40, Math.max(0, -d + 10)),
+        route: "/home",
+        why: { summary: `${c.name} repeats every ${c.everyDays} days. Last done ${fmtDate(c.lastDone)}, so the next time is ${fmtDate(due)}.`, facts: [{ label: "Last done", value: fmtDate(c.lastDone) }, { label: "Every", value: `${c.everyDays} days` }, { label: "Next due", value: fmtDate(due) }], rule: "Upcoming the day before and the day it is due. Urgent once that day has passed.", ranking: rankText(sev, "due date") },
+      });
+    }
+  }
+
+  for (const a of lifeAlerts(db, today)) {
+    items.push({
+      key: a.key,
+      module: a.route.startsWith("/papers") ? "papers" : a.route.startsWith("/money") ? "money" : a.route.startsWith("/vehicles") ? "vehicles" : "home",
+      severity: a.severity,
+      icon: a.icon,
+      title: a.title,
+      subtitle: a.subtitle,
+      score: SEV_WEIGHT[a.severity] + 8,
+      route: a.route,
+      why: { summary: a.summary, facts: a.facts, rule: a.rule, ranking: rankText(a.severity, "the date or the reading") },
+    });
   }
 
   return items.sort((a, b) => b.score - a.score);

@@ -174,7 +174,7 @@ export default function TripDetail() {
                 {t.budget ? <Amount value={t.budget} v="mono" style={{ color: colors.muted }} /> : null}
               </View>
               {t.budget ? <Bar value={r.spent} max={Math.max(t.budget, r.spent)} limit={t.budget} /> : <T muted style={{ fontSize: 12 }}>Set a budget in Edit to track progress.</T>}
-              <T muted style={{ fontSize: 12, marginTop: 6 }}>Per traveller: {num(r.spent / t.travellers, 0)} {db.settings.currency}</T>
+              <T muted style={{ fontSize: 12, marginTop: 6 }}>Per traveller: {num(r.spent / t.travellers, 0)} {db.settings.currency}{r.days > 0 ? ` · per day ${num(r.spent / r.days, 0)}` : ""}</T>
             </Card>
             {txns.map((x) => (
               <Press key={x.id} onPress={() => router.push(`/record/txn/${x.id}`)} style={[styles.row, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>

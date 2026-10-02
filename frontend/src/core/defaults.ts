@@ -35,6 +35,7 @@ export const defaultSettings: Settings = {
     { id: "builder", enabled: true, hidden: false },
     { id: "media", enabled: false, hidden: false },
     { id: "lab", enabled: false, hidden: false },
+    { id: "papers", enabled: true, hidden: false },
   ],
   tiles: [
     { id: "attention", enabled: true },
@@ -53,6 +54,7 @@ export const defaultSettings: Settings = {
   largeTouch: false,
   reducedMotion: false,
   quietHours: { enabled: true, from: 22, to: 7 },
+  emergency: { bloodGroup: "", contactName: "", contactPhone: "", note: "", showOnLock: false },
 };
 
 export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
@@ -70,6 +72,8 @@ export function emptyDB(): DB {
     links: [],
     trips: [],
     appliances: [],
+    utilities: [],
+    chores: [],
     notes: [],
     rules: [],
     ruleFires: {},
@@ -78,6 +82,10 @@ export function emptyDB(): DB {
     funds: [],
     debts: [],
     netWorth: [],
+    people: [],
+    papers: [],
+    parts: [],
+    specs: [],
     netlog: [],
     budget: { monthly: 0, categories: {} },
     attention: {},
@@ -93,6 +101,7 @@ export function normalizeDB(raw: any): DB {
   // v1 (Nucleus) theme values -> Nucleus themes
   if ((s.theme as string) === "light") s.theme = "paper";
   if ((s.theme as string) === "dark") s.theme = "midnight";
+  s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const knownMods = base.settings.modules.map((m) => m.id);
   s.modules = [
     ...(raw?.settings?.modules ?? []).filter((m: any) => knownMods.includes(m.id)),
@@ -109,5 +118,12 @@ export function normalizeDB(raw: any): DB {
     version: 1,
     settings: s,
     budget: { ...base.budget, ...(raw?.budget ?? {}) },
+    utilities: Array.isArray(raw?.utilities) ? raw.utilities : [],
+    chores: Array.isArray(raw?.chores) ? raw.chores : [],
+    media: Array.isArray(raw?.media) ? raw.media : [],
+    people: Array.isArray(raw?.people) ? raw.people : [],
+    papers: Array.isArray(raw?.papers) ? raw.papers : [],
+    parts: Array.isArray(raw?.parts) ? raw.parts : [],
+    specs: Array.isArray(raw?.specs) ? raw.specs : [],
   };
 }

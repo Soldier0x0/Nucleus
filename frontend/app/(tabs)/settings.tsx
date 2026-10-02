@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accents, radius, THEMES, useTheme } from "@/src/theme";
@@ -7,14 +7,14 @@ import type { ModuleId, Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { CURRENCIES } from "@/src/core/format";
-import { emptyDB } from "@/src/core/defaults";
 import { withSampleData } from "@/src/core/sample";
 import { BackupFile, decryptBackup, exportBackup, mergeDB, mergePreview, pickBackup } from "@/src/core/backup";
 import { passwordStrength, type PasswordEnvelope } from "@/src/core/crypto";
-import { biometricAvailable, clearFailures, clearPin, setPin } from "@/src/core/security";
+import { biometricAvailable, clearFailures, clearPin, hasDecoyPin, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
 import { MODULES } from "@/src/core/modules";
 import { EXPORTS, exportData, timeline } from "@/src/core/exports";
 import { scheduledCount } from "@/src/core/notify";
+import { dataHealth } from "@/src/core/life";
 import { useRouter } from "expo-router";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
@@ -56,7 +56,7 @@ function Row({ icon, label, sub, right, first, testID, onPress }: { icon: string
 }
 
 export default function Settings() {
-  const { db, setSettings, replace, update } = useStore();
+  const { db, setSettings, replace, update, session, profiles, activeProfileId, addProfile, switchProfile, renameProfile, deleteProfile, prepareDecoy, wipeVisible } = useStore();
   const s = db.settings;
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
@@ -67,6 +67,15 @@ export default function Settings() {
   const [first, setFirst] = useState("");
   const [pinErr, setPinErr] = useState<string>();
   const [pinKey, setPinKey] = useState(0);
+  const [profileName, setProfileName] = useState("");
+  const [rename, setRename] = useState("");
+  const [decoyFlow, setDecoyFlow] = useState<null | "enter" | "confirm">(null);
+  const [decoyFirst, setDecoyFirst] = useState("");
+  const [decoyOn, setDecoyOn] = useState(false);
+  useEffect(() => {
+    if (session === "real" && s.lockEnabled) hasDecoyPin().then(setDecoyOn);
+    else setDecoyOn(false);
+  }, [session, s.lockEnabled, pinKey]);
   const [restore, setRestore] = useState<BackupFile | null>(null);
   const [restoreMode, setRestoreMode] = useState<"replace" | "merge">("replace");
   const [encBackup, setEncBackup] = useState<{ env: PasswordEnvelope; exportedAt: string } | null>(null);
@@ -131,7 +140,7 @@ export default function Settings() {
                 <T numberOfLines={1}>{m.name}</T>
               </Press>
             ))}
-            {s.homeCity ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Current: {s.homeCity.name} (sent rounded to ~10 km)</T> : null}
+            {s.homeCity ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Current: {s.homeCity.name}. The forecast uses about 1 km, not your street, and prefers a land reading.</T> : null}
             {!s.online ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Turn Online on to search for a city.</T> : null}
           </View>
           <Row icon="format-list-bulleted" label="Network log" sub={`${db.netlog.length} request${db.netlog.length === 1 ? "" : "s"} ever made`} testID="settings-netlog-button" onPress={() => setShowLog(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
@@ -150,9 +159,44 @@ export default function Settings() {
             <Segmented testID="settings-volume" value={s.volumeUnit} onChange={(v) => setSettings({ volumeUnit: v })} options={[{ value: "L", label: "Litres" }, { value: "gal", label: "Gallons" }]} />
             <Segmented testID="settings-temp" value={s.tempUnit} onChange={(v) => setSettings({ tempUnit: v })} options={[{ value: "C", label: "°C" }, { value: "F", label: "°F" }]} />
             <Segmented testID="settings-time" value={s.timeFormat} onChange={(v) => setSettings({ timeFormat: v })} options={[{ value: "12h", label: "12-hour" }, { value: "24h", label: "24-hour" }]} />
+            <T muted style={{ fontSize: 12 }}>Distance, fuel volume, temperature and time are what your records use. Length, weight, cooking measures, speed, area, data, pressure and energy are in Tools.</T>
           </View>
           <Row icon="link-variant" label="Auto-link vehicle costs to Money" sub="Fuel & service costs create linked expenses" right={<Switch testID="settings-autolink-switch" value={s.autoLinkExpenses} onValueChange={(v) => setSettings({ autoLinkExpenses: v })} {...sw} />} />
         </Section>
+
+        {session === "real" ? (
+          <Section title="Profiles">
+            <View style={{ padding: 12, gap: 8 }}>
+              <T muted style={{ fontSize: 12 }}>Each profile keeps its own records, theme and boards. Hold is for tiles — tap a profile to switch.</T>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {profiles.map((p) => (
+                  <Chip key={p.id} label={p.name} selected={p.id === activeProfileId} testID={`profile-${p.id}`} onPress={() => switchProfile(p.id)} />
+                ))}
+              </View>
+              <TextInput testID="profile-name-input" value={profileName} onChangeText={setProfileName} placeholder="New profile name" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+              <Button
+                small
+                kind="secondary"
+                icon="plus"
+                label="Add profile"
+                testID="profile-add-button"
+                onPress={async () => {
+                  const ok = await addProfile(profileName);
+                  if (!ok) toast("Six profiles is the limit", "alert-circle-outline");
+                  else {
+                    setProfileName("");
+                    toast("Profile added", "account-outline");
+                  }
+                }}
+              />
+              <TextInput testID="profile-rename-input" value={rename} onChangeText={setRename} placeholder="Rename the open profile" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+              <Button small kind="ghost" label="Rename" testID="profile-rename-button" onPress={() => renameProfile(activeProfileId, rename).then(() => setRename(""))} />
+              {profiles.filter((p) => p.id !== activeProfileId).map((p) => (
+                <Button key={p.id} small kind="danger" label={`Delete ${p.name}`} testID={`profile-delete-${p.id}`} onPress={() => deleteProfile(p.id)} />
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
         <Section title="Security & privacy">
           <Row
@@ -217,11 +261,33 @@ export default function Settings() {
                   })}
                 </View>
               </View>
+              {session === "real" ? (
+                <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
+                  <T v="label">Decoy PIN</T>
+                  <T muted style={{ fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+                    {decoyOn ? "Set. It only works on the lock screen, and the app looks the same afterwards." : "A second PIN opens a sample workspace. Nothing on screen marks it as different. It only works on the lock screen."}
+                  </T>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <Button small kind="secondary" label={decoyOn ? "Change decoy PIN" : "Set decoy PIN"} testID="settings-decoy-button" onPress={() => (setPinErr(undefined), setDecoyFlow("enter"))} />
+                  </View>
+                </View>
+              ) : null}
             </>
           ) : null}
           <Row icon="content-copy" label="Clear clipboard after copying" sub="Wipes copied amounts after a minute" right={<Switch testID="settings-clipboard-switch" value={s.clipboardAutoClear} onValueChange={(v) => setSettings({ clipboardAutoClear: v })} {...sw} />} />
           <Row icon="eye-off-outline" label="Privacy mode" sub="Mask every amount until tapped" right={<Switch testID="settings-privacy-switch" value={s.privacyMode} onValueChange={(v) => setSettings({ privacyMode: v })} {...sw} />} />
           <Row icon="cellphone-screenshot" label="Block screenshots & hide in recents" sub="Installed app only" right={<Switch testID="settings-screenshot-switch" value={s.blockScreenshots} onValueChange={(v) => setSettings({ blockScreenshots: v })} {...sw} />} />
+        </Section>
+
+        <Section title="Emergency card">
+          <View style={{ padding: 12, gap: 8 }}>
+            <T muted style={{ fontSize: 12 }}>Blood group and one phone number. The plate of your default vehicle is added on the lock screen. Leave the switch off and none of this shows before the PIN.</T>
+            <TextInput testID="emergency-blood" value={s.emergency.bloodGroup} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, bloodGroup: t } })} placeholder="Blood group" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+            <TextInput testID="emergency-name" value={s.emergency.contactName} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, contactName: t } })} placeholder="Contact name" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+            <TextInput testID="emergency-phone" value={s.emergency.contactPhone} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, contactPhone: t } })} placeholder="Phone" placeholderTextColor={colors.muted} keyboardType="phone-pad" style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+            <TextInput testID="emergency-note" value={s.emergency.note} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, note: t } })} placeholder="Note, such as an allergy" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
+          </View>
+          <Row icon="card-account-details-outline" label="Show on the lock screen" sub="Readable without opening your records" right={<Switch testID="emergency-lock-switch" value={s.emergency.showOnLock} onValueChange={(v) => setSettings({ emergency: { ...s.emergency, showOnLock: v } })} {...sw} />} />
         </Section>
 
         <Section title="Accessibility">
@@ -233,7 +299,7 @@ export default function Settings() {
         <Section title="Your data">
           <Row first icon="database-outline" label="Local data" sub={`${db.vehicles.length} vehicles · ${db.fuel.length} fuel · ${db.txns.length} transactions · ${sizeKb} KB`} testID="settings-data-summary" />
           <Row icon="shield-lock-outline" label="Encrypted on this device" sub="AES-256-GCM · key held in the Android Keystore" testID="settings-encryption-row" />
-          <Row icon="export-variant" label="Export everything" sub="Password-protected backup you save yourself" testID="settings-export-button" onPress={() => setExportWarn(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row icon="export-variant" label="Export everything" sub={s.lastBackupAt ? `Last backup ${new Date(s.lastBackupAt).toLocaleString()}` : "No backup saved from this device yet"} testID="settings-export-button" onPress={() => setExportWarn(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row
             icon="backup-restore"
             label="Restore from backup"
@@ -287,6 +353,38 @@ export default function Settings() {
             } else {
               setPinErr("PINs didn't match");
               setPinFlow("enter");
+              setPinKey((k) => k + 1);
+            }
+          }}
+        />
+      </Sheet>
+
+      <Sheet visible={!!decoyFlow} onClose={() => setDecoyFlow(null)} title={decoyFlow === "confirm" ? "Confirm decoy PIN" : "Choose a decoy PIN"} testID="settings-decoy-sheet">
+        <T muted style={{ marginBottom: 12 }}>Use a different PIN from your real one. Entering it on the lock screen opens the sample workspace.</T>
+        <PinPad
+          testID="settings-decoy-pin"
+          resetKey={pinKey}
+          error={pinErr}
+          onComplete={async (p) => {
+            if (decoyFlow === "enter") {
+              if ((await verifyPin(p)) === "primary") {
+                setPinErr("That is your real PIN. Choose another.");
+                setPinKey((k) => k + 1);
+                return;
+              }
+              setDecoyFirst(p);
+              setPinErr(undefined);
+              setDecoyFlow("confirm");
+              setPinKey((k) => k + 1);
+            } else if (p === decoyFirst) {
+              await setDecoyPin(p);
+              await prepareDecoy();
+              setDecoyOn(true);
+              setDecoyFlow(null);
+              toast("Decoy PIN saved", "shield-lock-outline");
+            } else {
+              setPinErr("PINs didn't match");
+              setDecoyFlow("enter");
               setPinKey((k) => k + 1);
             }
           }}
@@ -352,6 +450,7 @@ export default function Settings() {
               const name = await exportBackup(db, exportEncrypt ? exportPw : undefined);
               setExportWarn(false);
               setExportPw("");
+              setSettings({ lastBackupAt: new Date().toISOString(), backupNudged: true });
               toast(`Backup ready · ${name}`, "check-circle-outline");
             } catch {
               toast("Export failed", "alert-circle-outline");
@@ -472,6 +571,13 @@ export default function Settings() {
       </Sheet>
 
       <Sheet visible={!!diag} onClose={() => setDiag(null)} title="Diagnostics" testID="diagnostics-sheet">
+        {dataHealth(db).length ? (
+          <View style={{ marginBottom: 12 }} testID="diagnostics-health">
+            {dataHealth(db).map((issue) => (
+              <T key={issue.id} style={{ marginBottom: 6 }}>{issue.title}. {issue.detail}</T>
+            ))}
+          </View>
+        ) : <T muted style={{ marginBottom: 12 }}>No duplicate expenses or backwards odometer readings.</T>}
         <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
           {([
             ["Encrypted document", `${sizeKb} KB`],
@@ -497,16 +603,14 @@ export default function Settings() {
       </Sheet>
 
       <Sheet visible={confirmReset} onClose={() => setConfirmReset(false)} title="Erase everything?" testID="reset-sheet">
-        <T style={{ marginBottom: 16 }}>This removes every vehicle, transaction, subscription, link and setting from this device. Export a backup first if you might want it back.</T>
+        <T style={{ marginBottom: 16 }}>{session === "real" ? "This removes every profile on this device, including the PIN. Export a backup first if you might want it back." : "This removes the records in the workspace you have open. Export a backup first if you might want them back."}</T>
         <Button
           kind="danger"
           icon="delete-forever-outline"
           label="Erase all data"
           testID="reset-confirm-button"
           onPress={async () => {
-            await clearPin();
-            await clearFailures();
-            replace(emptyDB());
+            await wipeVisible();
             setConfirmReset(false);
           }}
         />

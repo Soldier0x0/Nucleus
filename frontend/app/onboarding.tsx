@@ -11,17 +11,20 @@ import { withSampleData } from "@/src/core/sample";
 import { biometricAvailable, setPin } from "@/src/core/security";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Segmented, T } from "@/src/components/ui";
 import { PinPad } from "@/src/components/PinPad";
+import { Mark } from "@/src/components/Mark";
+import { setDecoyPin, verifyPin } from "@/src/core/security";
 
 const STEPS = 4;
 
 export default function Onboarding() {
-  const { db, setSettings, update } = useStore();
+  const { db, setSettings, update, prepareDecoy } = useStore();
   const s = db.settings;
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [pinStage, setPinStage] = useState<"off" | "enter" | "confirm" | "done">("off");
+  const [pinStage, setPinStage] = useState<"off" | "enter" | "confirm" | "done" | "decoy" | "decoyConfirm">("off");
+  const [decoyFirst, setDecoyFirst] = useState("");
   const [firstPin, setFirstPin] = useState("");
   const [pinErr, setPinErr] = useState<string>();
   const [pinKey, setPinKey] = useState(0);
@@ -46,11 +49,7 @@ export default function Onboarding() {
         <Animated.View key={step} entering={FadeInRight.duration(220)}>
           {step === 0 && (
             <View testID="onboarding-welcome">
-              <View style={styles.mosaic}>
-                {[colors.brandPrimary, colors.surfaceInverse, colors.surfaceTertiary, colors.brandSecondary, colors.surfaceTertiary, colors.brandPrimary, colors.surfaceInverse, colors.brandTertiary, colors.surfaceTertiary].map((c, i) => (
-                  <View key={i} style={[styles.tile, { backgroundColor: c, borderColor: colors.border }]} />
-                ))}
-              </View>
+              <Mark size={96} />
               <Eyebrow style={{ marginTop: 24 }}>Local-first personal platform</Eyebrow>
               <T v="title" style={{ fontSize: 34, marginTop: 6 }}>
                 Nucleus
@@ -159,10 +158,10 @@ export default function Onboarding() {
                   <Button label="Set a PIN" icon="lock-outline" testID="onboarding-set-pin-button" onPress={() => setPinStage("enter")} />
                 </View>
               )}
-              {(pinStage === "enter" || pinStage === "confirm") && (
+              {(pinStage === "enter" || pinStage === "confirm" || pinStage === "decoy" || pinStage === "decoyConfirm") && (
                 <View style={{ alignItems: "center" }}>
                   <T v="h2" style={{ marginBottom: 16 }}>
-                    {pinStage === "enter" ? "Choose a PIN" : "Confirm your PIN"}
+                    {pinStage === "enter" ? "Choose a PIN" : pinStage === "confirm" ? "Confirm your PIN" : pinStage === "decoy" ? "Choose a decoy PIN" : "Confirm the decoy PIN"}
                   </T>
                   <PinPad
                     testID="onboarding-pin"
@@ -174,14 +173,34 @@ export default function Onboarding() {
                         setPinStage("confirm");
                         setPinErr(undefined);
                         setPinKey((k) => k + 1);
-                      } else if (p === firstPin) {
+                      } else if (pinStage === "confirm") {
+                        if (p !== firstPin) {
+                          setPinErr("PINs didn't match — try again");
+                          setPinStage("enter");
+                          setPinKey((k) => k + 1);
+                          return;
+                        }
                         await setPin(p);
                         setSettings({ lockEnabled: true });
                         setBioOk(await biometricAvailable());
                         setPinStage("done");
+                      } else if (pinStage === "decoy") {
+                        if ((await verifyPin(p)) === "primary") {
+                          setPinErr("That is your real PIN. Choose another.");
+                          setPinKey((k) => k + 1);
+                          return;
+                        }
+                        setDecoyFirst(p);
+                        setPinErr(undefined);
+                        setPinStage("decoyConfirm");
+                        setPinKey((k) => k + 1);
+                      } else if (p === decoyFirst) {
+                        await setDecoyPin(p);
+                        await prepareDecoy();
+                        setPinStage("done");
                       } else {
                         setPinErr("PINs didn't match — try again");
-                        setPinStage("enter");
+                        setPinStage("decoy");
                         setPinKey((k) => k + 1);
                       }
                     }}
@@ -200,6 +219,12 @@ export default function Onboarding() {
                   {bioOk ? <Switch testID="onboarding-biometric-switch" value={s.biometricEnabled} onValueChange={(v) => setSettings({ biometricEnabled: v })} trackColor={{ true: colors.brandPrimary, false: colors.surfaceTertiary }} thumbColor={colors.surfaceSecondary} /> : null}
                 </View>
               )}
+              {pinStage === "done" ? (
+                <View style={{ marginTop: 12 }}>
+                  <Button kind="ghost" label="Add a decoy PIN" icon="shield-lock-outline" testID="onboarding-decoy-button" onPress={() => (setPinErr(undefined), setPinStage("decoy"))} />
+                  <T muted style={{ fontSize: 12, marginTop: 6 }}>A second PIN opens sample data. The screen looks the same, and it only works on the lock screen.</T>
+                </View>
+              ) : null}
             </View>
           )}
         </Animated.View>
@@ -213,8 +238,8 @@ export default function Onboarding() {
           </View>
         ) : (
           <>
-            <Button label="Explore with sample data" icon="flask-outline" testID="onboarding-finish-sample-button" onPress={() => finish(true)} disabled={pinStage === "enter" || pinStage === "confirm"} />
-            <Button kind="ghost" label={pinStage === "done" ? "Start with an empty workbench" : "Skip PIN · start empty"} testID="onboarding-finish-empty-button" onPress={() => finish(false)} disabled={pinStage === "enter" || pinStage === "confirm"} />
+            <Button label="Explore with sample data" icon="flask-outline" testID="onboarding-finish-sample-button" onPress={() => finish(true)} disabled={pinStage === "enter" || pinStage === "confirm" || pinStage === "decoy" || pinStage === "decoyConfirm"} />
+            <Button kind="ghost" label={pinStage === "done" ? "Start with an empty workbench" : "Skip PIN · start empty"} testID="onboarding-finish-empty-button" onPress={() => finish(false)} disabled={pinStage === "enter" || pinStage === "confirm" || pinStage === "decoy" || pinStage === "decoyConfirm"} />
           </>
         )}
       </View>
@@ -224,8 +249,6 @@ export default function Onboarding() {
 
 const styles = StyleSheet.create({
   progress: { flexDirection: "row", gap: 6, marginBottom: 4 },
-  mosaic: { flexDirection: "row", flexWrap: "wrap", width: 132, gap: 6, marginTop: 12 },
-  tile: { width: 40, height: 40, borderRadius: radius.sm, borderWidth: 1 },
   ico: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   modRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: radius.lg, borderWidth: 1, marginBottom: 10 },
 });

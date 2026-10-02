@@ -17,6 +17,12 @@
 
 name: Android APK
 
+# One build per branch. A newer push cancels the run that is already going,
+# so a follow-up commit does not compile a second APK beside the first.
+concurrency:
+  group: nucleus-android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:

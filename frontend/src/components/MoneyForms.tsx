@@ -10,6 +10,7 @@ import { Sheet } from "./Sheet";
 import { DateField, Field } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented } from "./ui";
 import { useToast } from "./Toast";
+import { PhotoNote } from "./PhotoPick";
 
 /** Quick entry: custom number pad + category chips, no system keyboard needed. */
 export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -21,6 +22,7 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const recentCat = db.recents.lastCategory;
   const [cat, setCat] = useState(recentCat && EXPENSE_CATEGORIES.includes(recentCat) ? recentCat : "Food");
   const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState<string | undefined>();
   const [date, setDate] = useState(todayISO());
   const cats = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   // most-used categories first
@@ -38,10 +40,11 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const value = parseNum(amt);
   const save = () => {
     if (!(value > 0)) return;
-    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category: cat, date, note: note.trim() || undefined }), recents: { ...d.recents, lastCategory: cat } }));
+    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category: cat, date, note: note.trim() || undefined, photo }), recents: { ...d.recents, lastCategory: cat } }));
     toast(`${type === "expense" ? "Expense" : "Income"} ${money(value, db.settings.currency)} saved`, "check-circle-outline");
     setAmt("");
     setNote("");
+    setPhoto(undefined);
     onClose();
   };
 
@@ -69,6 +72,7 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
         ))}
       </View>
       <Field label="Note (optional)" testID="txn-note-input" value={note} onChangeText={setNote} placeholder="What was it for?" />
+      {type === "expense" ? <PhotoNote uri={photo} onChange={setPhoto} testID="txn-photo" /> : null}
       <DateField label="Date" value={date} onChange={(v) => setDate(v ?? todayISO())} testID="txn-date" />
     </Sheet>
   );

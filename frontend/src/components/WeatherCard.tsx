@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useTheme } from "@/src/theme";
+import { useStore } from "@/src/core/store";
 import { useOnline } from "@/src/core/useOnline";
 import { Place } from "@/src/core/types";
 import { Weather, weather, wmo } from "@/src/core/online";
@@ -9,7 +10,10 @@ import { Card, Eyebrow, Icon, T } from "./ui";
 /** Weather card: renders only from Online data or cache. Credits Open-Meteo per its licence. */
 export function WeatherCard({ place, testID = "weather-card", from, to }: { place: Place; testID?: string; from?: string; to?: string }) {
   const { online, log } = useOnline();
+  const { db } = useStore();
   const { colors } = useTheme();
+  const unit = db.settings.tempUnit;
+  const show = (c?: number) => (c == null || Number.isNaN(c) ? "—" : `${Math.round(unit === "F" ? (c * 9) / 5 + 32 : c)}°${unit}`);
   const [w, setW] = useState<{ w: Weather; at: string; stale: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -35,8 +39,8 @@ export function WeatherCard({ place, testID = "weather-card", from, to }: { plac
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
         <Icon name={icon} size={40} color={colors.brandPrimary} />
         <View style={{ flex: 1 }}>
-          <T v="monoXl" testID={`${testID}-temp`}>{Math.round(w.w.current.temp)}°C</T>
-          <T muted numberOfLines={1}>{label} · wind {Math.round(w.w.current.wind)} km/h{w.w.aqi !== undefined ? ` · AQI ${w.w.aqi}` : ""}</T>
+          <T v="monoXl" testID={`${testID}-temp`}>{show(w.w.current.temp)}</T>
+          <T muted numberOfLines={2}>{label}{w.w.current.feels != null ? ` · feels ${show(w.w.current.feels)}` : ""} · wind {Math.round(w.w.current.wind)} km/h{w.w.aqi !== undefined ? ` · AQI ${w.w.aqi}` : ""}</T>
         </View>
         {w.w.sunrise ? (
           <View style={{ alignItems: "flex-end" }}>
@@ -51,8 +55,8 @@ export function WeatherCard({ place, testID = "weather-card", from, to }: { plac
             <View key={d.date} style={{ flex: 1, alignItems: "center", paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surfaceTertiary }}>
               <T muted style={{ fontSize: 10 }}>{new Date(d.date).toLocaleDateString("en-US", { weekday: "short" })}</T>
               <Icon name={wmo(d.code)[1]} size={18} />
-              <T v="mono" style={{ fontSize: 11 }}>{Math.round(d.max)}°</T>
-              <T v="mono" muted style={{ fontSize: 10 }}>{Math.round(d.min)}°</T>
+              <T v="mono" style={{ fontSize: 11 }}>{show(d.max)}</T>
+              <T v="mono" muted style={{ fontSize: 10 }}>{show(d.min)}</T>
             </View>
           ))}
         </View>

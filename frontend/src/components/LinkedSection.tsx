@@ -30,6 +30,12 @@ export function describeRef(db: ReturnType<typeof useStore>["db"], ref: Ref) {
       return { icon: "filmstrip-box-multiple", title: e.title, sub: `Shelf · ${e.kind}`, route: `/media` };
     case "note":
       return { icon: "note-text-outline", title: e.title || "Untitled note", sub: `Note · ${fmtDate(e.updatedAt.slice(0, 10))}`, route: `/notes?id=${e.id}` };
+    case "paper":
+      return { icon: "file-document-outline", title: e.title, sub: "Paper", route: "/papers" };
+    default: {
+      const unknown: never = ref.kind;
+      return unknown;
+    }
   }
 }
 

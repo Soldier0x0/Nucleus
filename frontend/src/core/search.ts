@@ -91,6 +91,20 @@ export function search(db: DB, q: string): SearchGroup[] {
       });
   }
 
+  if (on("papers")) {
+    const papers = db.papers.filter((p) => has(p.title, p.number, p.kind, p.note));
+    const people = db.people.filter((p) => has(p.name, p.note));
+    if (papers.length || people.length)
+      groups.push({
+        title: "Papers",
+        summary: `${papers.length} document${papers.length === 1 ? "" : "s"}`,
+        items: [
+          ...papers.slice(0, 6).map((p) => ({ id: p.id, title: p.title, subtitle: [p.kind, p.expiry].filter(Boolean).join(" · "), icon: "file-document-outline", route: "/papers" })),
+          ...people.slice(0, 4).map((p) => ({ id: p.id, title: p.name, subtitle: "Household", icon: "account-outline", route: "/papers" })),
+        ],
+      });
+  }
+
   if (on("rules")) {
     const rs = db.rules.filter((r) => has(r.name, r.trigger.kind));
     if (rs.length)

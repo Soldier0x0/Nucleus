@@ -50,7 +50,7 @@ export function ModuleGate({ id, name, icon = "lock-outline" }: { id: ModuleId; 
         error={error}
         onBiometric={bio ? tryBio : undefined}
         onComplete={async (pin) => {
-          if (await verifyPin(pin)) setOpen(true);
+          if ((await verifyPin(pin)) === "primary") setOpen(true);
           else {
             setError("Incorrect PIN");
             setAttempt((a) => a + 1);

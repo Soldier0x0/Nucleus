@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import * as Device from "expo-device";
 import * as Battery from "expo-battery";
-import { Accelerometer, Gyroscope, Magnetometer } from "expo-sensors";
+import { Accelerometer, Barometer, Gyroscope, LightSensor, Magnetometer } from "expo-sensors";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { exportData } from "@/src/core/exports";
@@ -32,6 +32,11 @@ export default function Lab() {
   const [history, setHistory] = useState<number[]>([]);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [recording, setRecording] = useState<{ t: number; x: number; y: number; z: number }[] | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [lux, setLux] = useState<number | null>(null);
+  const [hpa, setHpa] = useState<number | null>(null);
+  const [lightOk, setLightOk] = useState<boolean | null>(null);
+  const [baroOk, setBaroOk] = useState<boolean | null>(null);
   const [battery, setBattery] = useState<{ level: number; state: number; saver: boolean } | null>(null);
   const [touches, setTouches] = useState<{ x: number; y: number }[]>([]);
   const [fill, setFill] = useState<string | null>(null);
@@ -61,6 +66,44 @@ export default function Lab() {
       sub?.remove();
     };
   }, [sensor]);
+
+  useEffect(() => {
+    if (!recording) return;
+    const started = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Date.now() - started), 250);
+    return () => clearInterval(id);
+  }, [recording === null]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setLightOk(false);
+      setBaroOk(false);
+      return;
+    }
+    let alive = true;
+    let lightSub: { remove: () => void } | undefined;
+    let baroSub: { remove: () => void } | undefined;
+    (async () => {
+      const [light, baro] = await Promise.all([LightSensor.isAvailableAsync().catch(() => false), Barometer.isAvailableAsync().catch(() => false)]);
+      if (!alive) return;
+      setLightOk(light);
+      setBaroOk(baro);
+      if (light) {
+        LightSensor.setUpdateInterval(500);
+        lightSub = LightSensor.addListener(({ illuminance }) => alive && setLux(illuminance));
+      }
+      if (baro) {
+        Barometer.setUpdateInterval(1000);
+        baroSub = Barometer.addListener(({ pressure }) => alive && setHpa(pressure));
+      }
+    })();
+    return () => {
+      alive = false;
+      lightSub?.remove();
+      baroSub?.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -126,6 +169,21 @@ export default function Lab() {
           )}
         </Card>
 
+        <Card testID="lab-environment-card">
+          <Eyebrow>Light and air pressure</Eyebrow>
+          <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+            <View style={{ flex: 1 }}>
+              <T muted>Light</T>
+              <T v="monoLg" testID="lab-lux">{lightOk === false ? "Not available" : lux === null ? "—" : `${num(lux, 0)} lux`}</T>
+            </View>
+            <View style={{ flex: 1 }}>
+              <T muted>Barometer</T>
+              <T v="monoLg" testID="lab-pressure">{baroOk === false ? "Not available" : hpa === null ? "—" : `${num(hpa, 0)} hPa`}</T>
+            </View>
+          </View>
+          <T muted style={{ fontSize: 12, marginTop: 8 }}>These stay on only while Phone Lab is open. A phone without the sensor says so.</T>
+        </Card>
+
         <Card testID="lab-sensor-card">
           <Eyebrow>Sensors · live only while this screen is open</Eyebrow>
           <View style={{ marginHorizontal: -16, marginTop: 4 }}>
@@ -162,7 +220,7 @@ export default function Lab() {
               <View style={{ flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
                 <Button
                   small
-                  label={recording ? `Stop · ${recording.length} samples` : "Record samples"}
+                  label={recording ? `Stop · ${String(Math.floor(elapsed / 60000)).padStart(2, "0")}:${String(Math.floor(elapsed / 1000) % 60).padStart(2, "0")} · ${recording.length}` : "Record samples"}
                   icon={recording ? "stop-circle-outline" : "record-circle-outline"}
                   testID="lab-record-button"
                   onPress={() => {
@@ -219,7 +277,11 @@ export default function Lab() {
         <T muted style={{ fontSize: 12 }}>Nothing here is stored or sent. Sensors stop the moment you leave this screen, so Phone Lab costs no battery in the background.</T>
       </ScrollView>
 
-      {fill ? <Press testID="lab-fill-overlay" onPress={() => setFill(null)} style={[StyleSheet.absoluteFill, { backgroundColor: fill }]} /> : null}
+      {fill ? (
+        <Press testID="lab-fill-overlay" onPress={() => setFill(null)} style={[StyleSheet.absoluteFill, { backgroundColor: fill, alignItems: "center", justifyContent: "flex-end", paddingBottom: insets.bottom + 28 }]}>
+          <T color={fill === "#FFFFFF" || fill === "#00FF00" ? "#111418" : "#FFFFFF"}>Tap to return</T>
+        </Press>
+      ) : null}
       <ModuleGate id="lab" name="Phone Lab" icon="chip" />
       {db.settings.onboarded ? null : null}
     </View>

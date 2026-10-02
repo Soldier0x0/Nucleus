@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo } from "react";
+import * as Linking from "expo-linking";
 import { useColorScheme, View } from "react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -11,7 +12,9 @@ import { buildTheme, ThemeContext } from "@/src/theme";
 import { StoreProvider, useStore } from "@/src/core/store";
 import { ToastProvider } from "@/src/components/Toast";
 import { LockGate } from "@/src/components/LockGate";
+import { BackupNudge } from "@/src/components/BackupNudge";
 import { UnreadableData } from "@/src/components/UnreadableData";
+import { pushCaptureText } from "@/src/core/captureBus";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -37,7 +40,20 @@ function Themed({ children }: { children: React.ReactNode }) {
   );
 }
 
+function takeSharedUrl(url: string | null) {
+  if (!url || !url.includes("capture")) return;
+  const parsed = Linking.parse(url);
+  const text = parsed.queryParams?.text;
+  if (typeof text === "string" && text.trim()) pushCaptureText(text);
+}
+
 export default function RootLayout() {
+  useEffect(() => {
+    Linking.getInitialURL().then(takeSharedUrl).catch(() => {});
+    const sub = Linking.addEventListener("url", ({ url }) => takeSharedUrl(url));
+    return () => sub.remove();
+  }, []);
+
   // Fonts + icon font are pre-warmed here so icons render on first paint (incl. Expo Go Android).
   const [loaded, error] = useFonts({
     "Inter-Regular": require("../assets/fonts/Inter-Regular.ttf"),
@@ -58,6 +74,7 @@ export default function RootLayout() {
             <Themed>
               <ToastProvider>
                 <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
+                <BackupNudge />
                 <LockGate />
               </ToastProvider>
             </Themed>

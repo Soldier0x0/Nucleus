@@ -37,7 +37,8 @@ export function BoardSheet({ board, onClose }: { board: Board | null; onClose: (
 
   return (
     <Sheet visible onClose={onClose} title={board ? "Edit board" : "New board"} testID="board-sheet" footer={<Button label={board ? "Save board" : "Create board"} icon="check" testID="board-save-button" onPress={save} />}>
-      <Field label="Board name" testID="board-name-input" value={name} onChangeText={setName} placeholder="Road trip, Month end…" />
+      <Field label="Board name" testID="board-name-input" value={name} onChangeText={setName} placeholder="Goa trip, Month end…" />
+      <T muted style={{ fontSize: 12, marginTop: -4, marginBottom: 8 }}>A board is temporary. Home stays as it is until you switch back.</T>
       <Eyebrow style={{ marginBottom: 8 }}>Icon</Eyebrow>
       <View style={{ flexDirection: "row", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         {ICONS.map((i) => (

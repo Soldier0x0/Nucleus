@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
 import { radius, useTheme } from "@/src/theme";
@@ -44,6 +45,7 @@ export default function Attention() {
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: sp.lg, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <Eyebrow>Across all modules</Eyebrow>
         <T v="title" testID="attention-title">Attention</T>
+        {items.length ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Swipe right to snooze, left to mark done. The buttons under each item do the same.</T> : null}
         <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
           {GROUPS.map((g) => (
             <View key={g.sev} style={[styles.count, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID={`attention-count-${g.sev}`}>
@@ -68,6 +70,21 @@ export default function Attention() {
                 </Eyebrow>
                 {list.map((it, i) => (
                   <Animated.View key={it.key} entering={FadeInDown.delay(i * 40)} layout={LinearTransition}>
+                    <Swipeable
+                      overshootLeft={false}
+                      overshootRight={false}
+                      renderLeftActions={() => (
+                        <View style={[styles.swipe, { backgroundColor: colors.warning }]}>
+                          <T v="label">Snooze</T>
+                        </View>
+                      )}
+                      renderRightActions={() => (
+                        <View style={[styles.swipe, { backgroundColor: colors.success }]}>
+                          <T v="label" color={colors.onSuccess}>Done</T>
+                        </View>
+                      )}
+                      onSwipeableOpen={(direction) => mark(it, direction === "right" ? "done" : "snoozed")}
+                    >
                     <Press testID={`attention-item-${it.key}`} onPress={() => setOpen(it)} style={[styles.item, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderLeftColor: g.sev === "urgent" ? colors.error : g.sev === "upcoming" ? colors.warning : colors.info }]}>
                       <View style={{ flexDirection: "row", gap: 12 }}>
                         <View style={[styles.ic, { backgroundColor: colors.surfaceTertiary }]}>
@@ -75,8 +92,8 @@ export default function Attention() {
                         </View>
                         <View style={{ flex: 1 }}>
                           <StatusBadge severity={it.severity} />
-                          <T v="label" style={{ marginTop: 6 }}>{it.title}</T>
-                          <T muted style={{ fontSize: 13 }}>{it.subtitle}</T>
+                          <T v="label" style={{ marginTop: 6 }} numberOfLines={2}>{it.title}</T>
+                          <T muted style={{ fontSize: 13 }} numberOfLines={2}>{it.subtitle}</T>
                         </View>
                       </View>
                       <View style={{ flexDirection: "row", gap: 6, marginTop: 12 }}>
@@ -97,6 +114,7 @@ export default function Attention() {
                         </Press>
                       </View>
                     </Press>
+                    </Swipeable>
                   </Animated.View>
                 ))}
               </View>
@@ -142,4 +160,5 @@ const styles = StyleSheet.create({
   item: { borderWidth: 1, borderLeftWidth: 4, borderRadius: radius.lg, padding: 14, marginBottom: 10 },
   ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   act: { flexDirection: "row", alignItems: "center", gap: 4, height: 36, paddingHorizontal: 12, borderRadius: radius.md },
+  swipe: { justifyContent: "center", paddingHorizontal: 18, borderRadius: radius.lg, marginBottom: 10 },
 });

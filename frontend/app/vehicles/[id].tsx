@@ -15,6 +15,9 @@ import { FuelSheet, KIND_ICON, ServiceSheet } from "@/src/components/VehicleForm
 import { WhySheet } from "@/src/components/WhySheet";
 import { Sheet } from "@/src/components/Sheet";
 import { LinkedSection } from "@/src/components/LinkedSection";
+import { VehicleArt } from "@/src/components/VehicleArt";
+import { VehicleCare } from "@/src/components/VehicleCare";
+import { fuelLabel, vehicleBody } from "@/src/core/life";
 
 export default function VehicleDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -76,6 +79,12 @@ export default function VehicleDetail() {
         }
       />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 96, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        <Card testID="vehicle-art">
+          <View style={{ alignItems: "center" }}>
+            <VehicleArt body={vehicleBody(v)} width={220} color={colors.onSurface} accent={colors.brandPrimary} />
+            <T muted style={{ fontSize: 12 }}>{[v.make, v.model, fuelLabel(v)].filter(Boolean).join(" · ")}</T>
+          </View>
+        </Card>
         <Card testID="vehicle-service-card">
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Eyebrow style={{ flex: 1 }}>Since last service</Eyebrow>
@@ -116,6 +125,7 @@ export default function VehicleDetail() {
             {expiry("PUC", v.pucExpiry, "vehicle-puc")}
           </View>
         </Card>
+        <VehicleCare vehicle={v} />
 
         <Card testID="vehicle-mileage-chart">
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>

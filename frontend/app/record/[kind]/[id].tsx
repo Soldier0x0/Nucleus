@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ScrollView, View } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
@@ -13,7 +14,7 @@ import { LinkedSection } from "@/src/components/LinkedSection";
 import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
 
-const TITLES: Record<EntityKind, string> = { vehicle: "Vehicle", fuel: "Fuel entry", service: "Service record", txn: "Transaction", subscription: "Subscription", trip: "Trip", appliance: "Appliance", note: "Note", media: "Shelf item" };
+const TITLES: Record<EntityKind, string> = { vehicle: "Vehicle", fuel: "Fuel entry", service: "Service record", txn: "Transaction", subscription: "Subscription", trip: "Trip", appliance: "Appliance", note: "Note", media: "Shelf item", paper: "Paper" };
 
 /** Generic record view: fields + relationships. Every entity kind gets this for free. */
 export default function RecordDetail() {
@@ -53,7 +54,7 @@ export default function RecordDetail() {
     headline = e.name;
     fields = [["Amount", money(e.amount, cur)], ["Cycle", e.cycle], ["Next renewal", fmtDate(e.nextRenewal)], ["Category", e.category], ["Status", e.active ? "Active" : "Paused"]];
   } else {
-    router.replace((kind === "vehicle" ? `/vehicles/${id}` : kind === "trip" ? `/travel/${id}` : kind === "note" ? `/notes?id=${id}` : kind === "media" ? "/media" : "/home") as any);
+    router.replace((kind === "vehicle" ? `/vehicles/${id}` : kind === "trip" ? `/travel/${id}` : kind === "note" ? `/notes?id=${id}` : kind === "media" ? "/media" : kind === "paper" ? "/papers" : "/home") as any);
     return null;
   }
 
@@ -73,6 +74,7 @@ export default function RecordDetail() {
             </View>
           ))}
         </View>
+        {kind === "txn" && e.photo ? <Image source={{ uri: e.photo }} style={{ width: "100%", height: 180, borderRadius: radius.lg, marginTop: 12 }} contentFit="cover" /> : null}
         <LinkedSection refTo={{ kind, id }} />
       </ScrollView>
       <Sheet visible={del} onClose={() => setDel(false)} title="Delete this record?" testID="record-delete-sheet">
