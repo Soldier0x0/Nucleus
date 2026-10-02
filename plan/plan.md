@@ -295,8 +295,7 @@ Everything in "Core features" above:
 ### Phase 2: Installed-app extras
 - Android home-screen widgets in small, medium and large sizes (countdown, budget, trip, maintenance, battery).
 - Home-screen shortcuts that open a favourite tool or Board.
-- An emergency card that can be read on the lock screen.
-- These need an installed app build and cannot run in the Expo Go preview.
+- These need an installed app build and cannot run in the Expo Go preview. The emergency card on Nucleus's own lock screen is already in the app (see Life desk).
 
 ### Phase 3: Ecosystem
 - Shareable "packs": bundles of templates, custom tools, checklists and rules, shared by file or QR code, with permissions you approve one at a time.
@@ -334,7 +333,7 @@ These use records you already keep. None of them call a model.
 ## Assumptions
 - **Building the APK:**
   - Android APK/AAB builds are made through the platform's **Publish** button: Deploy → Generate Android build. No developer setup is needed.
-  - Automatic builds through GitHub Actions are **not** included. They need signing keys and build tooling maintained outside the platform.
+  - A GitHub Actions workflow builds an arm64 APK. With no release secrets it is signed with the same debug keystore every time, so a newer APK installs over the current one. A private release keystore is optional and, once used, replaces that key.
   - The code can still be saved to GitHub with "Save to GitHub".
 - **App identity:**
   - The app's internal Android/iOS ID changes to match the new name (com.nucleus.app).
