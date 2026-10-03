@@ -1,8 +1,8 @@
 # Changelog
 
-Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. When a release changes the app, add that version as a new `## v0.N` section at the top. Leave older sections as they were published.
+Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. Add that version as a new `## v0.N` section when its pull request is ready. One pull request documents one version, the one it publishes. Do not add notes for a later version to keep the next build from failing.
 
-The Android workflow builds the APK either way. It publishes a GitHub Release only when this file has a section for the version being published, and that section describes an app change. A later version does not need a section yet. Notes that only say the app is unchanged are not published.
+Each section is short bullet points of what that version added or changed. A release is published only when a green APK exists and this file has those points for that one version. A missing section does not fail the build and does not publish. A note that only says the app is the same as the previous one is not enough. A change that is only docs, this file, or the README does not build an APK.
 
 ## v0.4
 

@@ -7,9 +7,15 @@
 # nucleus-v0.1.apk, nucleus-v0.2.apk, and so on. The version stays below 1.
 # Download that file from Releases. It is the APK, not the Actions artifact zip.
 # Notes come from the CHANGELOG.md section for the version being published.
-# A missing section for a later version does not fail the build and does not
-# publish. Notes that say the app is unchanged do not publish. Pull requests
-# build the APK and do not create a release.
+# That section must be short bullet points of what the version added or changed.
+# One pull request publishes one version. A section for any other unpublished
+# version fails the job. A missing section for a later version does not fail
+# the build and does not publish.
+#
+# The job stays on the free GitHub runner. It reuses the Gradle cache between
+# runs. A docs, changelog, or README-only change does not compile. A green
+# pull-request APK for the same git tree is what gets published, so the merge
+# does not compile that tree a second time.
 # The APK contains only arm64-v8a, which is what current phones use.
 #
 # Signing:
@@ -37,6 +43,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   apk:
@@ -49,7 +56,72 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
+      - name: Choose the next version under 1.0
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")' 2>/dev/null || true)
+          # shellcheck disable=SC2086
+          name=$(node .github/scripts/next-android-version.js $tags)
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${name}" >> "$GITHUB_OUTPUT"
+          echo "Next release is v${name}"
+          # One release, one version. Fail before any compile.
+          # shellcheck disable=SC2086
+          node .github/scripts/release-notes.js --only-this-version "v${name}" $tags
+          node .github/scripts/release-notes.js --if-ready "v${name}" > release-notes.md
+          if [ -s release-notes.md ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to compile
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          tree=$(git rev-parse 'HEAD^{tree}')
+          echo "tree=${tree}" >> "$GITHUB_OUTPUT"
+          name=$(node .github/scripts/apk-plan.js name "$tree")
+          echo "artifact_name=${name}" >> "$GITHUB_OUTPUT"
+          files=/tmp/changed-files.txt
+          : > "$files"
+          if [ "$EVENT" = "pull_request" ] && [ -n "$BASE" ]; then
+            git fetch --no-tags origin "$BASE"
+            git diff --name-only "$BASE" HEAD > "$files"
+          elif [ "$EVENT" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            git fetch --no-tags origin "$BEFORE" || true
+            if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              git diff --name-only "$BEFORE" HEAD > "$files"
+            fi
+          fi
+          artifact_ready=false
+          run_id=
+          if listing=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=20" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[].workflow_run.id'); then
+            while read -r rid; do
+              [ -n "${rid:-}" ] || continue
+              conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${rid}" --jq .conclusion || true)
+              if [ "$conclusion" = "success" ]; then
+                artifact_ready=true
+                run_id="$rid"
+                break
+              fi
+            done < <(printf '%s\n' "$listing")
+          else
+            echo "Could not look up an existing APK. This run will compile if the change needs one."
+          fi
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+          node .github/scripts/apk-plan.js plan --event "$EVENT" --files "$files" --artifact-ready "$artifact_ready"
+
       - name: Set up Node
+        if: steps.plan.outputs.build == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -57,12 +129,14 @@ jobs:
           cache-dependency-path: frontend/yarn.lock
 
       - name: Set up Java
+        if: steps.plan.outputs.build == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Install the SDK packages this app compiles against
+        if: steps.plan.outputs.build == 'true'
         run: |
           SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
           if [ -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
@@ -79,26 +153,18 @@ jobs:
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
 
       - name: Set up Gradle
+        if: steps.plan.outputs.build == 'true'
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
 
       - name: Install JavaScript dependencies
+        if: steps.plan.outputs.build == 'true'
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
-      - name: Choose the next version under 1.0
-        id: version
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")' 2>/dev/null || true)
-          # shellcheck disable=SC2086
-          name=$(node .github/scripts/next-android-version.js $tags)
-          echo "name=${name}" >> "$GITHUB_OUTPUT"
-          echo "tag=v${name}" >> "$GITHUB_OUTPUT"
-          echo "Next release is v${name}"
-
       - name: Set the Android version
+        if: steps.plan.outputs.build == 'true'
         working-directory: frontend
         env:
           ANDROID_VERSION_CODE: ${{ github.run_number }}
@@ -106,10 +172,12 @@ jobs:
         run: node ../.github/scripts/stamp-android-version.js
 
       - name: Generate the Android project
+        if: steps.plan.outputs.build == 'true'
         working-directory: frontend
         run: npx expo prebuild --platform android --no-install
 
       - name: Configure release signing
+        if: steps.plan.outputs.build == 'true'
         working-directory: frontend
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -128,15 +196,28 @@ jobs:
           echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release.keystore
           cat ../.github/android-release-signing.gradle >> android/app/build.gradle
 
+      - name: Turn on the Gradle build cache
+        if: steps.plan.outputs.build == 'true'
+        working-directory: frontend/android
+        run: |
+          cat >> gradle.properties <<'EOF'
+          org.gradle.caching=true
+          org.gradle.parallel=true
+          org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+          android.lint.checkReleaseBuilds=false
+          EOF
+
       - name: Build the release APK
+        if: steps.plan.outputs.build == 'true'
         working-directory: frontend/android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a
+        run: ./gradlew assembleRelease --build-cache --parallel --stacktrace -PreactNativeArchitectures=arm64-v8a
 
       - name: Collect the APK
+        if: steps.plan.outputs.build == 'true'
         run: |
           found=$(find frontend/android/app/build/outputs/apk/release -type f -name '*.apk' | wc -l)
           if [ "$found" -ne 1 ]; then
@@ -148,28 +229,29 @@ jobs:
           ls -lh nucleus.apk
 
       - name: Upload the APK
+        if: steps.plan.outputs.build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: nucleus-apk
+          name: ${{ steps.plan.outputs.artifact_name }}
           path: nucleus.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Write the release notes
-        id: notes
+      - name: Download the APK from the green build
+        if: steps.plan.outputs.reuse == 'true'
         env:
-          TAG: ${{ steps.version.outputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ steps.plan.outputs.run_id }}
+          ARTIFACT_NAME: ${{ steps.plan.outputs.artifact_name }}
         run: |
           set -euo pipefail
-          node .github/scripts/release-notes.js --if-ready "$TAG" > release-notes.md
-          if [ -s release-notes.md ]; then
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          fi
+          gh run download "$RUN_ID" -n "$ARTIFACT_NAME" -D apk-out
+          find apk-out -type f -name '*.apk' -exec cp {} nucleus.apk \;
+          test -s nucleus.apk
+          ls -lh nucleus.apk
 
       - name: Publish the APK as a GitHub release
-        if: steps.notes.outputs.publish == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        if: steps.version.outputs.publish == 'true' && steps.plan.outputs.have_apk == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -177,7 +259,7 @@ jobs:
           set -euo pipefail
           cp nucleus.apk "nucleus-${TAG}.apk"
           test -s release-notes.md
-          # Target the commit that was checked out and built. Without this,
-          # gh release create tags the default branch instead.
+          # Target the commit that was checked out. Without this, gh release
+          # create tags the default branch instead. This is the only tag created.
           gh release create "$TAG" "nucleus-${TAG}.apk" --title "$TAG" --target "$GITHUB_SHA" --latest --notes-file release-notes.md
           echo "Release ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"

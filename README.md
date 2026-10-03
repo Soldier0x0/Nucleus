@@ -24,6 +24,6 @@ If Android blocks the file, allow the browser or Files to install unknown apps, 
 
 ## Releases
 
-What each version is for is in [CHANGELOG.md](CHANGELOG.md). One section per published version, newest first. When a release changes the app, add that version’s section at the top and leave the older ones as they were published.
+What each version is for is in [CHANGELOG.md](CHANGELOG.md). One section per published version, newest first. One pull request documents only the version it publishes, in short bullet points of what changed.
 
-The Android workflow builds the APK on every run. It publishes a GitHub Release from main when the changelog has notes for that version. It does not need a section for the version after that, and it does not publish a release whose notes say the app is unchanged.
+The Android workflow runs on the free GitHub runner. It reuses the Gradle cache between runs, and it skips the APK when a change is only docs, the changelog, or the README. A green pull-request build is the APK that gets published, so a merge does not compile that same tree again. A release still needs that green APK and honest notes for that one version. It does not need a section for the version after that.
