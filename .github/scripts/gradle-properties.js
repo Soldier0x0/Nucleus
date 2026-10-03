@@ -7,7 +7,7 @@ const fs = require("node:fs");
  * autolinking node process exits.
  */
 
-const SPEED_PROPERTIES = ["org.gradle.caching=true", "android.lint.checkReleaseBuilds=false"];
+const SPEED_PROPERTIES = ["org.gradle.caching=true", "org.gradle.parallel=true"];
 
 function withGradleSpeedProperties(contents) {
   const base = contents.endsWith("\n") || contents.length === 0 ? contents : `${contents}\n`;
