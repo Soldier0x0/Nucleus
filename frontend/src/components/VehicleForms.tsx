@@ -24,6 +24,8 @@ export function FuelSheet({ visible, onClose, vehicle }: { visible: boolean; onC
   const [date, setDate] = useState(todayISO());
   const [errs, setErrs] = useState<Record<string, string>>({});
   const s = db.settings;
+  const energy = vehicle.fuelType === "electric";
+  const qtyUnit = energy ? "kWh" : s.volumeUnit;
 
   // Fill in the missing value from the other two.
   const derived = useMemo(() => {
@@ -60,8 +62,8 @@ export function FuelSheet({ visible, onClose, vehicle }: { visible: boolean; onC
     <Sheet visible={visible} onClose={onClose} title={`Log fuel · ${vehicle.name}`} testID="fuel-sheet" footer={<Button label="Save fuel entry" icon="check" onPress={save} testID="fuel-save-button" />}>
       <Field numeric label="Odometer" unit={s.distanceUnit} testID="fuel-odometer-input" value={odo} onChangeText={setOdo} placeholder={String(odoNow)} error={errs.odo} hint={!isNaN(dist) && dist > 0 ? `+${num(dist, 0)} ${s.distanceUnit} since last reading` : `Last reading ${num(odoNow, 0)}`} />
       <View style={{ flexDirection: "row", gap: 10 }}>
-        <Field style={{ flex: 1 }} numeric label="Quantity" unit={s.volumeUnit} testID="fuel-litres-input" value={derived?.field === "litres" ? "" : litres} placeholder={derived?.field === "litres" ? num(derived.value, 2) : "0.00"} onChangeText={setLitres} error={errs.litres} />
-        <Field style={{ flex: 1 }} numeric label="Price" unit={`/${s.volumeUnit}`} testID="fuel-price-input" value={derived?.field === "price" ? "" : price} placeholder={derived?.field === "price" ? num(derived.value, 2) : "0.00"} onChangeText={setPrice} />
+        <Field style={{ flex: 1 }} numeric label={energy ? "Energy" : "Quantity"} unit={qtyUnit} testID="fuel-litres-input" value={derived?.field === "litres" ? "" : litres} placeholder={derived?.field === "litres" ? num(derived.value, 2) : "0.00"} onChangeText={setLitres} error={errs.litres} />
+        <Field style={{ flex: 1 }} numeric label="Price" unit={`/${qtyUnit}`} testID="fuel-price-input" value={derived?.field === "price" ? "" : price} placeholder={derived?.field === "price" ? num(derived.value, 2) : "0.00"} onChangeText={setPrice} />
       </View>
       <Field numeric label="Total paid" unit={s.currency} testID="fuel-total-input" value={derived?.field === "total" ? "" : total} placeholder={derived?.field === "total" ? num(derived.value, 2) : "0.00"} onChangeText={setTotal} error={errs.total} hint={derived ? `Auto-calculated ${derived.field}: ${num(derived.value, 2)} (shown in grey)` : "Enter any two — the third is calculated"} />
       <DateField label="Date" value={date} onChange={(v) => setDate(v ?? todayISO())} testID="fuel-date" />

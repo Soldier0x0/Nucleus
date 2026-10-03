@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TextInput, View } from "react-native";
 import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { parseCapture } from "@/src/core/capture";
+import { subscribeCapture } from "@/src/core/captureBus";
 import { Icon, IconButton, T } from "./ui";
 import { useToast } from "./Toast";
 
@@ -12,6 +13,7 @@ export function CaptureBar() {
   const { colors } = useTheme();
   const toast = useToast();
   const [q, setQ] = useState("");
+  useEffect(() => subscribeCapture(setQ), []);
   const r = parseCapture(db, q);
   const ok = r && !("error" in r);
   const save = () => {

@@ -4,9 +4,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ScreenCapture from "expo-screen-capture";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { biometricUnlock, clearFailures, clearPin, readBackoff, registerFailure, verifyPin } from "@/src/core/security";
-import { emptyDB } from "@/src/core/defaults";
+import { biometricUnlock, clearFailures, readBackoff, registerFailure, verifyPin } from "@/src/core/security";
 import { PinPad } from "./PinPad";
+import { Mark } from "./Mark";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
@@ -15,7 +15,7 @@ import { Sheet } from "./Sheet";
  * Renders above the navigator so navigation state is preserved while locked.
  */
 export function LockGate() {
-  const { db, replace } = useStore();
+  const { db, openReal, openDecoy, wipeDeviceData } = useStore();
   const s = db.settings;
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -51,11 +51,12 @@ export function LockGate() {
 
   const tryBio = useCallback(async () => {
     if (await biometricUnlock()) {
+      await openReal();
       await clearFailures();
       setLocked(false);
       setError(undefined);
     }
-  }, []);
+  }, [openReal]);
 
   useEffect(() => {
     if (locked && bioAllowed) tryBio();
@@ -87,14 +88,15 @@ export function LockGate() {
     );
 
   return (
-    <View testID="lock-screen" style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface, paddingTop: insets.top + 48, paddingBottom: insets.bottom + 16, alignItems: "center" }]}>
-      <View style={[styles.mark, { backgroundColor: colors.surfaceInverse }]}>
-        <Icon name="view-grid-outline" size={28} color={colors.onSurfaceInverse} />
+    <View testID="lock-screen" style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface, paddingTop: insets.top + 28, paddingBottom: insets.bottom + 8, paddingHorizontal: 24 }]}>
+      <View style={{ alignItems: "center" }}>
+        <Mark size={88} />
+        <Eyebrow style={{ marginTop: 14 }}>Nucleus is locked</Eyebrow>
+        <T v="title" style={{ marginTop: 4 }}>
+          {waitSec > 0 ? "Too many attempts" : "Enter your PIN"}
+        </T>
       </View>
-      <Eyebrow style={{ marginTop: 16 }}>Nucleus is locked</Eyebrow>
-      <T v="title" style={{ marginTop: 6, marginBottom: 28 }}>
-        {waitSec > 0 ? "Too many attempts" : "Enter your PIN"}
-      </T>
+      <View style={{ flex: 1, minHeight: 12 }} />
       {waitSec > 0 ? (
         <View style={{ alignItems: "center", gap: 8 }}>
           <T v="display" testID="lock-backoff-countdown">
@@ -111,7 +113,10 @@ export function LockGate() {
           error={error}
           onBiometric={bioAllowed ? tryBio : undefined}
           onComplete={async (pin) => {
-            if (await verifyPin(pin)) {
+            const match = await verifyPin(pin);
+            if (match === "primary" || match === "decoy") {
+              if (match === "decoy") await openDecoy();
+              else await openReal();
               await clearFailures();
               setLocked(false);
               setError(undefined);
@@ -124,19 +129,19 @@ export function LockGate() {
           }}
         />
       )}
-      <View style={{ flex: 1 }} />
+      <EmergencyStrip />
+      <View style={{ alignItems: "center", marginTop: 8 }}>
       <Button kind="ghost" small label="Forgot PIN?" testID="lock-forgot-button" onPress={() => setForgot(true)} />
+      </View>
       <Sheet visible={forgot} onClose={() => setForgot(false)} title="Forgot your PIN?" testID="forgot-sheet">
-        <T style={{ marginBottom: 16 }}>Nucleus has no account and no recovery server — that&apos;s what keeps your data private. The only way back in is to erase this device&apos;s Nucleus data. You can then restore from a backup file you exported earlier.</T>
+        <T style={{ marginBottom: 16 }}>Nucleus has no account and no recovery server. Erasing removes every profile on this device. You can then restore from a backup file you exported earlier.</T>
         <Button
           kind="danger"
           icon="delete-forever-outline"
           label="Erase all data and start over"
           testID="forgot-erase-button"
           onPress={async () => {
-            await clearPin();
-            await clearFailures();
-            replace(emptyDB());
+            await wipeDeviceData();
             setForgot(false);
             setLocked(false);
           }}
@@ -146,7 +151,23 @@ export function LockGate() {
   );
 }
 
+function EmergencyStrip() {
+  const { db } = useStore();
+  const { colors } = useTheme();
+  const card = db.settings.emergency;
+  if (!card?.showOnLock) return null;
+  const plate = (db.vehicles.find((v) => v.id === db.settings.defaultVehicleId) ?? db.vehicles[0])?.plate;
+  const bits = [card.bloodGroup.trim(), card.contactName.trim(), card.contactPhone.trim(), plate].filter(Boolean);
+  if (!bits.length) return null;
+  return (
+    <View testID="lock-emergency" style={{ marginTop: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, alignItems: "center" }}>
+      <Eyebrow>Emergency</Eyebrow>
+      <T v="label" style={{ marginTop: 4, textAlign: "center" }}>{bits.join(" · ")}</T>
+      {card.note.trim() ? <T muted style={{ fontSize: 12, textAlign: "center", marginTop: 2 }}>{card.note.trim()}</T> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center" },
-  mark: { width: 56, height: 56, borderRadius: 12, alignItems: "center", justifyContent: "center" },
 });

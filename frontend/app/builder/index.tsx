@@ -42,7 +42,7 @@ export default function Builder() {
             testID="builder-empty"
             icon="puzzle-outline"
             title="Build your own calculator"
-            body="Name a few inputs, write one formula, and it joins your Quick Tools. No code, no internet."
+            body="Name a few inputs, write one formula, and it joins your Tools. No code, no internet."
             action={<Button label="Start from scratch" icon="plus" testID="builder-empty-add" onPress={() => setEdit(emptyTool())} />}
           />
         ) : null}
@@ -135,7 +135,7 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const save = () => {
     const next: CustomTool = { ...tool, name: name.trim() || "My tool", icon, inputs, formula, outputLabel: outputLabel.trim() || "Result", unit: unit.trim() || undefined, sendToMoney };
     update((d) => ({ ...d, customTools: exists ? d.customTools.map((t) => (t.id === next.id ? next : t)) : [...d.customTools, next] }));
-    toast(exists ? "Tool updated" : "Tool added to Quick Tools", "puzzle-outline");
+    toast(exists ? "Tool updated" : "Tool added to Tools", "puzzle-outline");
     onClose();
   };
 

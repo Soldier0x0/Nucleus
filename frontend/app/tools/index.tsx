@@ -36,7 +36,7 @@ export default function Tools() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Quick Tools" testID="tools-header" />
+      <Header title="Tools" testID="tools-header" />
       <ChipRow testID="tools-chip-row">
         {TOOLS.map((t) => (
           <Chip key={t.id} label={t.label} icon={t.icon} selected={tool === t.id} onPress={() => setTool(t.id)} testID={`tools-chip-${t.id}`} />
@@ -70,7 +70,7 @@ export default function Tools() {
           </View>
         ) : null}
       </KeyboardAwareScrollView>
-      <ModuleGate id="tools" name="Quick Tools" icon="calculator-variant-outline" />
+      <ModuleGate id="tools" name="Tools" icon="calculator-variant-outline" />
     </View>
   );
 }

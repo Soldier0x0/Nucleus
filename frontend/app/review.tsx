@@ -1,17 +1,21 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ScrollView, useWindowDimensions, View } from "react-native";
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { monthSeries } from "@/src/core/intelligence";
 import { money, num, todayISO } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
-import { Amount, Eyebrow, Icon, Segmented, T } from "@/src/components/ui";
+import { Amount, Button, Eyebrow, Icon, Segmented, T } from "@/src/components/ui";
+import { useToast } from "@/src/components/Toast";
 import { MonthBars } from "@/src/components/charts";
 
 /** Deterministic year summary: counts and sums from your own records, nothing inferred. */
 function cards(db: ReturnType<typeof useStore>["db"], year: string) {
   const cur = db.settings.currency;
+  const shown = (n: number) => (db.settings.privacyMode ? "Hidden" : money(n, cur));
   const inYear = <T extends { date: string }>(a: T[]) => a.filter((x) => x.date.startsWith(year));
   const fuel = inYear(db.fuel);
   const svc = inYear(db.services);
@@ -36,9 +40,9 @@ function cards(db: ReturnType<typeof useStore>["db"], year: string) {
   const packed = trips.reduce((s, t) => s + t.packing.filter((p) => p.done).length, 0);
   const checks = db.notes.reduce((s, n) => s + n.checklist.filter((c) => c.done).length, 0);
   return [
-    { icon: "road-variant", eyebrow: "On the road", big: `${num(km, 0)} ${db.settings.distanceUnit}`, lines: [`${fuel.length} fill-ups · ${num(litres, 0)} ${db.settings.volumeUnit}`, `${money(fuelSpend, cur)} on fuel`, km > 0 && litres > 0 ? `${num(km / litres, 1)} ${db.settings.distanceUnit}/${db.settings.volumeUnit} average` : "Log two fill-ups for mileage"], amount: undefined as number | undefined },
-    { icon: "wallet-outline", eyebrow: "Money", big: "", lines: [`${txns.length} entries recorded`, income > 0 ? `${money(income, cur)} came in` : "No income recorded", top ? `Biggest category: ${top[0]} (${money(top[1], cur)})` : "No expenses recorded"], amount: spent },
-    { icon: "wrench-outline", eyebrow: "Looked after", big: `${svc.length + db.appliances.reduce((s, a) => s + a.plans.length, 0)}`, lines: [`${svc.length} services logged`, `${money(svc.reduce((s, x) => s + x.cost, 0), cur)} on maintenance`, `${db.appliances.length} appliances tracked`], amount: undefined },
+    { icon: "road-variant", eyebrow: "On the road", big: `${num(km, 0)} ${db.settings.distanceUnit}`, lines: [`${fuel.length} fill-ups · ${num(litres, 0)} ${db.settings.volumeUnit}`, `${shown(fuelSpend)} on fuel`, km > 0 && litres > 0 ? `${num(km / litres, 1)} ${db.settings.distanceUnit}/${db.settings.volumeUnit} average` : "Log two fill-ups for mileage"], amount: undefined as number | undefined },
+    { icon: "wallet-outline", eyebrow: "Money", big: "", lines: [`${txns.length} entries recorded`, income > 0 ? `${shown(income)} came in` : "No income recorded", top ? `Biggest category: ${top[0]} (${shown(top[1])})` : "No expenses recorded"], amount: spent },
+    { icon: "wrench-outline", eyebrow: "Looked after", big: `${svc.length + db.appliances.reduce((s, a) => s + a.plans.length, 0)}`, lines: [`${svc.length} services logged`, `${shown(svc.reduce((s, x) => s + x.cost, 0))} on maintenance`, `${db.appliances.length} appliances tracked`], amount: undefined },
     { icon: "bag-suitcase-outline", eyebrow: "Travelled", big: `${trips.length}`, lines: trips.length ? [trips.map((t) => t.name).slice(0, 3).join(", "), `${packed} things packed`, `${trips.reduce((s, t) => s + t.travellers, 0)} travellers in total`] : ["No trips this year", "Plan one in Travel", ""], amount: undefined },
     { icon: "check-circle-outline", eyebrow: "Kept on top of things", big: `${done + checks}`, lines: [`${done} attention items cleared`, `${checks} checklist items ticked`, `${db.rules.length} rules watching for you`], amount: undefined },
   ];
@@ -46,11 +50,15 @@ function cards(db: ReturnType<typeof useStore>["db"], year: string) {
 
 export default function Review() {
   const { db } = useStore();
+  const toast = useToast();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const years = useMemo(() => Array.from(new Set([todayISO().slice(0, 4), ...db.txns.map((t) => t.date.slice(0, 4)), ...db.fuel.map((f) => f.date.slice(0, 4))])).sort().reverse(), [db]);
   const [year, setYear] = useState(years[0]);
+  const [page, setPage] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const cardRef = useRef<View>(null);
   const data = cards(db, year);
   const series = monthSeries(db, 12);
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
@@ -63,10 +71,17 @@ export default function Review() {
           <Segmented testID="review-year" value={year} onChange={setYear} options={years.slice(0, 3).map((y) => ({ value: y, label: y }))} />
         </View>
       ) : null}
-      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} testID="review-pager" style={{ flexGrow: 0 }}>
-        {data.map((c) => (
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        testID="review-pager"
+        style={{ flexGrow: 0 }}
+        onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / Math.min(width, 720)))}
+      >
+        {data.map((c, i) => (
           <View key={c.eyebrow} style={{ width: Math.min(width, 720), padding: sp.lg }}>
-            <View style={{ backgroundColor: colors.surfaceInverse, borderRadius: radius.lg, padding: 20, minHeight: 300, justifyContent: "space-between" }} testID={`review-card-${c.eyebrow.replace(/\s+/g, "-").toLowerCase()}`}>
+            <View ref={i === page ? cardRef : undefined} collapsable={false} style={{ backgroundColor: colors.surfaceInverse, borderRadius: radius.lg, padding: 20, minHeight: 300, justifyContent: "space-between" }} testID={`review-card-${c.eyebrow.replace(/\s+/g, "-").toLowerCase()}`}>
               <View>
                 <Icon name={c.icon} size={28} color={colors.onSurfaceInverse} />
                 <Eyebrow style={{ color: colors.onSurfaceInverse, opacity: 0.7, marginTop: 14 }}>
@@ -96,7 +111,28 @@ export default function Review() {
       <View style={{ paddingHorizontal: sp.lg, paddingBottom: insets.bottom + 16 }}>
         <Eyebrow style={{ marginBottom: 8 }}>Spending, last 12 months</Eyebrow>
         <MonthBars data={series} width={chartW} height={110} testID="review-bars" />
-        <T muted style={{ fontSize: 12, marginTop: 10 }}>Swipe the cards. Every number is counted from your own records — amounts respect privacy mode.</T>
+        <Button
+          kind="secondary"
+          icon="export-variant"
+          label={saving ? "Saving…" : "Save this card"}
+          testID="review-save-button"
+          disabled={saving}
+          style={{ marginTop: 12 }}
+          onPress={async () => {
+            if (!cardRef.current) return;
+            setSaving(true);
+            try {
+              const uri = await captureRef(cardRef, { format: "png", quality: 1 });
+              if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Year in Review" });
+              else toast("This device cannot share the card", "alert-circle-outline");
+            } catch {
+              toast("Couldn't save that card", "alert-circle-outline");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        />
+        <T muted style={{ fontSize: 12, marginTop: 10 }}>Swipe the cards. Every number is counted from your own records. Amounts stay hidden while privacy mode is on, including on the saved image.</T>
       </View>
     </View>
   );

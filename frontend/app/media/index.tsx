@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
@@ -47,7 +49,7 @@ export default function Media() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Media shelf" testID="media-header" right={<IconButton icon="plus" label="Add to shelf" testID="media-add-button" onPress={() => setEdit(blank(kind === "all" ? "movie" : kind))} />} />
+      <Header title="Media" testID="media-header" right={<IconButton icon="plus" label="Add to shelf" testID="media-add-button" onPress={() => setEdit(blank(kind === "all" ? "movie" : kind))} />} />
       <ChipRow testID="media-kind-row">
         <Chip label="Everything" selected={kind === "all"} testID="media-kind-all" onPress={() => setKind("all")} />
         {KINDS.map((k) => (
@@ -75,6 +77,7 @@ export default function Media() {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: sp.md }}>
           {list.map((m) => (
             <Press key={m.id} testID={`media-card-${m.id}`} onPress={() => setEdit(m)} style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+              {m.cover ? <Image source={{ uri: m.cover }} style={styles.cover} contentFit="cover" accessibilityLabel="" /> : null}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <Ring value={m.status === "done" ? 1 : m.progress / 100} size={46} stroke={5}>
                   <Icon name={kindMeta(m.kind).icon} size={18} color={colors.muted} />
@@ -106,7 +109,7 @@ export default function Media() {
         </View>
       </ScrollView>
       {edit ? <MediaSheet item={edit} onClose={() => setEdit(null)} /> : null}
-      <ModuleGate id="media" name="Media shelf" icon="filmstrip-box-multiple" />
+      <ModuleGate id="media" name="Media" icon="filmstrip-box-multiple" />
     </View>
   );
 }
@@ -122,7 +125,17 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
   const [rating, setRating] = useState(item.rating);
   const [review, setReview] = useState(item.review ?? "");
   const [tags, setTags] = useState(item.tags.join(", "));
+  const [cover, setCover] = useState(item.cover);
   const exists = db.media.some((m) => m.id === item.id);
+  const pickCover = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [2, 3], quality: 0.35, base64: true });
+    if (result.canceled || !result.assets[0]?.base64) return;
+    if (result.assets[0].base64.length > 140000) {
+      toast("That photo is too large. Crop a smaller one.", "alert-circle-outline");
+      return;
+    }
+    setCover(`data:image/jpeg;base64,${result.assets[0].base64}`);
+  };
 
   return (
     <Sheet
@@ -136,7 +149,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
           icon="check"
           testID="media-save-button"
           onPress={() => {
-            const next: MediaItem = { ...item, kind, title: title.trim() || "Untitled", status, progress: status === "done" ? 100 : progress, rating, review: review.trim() || undefined, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), updatedAt: new Date().toISOString() };
+            const next: MediaItem = { ...item, kind, title: title.trim() || "Untitled", status, progress: status === "done" ? 100 : progress, rating, review: review.trim() || undefined, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), cover, updatedAt: new Date().toISOString() };
             update((d) => ({ ...d, media: exists ? d.media.map((m) => (m.id === next.id ? next : m)) : [next, ...d.media] }));
             toast("Shelf updated", "filmstrip-box-multiple");
             onClose();
@@ -149,6 +162,11 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
         {KINDS.map((k) => (
           <Chip key={k.id} label={k.label} icon={k.icon} selected={kind === k.id} testID={`media-sheet-kind-${k.id}`} onPress={() => setKind(k.id)} />
         ))}
+      </View>
+      {cover ? <Image source={{ uri: cover }} style={{ width: "100%", height: 160, borderRadius: radius.md, marginBottom: 12 }} contentFit="cover" /> : null}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+        <Button small kind="secondary" icon="image-outline" label={cover ? "Change photo" : "Choose a photo"} testID="media-cover-button" onPress={pickCover} />
+        {cover ? <Button small kind="ghost" label="Remove photo" testID="media-cover-clear" onPress={() => setCover(undefined)} /> : null}
       </View>
       <Field label="Title" testID="media-title-input" value={title} onChangeText={setTitle} placeholder="Name of the film, book, game…" />
       <Eyebrow style={{ marginBottom: 8 }}>Status</Eyebrow>
@@ -194,4 +212,5 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
 
 const styles = StyleSheet.create({
   card: { width: "48%", flexGrow: 1, borderWidth: 1, borderRadius: radius.lg, padding: 12 },
+  cover: { width: "100%", height: 132, borderRadius: radius.md, marginBottom: 10 },
 });

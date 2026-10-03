@@ -4,8 +4,14 @@
     "slug": "nucleus",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "nucleus",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0D12"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nucleus.app",
@@ -15,7 +21,10 @@
     },
     "android": {
       "package": "com.nucleus.app",
-      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B0D12"
+      },
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT",
@@ -35,8 +44,23 @@
     "plugins": [
       "expo-router",
       "expo-sharing",
-      "expo-notifications",
-      "@react-native-vector-icons/material-design-icons"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nucleus uses a photo you choose as a cover on your media shelf.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#D68E42"
+        }
+      ],
+      "@react-native-vector-icons/material-design-icons",
+      "./plugins/withTextShare"
     ],
     "experiments": {
       "typedRoutes": false

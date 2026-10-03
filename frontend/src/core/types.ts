@@ -2,12 +2,12 @@
  * Nucleus shared data model.
  * Every record is an "entity" of a known kind; cross-module relationships live in `links`.
  */
-export type EntityKind = "vehicle" | "fuel" | "service" | "txn" | "subscription" | "trip" | "appliance" | "note" | "media";
+export type EntityKind = "vehicle" | "fuel" | "service" | "txn" | "subscription" | "trip" | "appliance" | "note" | "media" | "paper";
 
 export type PackItem = { id: string; name: string; category: string; done: boolean };
 export type ItineraryItem = { id: string; date: string; time: string; title: string; place?: string; note?: string };
 export type TripDoc = { id: string; name: string; have: boolean; expiry?: string };
-export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string };
+export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string; elevation?: number };
 export type Trip = {
   id: string;
   name: string;
@@ -40,9 +40,21 @@ export type NetLogEntry = { id: string; at: string; service: string; query: stri
 export type ChecklistItem = { id: string; text: string; done: boolean };
 export type MediaKind = "movie" | "series" | "book" | "game" | "other";
 export type MediaStatus = "backlog" | "active" | "done" | "dropped";
-export type MediaItem = { id: string; kind: MediaKind; title: string; status: MediaStatus; progress: number; rating: number; review?: string; tags: string[]; createdAt: string; updatedAt: string };
+export type MediaItem = { id: string; kind: MediaKind; title: string; status: MediaStatus; progress: number; rating: number; review?: string; tags: string[]; cover?: string; createdAt: string; updatedAt: string };
+export type UtilityKind = "electricity" | "water" | "lpg" | "internet";
+export type UtilityBill = { id: string; kind: UtilityKind; date: string; amount: number; reading?: number; note?: string; photo?: string };
+export type Person = { id: string; name: string; note?: string };
+export type PaperKind = "licence" | "registration" | "insurance" | "passport" | "fastag" | "warranty" | "other";
+export type Paper = { id: string; kind: PaperKind; title: string; number?: string; expiry?: string; note?: string; photo?: string; personId?: string; vehicleId?: string; createdAt: string };
+export type WearPart = { id: string; vehicleId: string; kind: "tyre" | "battery" | "chain" | "brake" | "other"; name: string; installedOn?: string; odometer?: number; everyKm?: number; note?: string };
+export type HomeSpec = { id: string; label: string; value: string; room?: string; applianceId?: string };
+export type Chore = { id: string; name: string; everyDays: number; lastDone: string; room?: string; assignee?: string };
 export type Note = { id: string; title: string; body: string; checklist: ChecklistItem[]; pinned?: boolean; createdAt: string; updatedAt: string };
 export type Ref = { kind: EntityKind; id: string };
+
+export type FuelType = "petrol" | "diesel" | "cng" | "electric" | "hybrid" | "other";
+export type HybridFrom = "petrol" | "diesel";
+export type VehicleBody = "scooter" | "sport" | "naked" | "cruiser" | "adventure" | "hatchback" | "sedan" | "suv" | "pickup" | "van" | "other";
 
 export type Vehicle = {
   id: string;
@@ -51,7 +63,11 @@ export type Vehicle = {
   make?: string;
   model?: string;
   plate?: string;
-  fuelType: "petrol" | "diesel" | "cng" | "electric" | "other";
+  fuelType: FuelType;
+  /** Set when fuelType is hybrid: petrol-electric or diesel-electric. */
+  hybridFrom?: HybridFrom;
+  /** Side view. When omitted, the name and model pick one. */
+  body?: VehicleBody;
   initialOdometer: number;
   serviceIntervalKm: number;
   insuranceExpiry?: string; // YYYY-MM-DD
@@ -90,6 +106,7 @@ export type Txn = {
   category: string;
   date: string;
   note?: string;
+  photo?: string;
   origAmount?: number;
   origCurrency?: string;
 };
@@ -110,7 +127,7 @@ export type Budget = { monthly: number; categories: Record<string, number> };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
-export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab";
+export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers";
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
@@ -159,6 +176,12 @@ export type Settings = {
   largeTouch: boolean;
   reducedMotion: boolean;
   quietHours: { enabled: boolean; from: number; to: number };
+  /** ISO time of the last backup file this device wrote. */
+  lastBackupAt?: string;
+  /** The one-time backup reminder has been dismissed or satisfied. */
+  backupNudged?: boolean;
+  /** Lock-screen card. Empty fields stay hidden. The plate comes from the default vehicle. */
+  emergency: { bloodGroup: string; contactName: string; contactPhone: string; note: string; showOnLock: boolean };
 };
 
 export type ToolHistoryItem = { id: string; tool: string; label: string; value: string; at: string };
@@ -183,6 +206,8 @@ export type DB = {
   links: Link[];
   trips: Trip[];
   appliances: Appliance[];
+  utilities: UtilityBill[];
+  chores: Chore[];
   notes: Note[];
   rules: Rule[];
   ruleFires: Record<string, string>;
@@ -191,6 +216,10 @@ export type DB = {
   funds: Fund[];
   debts: Debt[];
   netWorth: NetWorthSnapshot[];
+  people: Person[];
+  papers: Paper[];
+  parts: WearPart[];
+  specs: HomeSpec[];
   netlog: NetLogEntry[];
   budget: Budget;
   attention: Record<string, AttentionMark>;

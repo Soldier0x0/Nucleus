@@ -2,10 +2,25 @@ import * as Crypto from "expo-crypto";
 import * as LocalAuthentication from "expo-local-authentication";
 import { Platform } from "react-native";
 import { secureStorage } from "@/src/utils/storage";
+import { pickPinMatch, type PinMatch } from "./profiles";
 
 const PIN_KEY = "nucleus.pin.v1";
+const DECOY_PIN_KEY = "nucleus.pin.decoy.v1";
 const LEGACY_PIN_KEY = "tessera.pin.v1";
 const readPin = async () => (await secureStorage.getItem(PIN_KEY)) ?? (await secureStorage.getItem(LEGACY_PIN_KEY));
+
+type PinRecord = { salt: string; h: string };
+
+async function readRecord(raw: string | null): Promise<PinRecord | null> {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as PinRecord;
+    if (!parsed.salt || !parsed.h) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 async function hash(pin: string, salt: string) {
   // Iterated SHA-256 (key stretching) — PIN hash lives in Android Keystore-backed SecureStore.
@@ -24,16 +39,37 @@ export async function hasPin() {
   return !!(await readPin());
 }
 
-export async function verifyPin(pin: string) {
-  const raw = await readPin();
-  if (!raw) return false;
-  const { salt, h } = JSON.parse(raw);
-  return (await hash(pin, salt)) === h;
+export async function setDecoyPin(pin: string) {
+  const salt = Crypto.randomUUID();
+  const h = await hash(pin, salt);
+  await secureStorage.setItem(DECOY_PIN_KEY, JSON.stringify({ salt, h }));
+}
+
+export async function hasDecoyPin() {
+  return !!(await secureStorage.getItem(DECOY_PIN_KEY));
+}
+
+/**
+ * Checks the real PIN and the decoy PIN together.
+ * "decoy" means the lock screen should open the sample profile, with no other signal.
+ */
+export async function verifyPin(pin: string): Promise<PinMatch> {
+  const [primary, decoy] = await Promise.all([readRecord(await readPin()), readRecord(await secureStorage.getItem(DECOY_PIN_KEY))]);
+  const [primaryOk, decoyOk] = await Promise.all([
+    primary ? hash(pin, primary.salt).then((h) => h === primary.h) : Promise.resolve(false),
+    decoy ? hash(pin, decoy.salt).then((h) => h === decoy.h) : Promise.resolve(false),
+  ]);
+  return pickPinMatch(primaryOk, decoyOk);
+}
+
+export async function clearDecoyPin() {
+  await secureStorage.removeItem(DECOY_PIN_KEY);
 }
 
 export async function clearPin() {
   await secureStorage.removeItem(PIN_KEY);
   await secureStorage.removeItem(LEGACY_PIN_KEY);
+  await secureStorage.removeItem(DECOY_PIN_KEY);
 }
 
 // ---------- wrong-PIN back-off ----------

@@ -7,13 +7,17 @@ import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { monthTotals, vehicleStats } from "@/src/core/intelligence";
+import { morningLine, weekLeft } from "@/src/core/life";
 import { visibleAttention } from "@/src/core/attention";
-import { daysBetween, fmtDate, monthKey, num, relDays, todayISO } from "@/src/core/format";
+import { daysBetween, fmtDate, money, monthKey, num, relDays, todayISO } from "@/src/core/format";
 import { Amount, Card, EmptyState, Eyebrow, Icon, Press, T, Button } from "@/src/components/ui";
 import { Gauge, Ring } from "@/src/components/charts";
 import { WeatherCard } from "@/src/components/WeatherCard";
 import { CaptureBar } from "@/src/components/CaptureBar";
 import { BoardSheet } from "@/src/components/BoardSheet";
+import { Sheet } from "@/src/components/Sheet";
+import { DragRow, moveItem } from "@/src/components/Reorderable";
+import { TILE_META } from "@/src/core/modules";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
 import type { Board, TileId } from "@/src/core/types";
@@ -39,6 +43,7 @@ export default function Today() {
   const tileIds: TileId[] = activeBoard ? activeBoard.tiles : db.settings.tiles.filter((t) => t.enabled).map((t) => t.id);
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
+  const [arrange, setArrange] = useState(false);
   useReminderSync();
 
   const renderTile = (id: string, idx: number) => {
@@ -47,7 +52,7 @@ export default function Today() {
       const needs = count.urgent + count.upcoming;
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-attention-tile" onPress={() => router.push("/(tabs)/attention")} tone={needs ? "inverse" : "default"}>
+          <Card testID="today-attention-tile" onPress={() => router.push("/(tabs)/attention")} onLongPress={() => setArrange(true)} tone={needs ? "inverse" : "default"}>
             <Eyebrow style={{ color: needs ? colors.onSurfaceInverse : colors.muted, opacity: 0.8 }}>Attention</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10, marginTop: 6 }}>
               <T v="display" color={needs ? colors.onSurfaceInverse : colors.onSurface} testID="today-attention-count" style={{ fontSize: 44, lineHeight: 50 }}>
@@ -99,7 +104,7 @@ export default function Today() {
       const r = readiness(db, t);
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-trip-tile" onPress={() => router.push(`/travel/${t.id}`)}>
+          <Card testID="today-trip-tile" onPress={() => router.push(`/travel/${t.id}`)} onLongPress={() => setArrange(true)}>
             <Eyebrow>Next trip</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 8 }}>
               <Ring value={r.score} size={80} stroke={8}><T v="mono" style={{ fontSize: 13 }}>{num(r.score * 100, 0)}%</T></Ring>
@@ -118,7 +123,7 @@ export default function Today() {
       if (!n) return null;
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-home-tile" onPress={() => router.push("/home")}>
+          <Card testID="today-home-tile" onPress={() => router.push("/home")} onLongPress={() => setArrange(true)}>
             <Eyebrow>Home · next maintenance</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
               <View style={[styles.daybox, { backgroundColor: n.days <= 7 ? colors.brandTertiary : colors.surfaceTertiary }]}>
@@ -140,7 +145,7 @@ export default function Today() {
       const pct = b > 0 ? mt.spent / b : 0;
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-budget-tile" onPress={() => router.push("/money")}>
+          <Card testID="today-budget-tile" onPress={() => router.push("/money")} onLongPress={() => setArrange(true)}>
             <Eyebrow>Money · this month</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 16, marginTop: 10 }}>
               <Ring value={pct} size={96} stroke={10}>
@@ -150,7 +155,11 @@ export default function Today() {
                 <Amount value={mt.spent} v="monoXl" testID="today-spent" />
                 <T muted>{b > 0 ? "spent of budget" : "spent · no budget set"}</T>
                 {b > 0 ? <Amount value={b} v="mono" style={{ marginTop: 2, color: colors.muted }} /> : null}
-                {mt.categories[0] ? (
+                {b > 0 ? (
+                  <T muted style={{ fontSize: 12, marginTop: 6 }} testID="today-week-left">
+                    {money(Math.max(0, weekLeft(db, today).thisWeek), db.settings.currency, { decimals: false })} left to spend this week
+                  </T>
+                ) : mt.categories[0] ? (
                   <T muted style={{ fontSize: 12, marginTop: 6 }}>
                     Top: {mt.categories[0][0]}
                   </T>
@@ -166,7 +175,7 @@ export default function Today() {
       if (!v)
         return (
           <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-            <Card testID="today-vehicle-tile" onPress={() => router.push("/vehicles")}>
+            <Card testID="today-vehicle-tile" onPress={() => router.push("/vehicles")} onLongPress={() => setArrange(true)}>
               <Eyebrow>Vehicles</Eyebrow>
               <T v="h2" style={{ marginTop: 6 }}>Add your first vehicle</T>
               <T muted>Track mileage, service intervals and expiry dates.</T>
@@ -177,7 +186,7 @@ export default function Today() {
       const ins = v.insuranceExpiry ? daysBetween(today, v.insuranceExpiry) : undefined;
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-vehicle-tile" onPress={() => router.push(`/vehicles/${v.id}`)}>
+          <Card testID="today-vehicle-tile" onPress={() => router.push(`/vehicles/${v.id}`)} onLongPress={() => setArrange(true)}>
             <Eyebrow>{v.name} · since service</Eyebrow>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Gauge value={st.service.since} max={st.service.interval} size={150} label={`${num(st.service.since, 0)}`} />
@@ -203,7 +212,7 @@ export default function Today() {
       if (!subs.length) return null;
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-subscriptions-tile" onPress={() => router.push("/money?tab=subscriptions")}>
+          <Card testID="today-subscriptions-tile" onPress={() => router.push("/money?tab=subscriptions")} onLongPress={() => setArrange(true)}>
             <Eyebrow>Next renewals</Eyebrow>
             {subs.map((s) => {
               const dd = daysBetween(today, s.nextRenewal);
@@ -230,7 +239,7 @@ export default function Today() {
       if (!pinned.length) return null;
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-notes-tile" onPress={() => router.push("/notes")}>
+          <Card testID="today-notes-tile" onPress={() => router.push("/notes")} onLongPress={() => setArrange(true)}>
             <Eyebrow>Pinned notes</Eyebrow>
             {pinned.map((n) => {
               const done = n.checklist.filter((c) => c.done).length;
@@ -257,8 +266,8 @@ export default function Today() {
       ];
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
-          <Card testID="today-tools-tile">
-            <Eyebrow>Quick tools</Eyebrow>
+          <Card testID="today-tools-tile" onLongPress={() => setArrange(true)}>
+            <Eyebrow>Tools</Eyebrow>
             <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
               {tools.map(([tid, ic, l]) => (
                 <Press key={tid} testID={`today-tool-${tid}`} onPress={() => router.push(`/tools?tool=${tid}`)} style={[styles.toolBtn, { backgroundColor: colors.surfaceTertiary }]}>
@@ -281,6 +290,9 @@ export default function Today() {
           <View style={{ flex: 1 }}>
             <Eyebrow>{d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short" })}</Eyebrow>
             <T v="title" testID="today-title">{greeting}</T>
+            <Press testID="today-morning" onPress={() => router.push("/calendar")}>
+              <T muted style={{ fontSize: 13, marginTop: 2 }} numberOfLines={2}>{morningLine(db, today)}</T>
+            </Press>
           </View>
           <Press testID="today-online-toggle" accessibilityState={{ checked: db.settings.online }} onPress={() => setSettings({ online: !db.settings.online })} style={[styles.lockChip, { borderColor: db.settings.online ? colors.success : colors.border }]}>
             <Icon name={db.settings.online ? "web" : "wifi-off"} size={14} color={db.settings.online ? colors.success : colors.muted} />
@@ -295,7 +307,7 @@ export default function Today() {
       </View>
       <View style={{ marginHorizontal: -4 }}>
           <ChipRow testID="today-board-row">
-            <Chip label="Today" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
+            <Chip label="Home" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
             {boards.map((b) => (
               <Chip key={b.id} label={b.name} icon={b.icon} selected={activeBoard?.id === b.id} testID={`today-board-${b.id}`} onPress={() => setSettings({ activeBoardId: b.id })} />
             ))}
@@ -309,11 +321,34 @@ export default function Today() {
         ) : (
           tileIds.map((t, i) => renderTile(t, i))
         )}
-        <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
+        <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
           <Icon name="tune-variant" size={18} color={colors.muted} />
-          <T muted v="label">Customize Today</T>
+          <T muted v="label">Customize home</T>
         </Press>
+        <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to rearrange it.</T>
       </ScrollView>
+      <Sheet visible={arrange} onClose={() => setArrange(false)} title={activeBoard ? `Arrange ${activeBoard.name}` : "Arrange home"} testID="today-arrange">
+        <T muted style={{ marginBottom: 10 }}>Hold a row, then drag. This order is saved on this device.</T>
+        {(activeBoard ? activeBoard.tiles.map((id) => ({ id })) : db.settings.tiles).map((t, i, arr) => (
+          <DragRow
+            key={t.id}
+            index={i}
+            count={arr.length}
+            rowHeight={52}
+            onMove={(from, to) => {
+              if (activeBoard) {
+                const tiles = moveItem(activeBoard.tiles, from, to);
+                setSettings({ boards: boards.map((b) => (b.id === activeBoard.id ? { ...b, tiles } : b)) });
+              } else setSettings({ tiles: moveItem(db.settings.tiles, from, to) });
+            }}
+          >
+            <View style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Icon name="drag-vertical" size={20} color={colors.muted} />
+              <T v="label" style={{ flex: 1 }} numberOfLines={1}>{TILE_META[t.id]?.name ?? t.id}</T>
+            </View>
+          </DragRow>
+        ))}
+      </Sheet>
       {boardSheet ? <BoardSheet board={boardSheet.board} onClose={() => setBoardSheet(null)} /> : null}
     </View>
   );

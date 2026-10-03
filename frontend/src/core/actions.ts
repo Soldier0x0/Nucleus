@@ -98,7 +98,7 @@ export function deleteVehicle(db: DB, id: string): DB {
     ...svcIds.map((sid) => ({ type: "entity.deleted" as const, ref: { kind: "service" as const, id: sid } })),
     { type: "entity.deleted", ref: { kind: "vehicle", id } },
   ]);
-  return { ...next, fuel: next.fuel.filter((f) => f.vehicleId !== id), services: next.services.filter((s) => s.vehicleId !== id) };
+  return { ...next, fuel: next.fuel.filter((f) => f.vehicleId !== id), services: next.services.filter((s) => s.vehicleId !== id), parts: next.parts.filter((p) => p.vehicleId !== id) };
 }
 
 export function addFuel(db: DB, entry: FuelEntry): DB {
@@ -133,7 +133,7 @@ export function paySubscription(db: DB, id: string): DB {
 }
 
 export function deleteEntity(db: DB, ref: Ref): DB {
-  const key: Record<EntityKind, keyof DB> = { vehicle: "vehicles", fuel: "fuel", service: "services", txn: "txns", subscription: "subscriptions", trip: "trips", appliance: "appliances", note: "notes", media: "media" };
+  const key: Record<EntityKind, keyof DB> = { vehicle: "vehicles", fuel: "fuel", service: "services", txn: "txns", subscription: "subscriptions", trip: "trips", appliance: "appliances", note: "notes", media: "media", paper: "papers" };
   if (ref.kind === "vehicle") return deleteVehicle(db, ref.id);
   const list = (db[key[ref.kind]] as { id: string }[]).filter((x) => x.id !== ref.id);
   return dispatch({ ...db, [key[ref.kind]]: list }, [{ type: "entity.deleted", ref }]);
@@ -174,6 +174,12 @@ export function getEntity(db: DB, ref: Ref): any {
       return db.notes.find((x) => x.id === ref.id);
     case "media":
       return db.media.find((x) => x.id === ref.id);
+    case "paper":
+      return db.papers.find((x) => x.id === ref.id);
+    default: {
+      const unknown: never = ref.kind;
+      return unknown;
+    }
   }
 }
 

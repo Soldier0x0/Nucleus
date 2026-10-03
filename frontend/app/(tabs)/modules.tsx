@@ -1,5 +1,6 @@
 import React from "react";
-import { ScrollView, StyleSheet, Switch, View } from "react-native";
+import { StyleSheet, Switch, View } from "react-native";
+import { ScrollView } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -7,7 +8,9 @@ import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { MODULES, moduleById, TILE_META } from "@/src/core/modules";
+import type { DB, ModuleId } from "@/src/core/types";
 import { Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
+import { DragRow, moveItem } from "@/src/components/Reorderable";
 
 function move<T>(arr: T[], i: number, dir: -1 | 1) {
   const j = i + dir;
@@ -34,11 +37,13 @@ export default function Modules() {
         <T v="title" testID="modules-title">Modules</T>
       </View>
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        <T muted style={{ fontSize: 12, marginBottom: 10 }}>Hold a row, then drag. The arrows do the same thing.</T>
         <Eyebrow style={{ marginBottom: 8 }}>Installed · {s.modules.length}</Eyebrow>
         {s.modules.map((ms, i) => {
           const m = moduleById(ms.id);
           return (
-            <View key={ms.id} testID={`module-card-${ms.id}`} style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: ms.enabled ? 1 : 0.7 }]}>
+            <DragRow key={ms.id} index={i} count={s.modules.length} rowHeight={76} onMove={(from, to) => setSettings({ modules: moveItem(s.modules, from, to) })}>
+            <View testID={`module-card-${ms.id}`} style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: ms.enabled ? 1 : 0.7 }]}>
               <Press testID={`module-open-${ms.id}`} disabled={!ms.enabled} onPress={() => router.push(m.route as any)} style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
                 <View style={[styles.ic, { backgroundColor: ms.enabled ? colors.surfaceInverse : colors.surfaceTertiary }]}>
                   <Icon name={m.icon} size={22} color={ms.enabled ? colors.onSurfaceInverse : colors.muted} />
@@ -46,7 +51,7 @@ export default function Modules() {
                 <View style={{ flex: 1 }}>
                   <T v="label">{m.name}</T>
                   <T muted style={{ fontSize: 12 }} numberOfLines={2}>
-                    {ms.enabled ? m.description : "Off · not loaded, not searched"}
+                    {ms.enabled ? `${m.description}${countLine(db, ms.id)}` : "Off · not loaded, not searched"}
                   </T>
                 </View>
               </Press>
@@ -58,16 +63,19 @@ export default function Modules() {
                 <IconButton icon="chevron-down" testID={`module-down-${ms.id}`} label="Move down" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: move(s.modules, i, 1) }))} />
               </View>
             </View>
+            </DragRow>
           );
         })}
 
-        <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>Today layout</Eyebrow>
+        <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>Home board</Eyebrow>
+        <T muted style={{ fontSize: 12, marginBottom: 8 }}>These tiles stay on the home screen. They are not reset each day. A trip board is a temporary extra — switch back to Home when you return.</T>
         <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
           {s.tiles.map((t, i) => {
             const meta = TILE_META[t.id];
             const modOff = meta.module && !s.modules.find((m) => m.id === meta.module)?.enabled;
             return (
-              <View key={t.id} testID={`tile-row-${t.id}`} style={[styles.tileRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
+              <DragRow key={t.id} index={i} count={s.tiles.length} rowHeight={56} onMove={(from, to) => setSettings({ tiles: moveItem(s.tiles, from, to) })}>
+              <View testID={`tile-row-${t.id}`} style={[styles.tileRow, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
                 <Icon name={meta.icon} size={20} color={colors.muted} />
                 <View style={{ flex: 1 }}>
                   <T v="label">{meta.name}</T>
@@ -77,11 +85,12 @@ export default function Modules() {
                 <IconButton icon="arrow-down" testID={`tile-down-${t.id}`} label="Move down" onPress={() => setSettings({ tiles: move(s.tiles, i, 1) })} />
                 <Switch testID={`tile-toggle-${t.id}`} value={t.enabled} onValueChange={(v) => setSettings({ tiles: s.tiles.map((x) => (x.id === t.id ? { ...x, enabled: v } : x)) })} {...sw} />
               </View>
+              </DragRow>
             );
           })}
         </View>
 
-        <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>On the roadmap</Eyebrow>
+        {planned.length ? <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>On the roadmap</Eyebrow> : null}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
           {planned.map((m) => (
             <View key={m.id} testID={`planned-module-${m.id}`} style={[styles.planned, { borderColor: colors.borderStrong }]}>
@@ -97,6 +106,40 @@ export default function Modules() {
       </ScrollView>
     </View>
   );
+}
+
+function countLine(db: DB, id: ModuleId) {
+  const n = (() => {
+    switch (id) {
+      case "vehicles":
+        return db.vehicles.length;
+      case "money":
+        return db.txns.length;
+      case "travel":
+        return db.trips.length;
+      case "home":
+        return db.appliances.length;
+      case "notes":
+        return db.notes.length;
+      case "rules":
+        return db.rules.length;
+      case "media":
+        return db.media.length;
+      case "papers":
+        return db.papers.length;
+      case "builder":
+        return db.customTools.length;
+      case "tools":
+      case "dev":
+      case "lab":
+        return 0;
+      default: {
+        const unknown: never = id;
+        return unknown;
+      }
+    }
+  })();
+  return n ? ` · ${n}` : "";
 }
 
 const styles = StyleSheet.create({

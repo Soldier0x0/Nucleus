@@ -49,13 +49,13 @@ export const appendLog = (db: DB, e: NetLogEntry): DB => ({ ...db, netlog: [e, .
 // ---------- services (free, no key) ----------
 export async function geocode(online: boolean, log: Logger, name: string): Promise<Place[]> {
   const r = await onlineFetch<any>(online, log, "Open-Meteo geocoding", name.toLowerCase(), `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=5&language=en&format=json`, 60 * 24 * 30);
-  return (r?.data?.results ?? []).map((p: any) => ({ name: [p.name, p.admin1, p.country].filter(Boolean).join(", "), lat: p.latitude, lon: p.longitude, country: p.country, countryCode: p.country_code }));
+  return (r?.data?.results ?? []).map((p: any) => ({ name: [p.name, p.admin1, p.country].filter(Boolean).join(", "), lat: p.latitude, lon: p.longitude, country: p.country, countryCode: p.country_code, elevation: typeof p.elevation === "number" ? p.elevation : undefined }));
 }
 
-const round = (x: number) => Math.round(x * 10) / 10; // ~10 km precision
+const round = (x: number) => Math.round(x * 100) / 100; // about 1 km
 
 export type Weather = {
-  current: { temp: number; code: number; wind: number };
+  current: { temp: number; feels?: number; code: number; wind: number };
   daily: { date: string; max: number; min: number; code: number }[];
   sunrise?: string;
   sunset?: string;
@@ -64,12 +64,13 @@ export type Weather = {
 
 export async function weather(online: boolean, log: Logger, p: Place) {
   const lat = round(p.lat), lon = round(p.lon);
-  const r = await onlineFetch<any>(online, log, "Open-Meteo weather", `${lat},${lon}`, `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset&timezone=auto&forecast_days=7`, 60);
+  const elev = typeof p.elevation === "number" ? `&elevation=${Math.round(p.elevation)}` : "";
+  const r = await onlineFetch<any>(online, log, "Open-Meteo weather", `${lat},${lon}`, `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}${elev}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset&timezone=auto&forecast_days=7&temperature_unit=celsius&wind_speed_unit=kmh&cell_selection=land`, 30);
   if (!r) return null;
   const aq = await onlineFetch<any>(online, log, "Open-Meteo air quality", `${lat},${lon}`, `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=us_aqi`, 120);
   const d = r.data;
   const w: Weather = {
-    current: { temp: d.current?.temperature_2m, code: d.current?.weather_code, wind: d.current?.wind_speed_10m },
+    current: { temp: d.current?.temperature_2m, feels: d.current?.apparent_temperature, code: d.current?.weather_code, wind: d.current?.wind_speed_10m },
     daily: (d.daily?.time ?? []).map((t: string, i: number) => ({ date: t, max: d.daily.temperature_2m_max[i], min: d.daily.temperature_2m_min[i], code: d.daily.weather_code[i] })),
     sunrise: d.daily?.sunrise?.[0]?.slice(11, 16),
     sunset: d.daily?.sunset?.[0]?.slice(11, 16),
