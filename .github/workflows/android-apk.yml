@@ -199,11 +199,7 @@ jobs:
       - name: Turn on the Gradle build cache
         if: steps.plan.outputs.build == 'true'
         working-directory: frontend/android
-        run: |
-          cat >> gradle.properties <<'EOF'
-          org.gradle.caching=true
-          android.lint.checkReleaseBuilds=false
-          EOF
+        run: node ../../.github/scripts/gradle-properties.js gradle.properties
 
       - name: Build the release APK
         if: steps.plan.outputs.build == 'true'
