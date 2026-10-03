@@ -83,5 +83,8 @@ export function shellSettings(from: Settings): Settings {
 
 /** A believable workspace. It copies appearance only — never the real records. */
 export function buildDecoyDB(from: DB): DB {
-  return withSampleData({ ...emptyDB(), settings: shellSettings(from.settings) });
+  const db = withSampleData({ ...emptyDB(), settings: shellSettings(from.settings) });
+  db.settings = { ...db.settings, modules: db.settings.modules.filter((m) => m.id !== "cycle") };
+  db.cycle = emptyDB().cycle;
+  return db;
 }

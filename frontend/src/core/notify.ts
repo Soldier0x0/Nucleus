@@ -39,13 +39,33 @@ export async function requestPermission(): Promise<PermissionState> {
   return { granted: p.status === "granted", canAskAgain: p.canAskAgain, undetermined: p.status === "undetermined" };
 }
 
-/** Replace every scheduled reminder with the given list. Returns the keys actually scheduled. */
+const CYCLE_PREFIX = "cycle:";
+
+async function cancelScheduled(keepCycle: boolean) {
+  let existing: Awaited<ReturnType<typeof Notifications.getAllScheduledNotificationsAsync>> = [];
+  try {
+    existing = await Notifications.getAllScheduledNotificationsAsync();
+  } catch {
+    return;
+  }
+  await Promise.all(
+    existing.map(async (item) => {
+      const key = item.content?.data?.key;
+      const cycle = typeof key === "string" && key.startsWith(CYCLE_PREFIX);
+      if (keepCycle && cycle) return;
+      if (!keepCycle && !cycle) return;
+      await Notifications.cancelScheduledNotificationAsync(item.identifier).catch(() => {});
+    }),
+  );
+}
+
+/** Replace rule reminders. Cycle alarms use their own ids and are left in place. */
 export async function syncReminders(list: Reminder[]): Promise<string[]> {
   if (!notificationsSupported) return [];
   const p = await permissionState();
   if (!p.granted) return [];
   ensureHandler();
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  await cancelScheduled(true);
   const done: string[] = [];
   for (const r of list) {
     try {
@@ -73,4 +93,31 @@ export async function scheduledCount() {
 export async function cancelAll() {
   if (!notificationsSupported) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+/**
+ * Replace cycle alarms. The lock-screen text is the title only.
+ * No body, and no separate notification icon — Android keeps the app icon.
+ */
+export async function syncCycleNotices(list: { id: string; title: string; at: Date }[]): Promise<void> {
+  if (!notificationsSupported) return;
+  ensureHandler();
+  await cancelScheduled(false);
+  for (const id of ["cycle:period", "cycle:change"]) {
+    await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+  }
+  const p = await permissionState();
+  if (!p.granted) return;
+  for (const notice of list) {
+    if (!notice.title || notice.at.getTime() <= Date.now()) continue;
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: notice.id,
+        content: { title: notice.title, body: "", data: { key: notice.id } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: notice.at, channelId: "nucleus-reminders" },
+      });
+    } catch {
+      /* one bad date must not block the other */
+    }
+  }
 }

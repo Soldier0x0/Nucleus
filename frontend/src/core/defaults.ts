@@ -1,4 +1,5 @@
 import type { DB, Settings, Txn } from "./types";
+import { emptyCycle, normalizeCycle } from "./cycle";
 import { cleanCallName } from "./greeting";
 import { parseLauncher } from "./launcher";
 
@@ -41,6 +42,7 @@ export const defaultSettings: Settings = {
     { id: "kanban", enabled: true, hidden: false },
     { id: "wiki", enabled: true, hidden: false },
     { id: "net", enabled: false, hidden: false },
+    { id: "cycle", enabled: true, hidden: false },
   ],
   tiles: [
     { id: "attention", enabled: true },
@@ -102,6 +104,7 @@ export function emptyDB(): DB {
     attention: {},
     toolHistory: [],
     recents: {},
+    cycle: emptyCycle(),
   };
 }
 
@@ -151,6 +154,7 @@ export function normalizeDB(raw: any): DB {
     wiki: Array.isArray(raw?.wiki) ? raw.wiki : [],
     templates: Array.isArray(raw?.templates) ? raw.templates : [],
     txns: Array.isArray(raw?.txns) ? raw.txns.map(normalizeTxn) : [],
+    cycle: normalizeCycle(raw?.cycle),
   };
 }
 

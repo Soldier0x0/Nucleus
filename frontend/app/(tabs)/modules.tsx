@@ -21,13 +21,15 @@ function move<T>(arr: T[], i: number, dir: -1 | 1) {
 }
 
 export default function Modules() {
-  const { db, setSettings } = useStore();
+  const { db, setSettings, session } = useStore();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const s = db.settings;
   const planned = MODULES.filter((m) => m.status === "planned");
+  const visible = session === "real" ? s.modules : s.modules.filter((m) => m.id !== "cycle");
+  const withHidden = (nextVisible: typeof visible) => [...nextVisible, ...s.modules.filter((m) => !visible.some((row) => row.id === m.id))];
   const sw = { trackColor: { true: colors.brandPrimary, false: colors.surfaceTertiary }, thumbColor: colors.surfaceSecondary };
 
   return (
@@ -38,11 +40,11 @@ export default function Modules() {
       </View>
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <T muted style={{ fontSize: 12, marginBottom: 10 }}>Hold a row, then drag. The arrows do the same thing.</T>
-        <Eyebrow style={{ marginBottom: 8 }}>Installed · {s.modules.length}</Eyebrow>
-        {s.modules.map((ms, i) => {
+        <Eyebrow style={{ marginBottom: 8 }}>Installed · {visible.length}</Eyebrow>
+        {visible.map((ms, i) => {
           const m = moduleById(ms.id);
           return (
-            <DragRow key={ms.id} index={i} count={s.modules.length} rowHeight={76} onMove={(from, to) => setSettings({ modules: moveItem(s.modules, from, to) })}>
+            <DragRow key={ms.id} index={i} count={visible.length} rowHeight={76} onMove={(from, to) => setSettings({ modules: withHidden(moveItem(visible, from, to)) })}>
             <View testID={`module-card-${ms.id}`} style={[styles.card, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, opacity: ms.enabled ? 1 : 0.7 }]}>
               <Press testID={`module-open-${ms.id}`} disabled={!ms.enabled} onPress={() => router.push(m.route as any)} style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
                 <View style={[styles.ic, { backgroundColor: ms.enabled ? colors.surfaceInverse : colors.surfaceTertiary }]}>
@@ -59,8 +61,8 @@ export default function Modules() {
                 <Switch testID={`module-toggle-${ms.id}`} value={ms.enabled} onValueChange={(v) => setSettings({ modules: s.modules.map((x) => (x.id === ms.id ? { ...x, enabled: v } : x)) })} {...sw} />
               </View>
               <View>
-                <IconButton icon="chevron-up" testID={`module-up-${ms.id}`} label="Move up" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: move(s.modules, i, -1) }))} />
-                <IconButton icon="chevron-down" testID={`module-down-${ms.id}`} label="Move down" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: move(s.modules, i, 1) }))} />
+                <IconButton icon="chevron-up" testID={`module-up-${ms.id}`} label="Move up" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: withHidden(move(visible, i, -1)) }))} />
+                <IconButton icon="chevron-down" testID={`module-down-${ms.id}`} label="Move down" onPress={() => (Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}), setSettings({ modules: withHidden(move(visible, i, 1)) }))} />
               </View>
             </View>
             </DragRow>
@@ -138,6 +140,8 @@ function countLine(db: DB, id: ModuleId) {
       case "lab":
       case "net":
         return 0;
+      case "cycle":
+        return db.cycle.days.length;
       default: {
         const unknown: never = id;
         return unknown;

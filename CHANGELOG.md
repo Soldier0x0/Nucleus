@@ -1,8 +1,22 @@
 # Changelog
 
-Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. Add the next version as a new `## v0.N` section at the top. Leave older sections as they were published.
+Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. When a release changes the app, add that version as a new `## v0.N` section at the top. Leave older sections as they were published.
 
-The Android workflow copies that section into the GitHub Release. The build stops before Gradle if the section for the next version is missing or empty.
+The Android workflow builds the APK either way. It publishes a GitHub Release only when this file has a section for the version being published, and that section describes an app change. A later version does not need a section yet. Notes that only say the app is unchanged are not published.
+
+## v0.4
+
+A private cycle calendar on this phone.
+
+- One calendar. Large day cells, a buddy picture at the top, and the next window as one line. Flow, symptoms, and stash are one level down.
+- Started today and Ended today are one tap. Spotting does not start a new cycle.
+- The window is a guess: a 28-day placeholder until two of her own cycle lengths exist, then the middle of those lengths. It widens when recent cycles disagree. A gap longer than about 90 days is left out.
+- A reminder title is only the buddy name and “needs attention”. No date, no flow, and no emoji on the lock screen.
+- The decoy PIN hides the calendar, the buddy name, and the picture.
+
+## v0.3
+
+The app on the phone is the same as v0.2. Nothing in the app changed after that APK. This release is the build that can finish once these notes exist.
 
 ## v0.2
 

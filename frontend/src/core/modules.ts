@@ -66,6 +66,7 @@ export const MODULES: ModuleManifest[] = [
   { id: "kanban", name: "Kanban", icon: "view-column-outline", route: "/kanban", description: "Columns and cards for work you move by hand.", entities: ["kanban"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
   { id: "wiki", name: "Wiki", icon: "book-open-variant", route: "/wiki", description: "Pages that link to each other with [[titles]].", entities: ["wiki"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
   { id: "net", name: "Network", icon: "access-point-network", route: "/net", description: "Ping, DNS, and a scan of this phone's own network. Online must be on.", entities: [], emits: [], consumes: [], capabilities: ["network.optional"], status: "available" },
+  { id: "cycle", name: "Cycle", icon: "calendar-blank-outline", route: "/cycle", description: "A private calendar on this phone.", entities: ["cycle"], emits: [], consumes: [], capabilities: ["storage.local", "notifications.local"], status: "available" },
 ];
 
 export const moduleById = (id: string) => MODULES.find((m) => m.id === id)!;

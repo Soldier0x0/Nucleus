@@ -30,6 +30,7 @@ test("decoy data does not keep real records", () => {
   real.settings.emergency = { ...real.settings.emergency, bloodGroup: "O+", showOnLock: true };
   real.settings.givenName = "Asha";
   real.txns = [{ id: "secret-txn", type: "expense", amount: 99999, category: "Other", date: "2026-01-01" }];
+  real.cycle = { ...real.cycle, buddyName: "Mango", buddyEmoji: "🥭" };
   const decoy = buildDecoyDB(real);
   assert.equal(decoy.txns.some((t) => t.id === "secret-txn"), false);
   assert.ok(decoy.vehicles.length > 0);
@@ -38,6 +39,8 @@ test("decoy data does not keep real records", () => {
   assert.equal(decoy.settings.onboarded, true);
   assert.equal(decoy.settings.emergency.bloodGroup, "O+");
   assert.equal(decoy.settings.emergency.showOnLock, true);
+  assert.equal(decoy.cycle.buddyName, "");
+  assert.equal(JSON.stringify(decoy).includes("Mango"), false);
   assert.equal(decoy.settings.givenName, undefined);
   assert.equal(JSON.stringify(decoy).includes("Asha"), false);
 });
