@@ -22,9 +22,10 @@ import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
 import type { Board, TileId } from "@/src/core/types";
 import { homeSchedule, readiness, tripStatus } from "@/src/core/domains";
+import { greetingLine } from "@/src/core/greeting";
 
 export default function Today() {
-  const { db, setSettings } = useStore();
+  const { db, setSettings, session } = useStore();
   const { colors, sp, a11y } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function Today() {
   const today = todayISO();
   const d = new Date();
   const hour = d.getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = greetingLine(hour, session === "real" ? db.settings.givenName : undefined);
   const contentW = Math.min(width, 720) - sp.lg * 2;
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);

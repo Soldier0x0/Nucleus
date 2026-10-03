@@ -1,7 +1,9 @@
 package com.nucleus.widgets
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
@@ -105,6 +107,19 @@ class NucleusAndroidModule : Module() {
     Function("stopScan") {
       scanning.set(false)
     }
+
+    Function("setLauncherIcon") { name: String ->
+      val ctx = appContext.reactContext ?: return@Function
+      if (name !in LAUNCHER_ALIASES) return@Function
+      val pm = ctx.packageManager
+      val pkg = ctx.packageName
+      // Enable the new picture first so the home screen never loses every icon.
+      pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$name"), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+      for (alias in LAUNCHER_ALIASES) {
+        if (alias == name) continue
+        pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+      }
+    }
   }
 
   private fun emit(body: Map<String, Any?>) {
@@ -172,6 +187,25 @@ class NucleusAndroidModule : Module() {
     return false
   }
 }
+
+private val LAUNCHER_ALIASES = listOf(
+  "IconPaperPaper",
+  "IconPaperMidnight",
+  "IconPaperDune",
+  "IconPaperAmoled",
+  "IconMetalPaper",
+  "IconMetalMidnight",
+  "IconMetalDune",
+  "IconMetalAmoled",
+  "IconGlassPaper",
+  "IconGlassMidnight",
+  "IconGlassDune",
+  "IconGlassAmoled",
+  "IconTilesPaper",
+  "IconTilesMidnight",
+  "IconTilesDune",
+  "IconTilesAmoled",
+)
 
 private fun elapsed(start: Long) = ((System.nanoTime() - start) / 1_000_000).toInt()
 

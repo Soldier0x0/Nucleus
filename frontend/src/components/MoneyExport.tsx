@@ -1,0 +1,64 @@
+import { useState } from "react";
+import { Platform } from "react-native";
+import * as Clipboard from "expo-clipboard";
+import * as Sharing from "expo-sharing";
+import { File, Paths } from "expo-file-system";
+import { useStore } from "@/src/core/store";
+import { exportBounds, moneyCsv, type ExportSpan } from "@/src/core/moneyWords";
+import { todayISO } from "@/src/core/format";
+import { DateField } from "./inputs";
+import { Sheet } from "./Sheet";
+import { Button, Chip, ChipRow, T } from "./ui";
+import { useToast } from "./Toast";
+
+const SPANS: { id: ExportSpan; label: string }[] = [
+  { id: "month", label: "This month" },
+  { id: "30", label: "Past 30 days" },
+  { id: "60", label: "Past 60 days" },
+  { id: "custom", label: "Custom" },
+];
+
+export function MoneyExport({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { db } = useStore();
+  const toast = useToast();
+  const today = todayISO();
+  const [span, setSpan] = useState<ExportSpan>("month");
+  const [from, setFrom] = useState(today.slice(0, 7) + "-01");
+  const [to, setTo] = useState(today);
+
+  const share = async () => {
+    const bounds = exportBounds(today, span, from, to);
+    const csv = moneyCsv(db.txns, db.settings.currency, bounds.from, bounds.to);
+    if (Platform.OS === "web") {
+      await Clipboard.setStringAsync(csv);
+      toast("Spreadsheet copied", "content-copy");
+      onClose();
+      return;
+    }
+    const file = new File(Paths.cache, `nucleus-spending-${bounds.from}-to-${bounds.to}.csv`);
+    if (file.exists) file.delete();
+    file.create();
+    file.write(csv);
+    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Spending spreadsheet" });
+    onClose();
+  };
+
+  return (
+    <Sheet visible={visible} onClose={onClose} title="Export spending" testID="money-export-sheet" footer={<Button label="Share CSV" icon="download-outline" onPress={share} testID="money-export-share" />}>
+      <T muted style={{ marginBottom: 10 }}>
+        A file on this phone. Weekly and monthly totals, then each transaction. Nothing is uploaded.
+      </T>
+      <ChipRow testID="money-export-spans">
+        {SPANS.map((s) => (
+          <Chip key={s.id} label={s.label} selected={span === s.id} onPress={() => setSpan(s.id)} testID={`money-export-${s.id}`} />
+        ))}
+      </ChipRow>
+      {span === "custom" ? (
+        <>
+          <DateField label="From" value={from} onChange={(v) => setFrom(v ?? today)} testID="money-export-from" />
+          <DateField label="To" value={to} onChange={(v) => setTo(v ?? today)} testID="money-export-to" />
+        </>
+      ) : null}
+    </Sheet>
+  );
+}

@@ -12,6 +12,7 @@ type Native = {
   dns(host: string): Promise<{ addresses: string[] }>;
   startScan(): boolean;
   stopScan(): void;
+  setLauncherIcon(name: string): void;
   addListener(event: "onLan", listener: (event: LanEvent) => void): { remove: () => void };
 };
 
@@ -52,6 +53,14 @@ export function startLanScan() {
 
 export function stopLanScan() {
   bridge()?.stopScan();
+}
+
+export function applyLauncherIcon(alias: string) {
+  try {
+    bridge()?.setLauncherIcon(alias);
+  } catch {
+    /* Expo Go has no activity-alias switch. */
+  }
 }
 
 export function subscribeLan(fn: (event: LanEvent) => void) {
