@@ -9,15 +9,17 @@ import { PinPad } from "./PinPad";
 import { Mark } from "./Mark";
 import { NameAsk } from "./NameAsk";
 import { resolveLauncher } from "@/src/core/launcher";
+import { shouldAskBiometric } from "@/src/core/lockPolicy";
+import { consumePhoneLock } from "@/src/native/android";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
 /**
- * App-wide lock + privacy cover. Locks on cold start and after `lockTimeoutSec` in background.
+ * App-wide lock + privacy cover. Asks on a cold start, and again only after the phone was locked.
  * Renders above the navigator so navigation state is preserved while locked.
  */
 export function LockGate() {
-  const { db, openReal, openDecoy, wipeDeviceData } = useStore();
+  const { db, openReal, openDecoy, wipeDeviceData, setSettings } = useStore();
   const s = db.settings;
   const scheme = useColorScheme();
   const mark = resolveLauncher(s.launcher, s.theme, scheme);
@@ -43,7 +45,9 @@ export function LockGate() {
     const sub = AppState.addEventListener("change", (st) => {
       if (st === "active") {
         setCovered(false);
-        if (s.lockEnabled && bgAt.current && Date.now() - bgAt.current > s.lockTimeoutSec * 1000) setLocked(true);
+        const backgroundMs = bgAt.current ? Date.now() - bgAt.current : 0;
+        const signal = consumePhoneLock() ? "phone-locked" : "still-unlocked";
+        if (shouldAskBiometric(s.lockEnabled, signal, backgroundMs)) setLocked(true);
         bgAt.current = null;
       } else {
         setCovered(s.blockScreenshots || s.lockEnabled);
@@ -51,16 +55,21 @@ export function LockGate() {
       }
     });
     return () => sub.remove();
-  }, [s.lockEnabled, s.lockTimeoutSec, s.blockScreenshots]);
+  }, [s.lockEnabled, s.blockScreenshots]);
+
+  const noteUnlock = useCallback(() => {
+    setSettings({ cloud: { ...s.cloud, unlockedAt: new Date().toISOString(), askedSinceUnlock: false } });
+  }, [setSettings, s.cloud]);
 
   const tryBio = useCallback(async () => {
     if (await biometricUnlock()) {
       await openReal();
       await clearFailures();
+      noteUnlock();
       setLocked(false);
       setError(undefined);
     }
-  }, [openReal]);
+  }, [openReal, noteUnlock]);
 
   useEffect(() => {
     if (locked && bioAllowed) tryBio();
@@ -122,6 +131,7 @@ export function LockGate() {
               if (match === "decoy") await openDecoy();
               else await openReal();
               await clearFailures();
+              noteUnlock();
               setLocked(false);
               setError(undefined);
             } else {

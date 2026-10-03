@@ -3,6 +3,9 @@ import { emptyCycle, normalizeCycle } from "./cycle";
 import { cleanCallName } from "./greeting";
 import { parseLauncher } from "./launcher";
 import { parseLook } from "./looks";
+import { parseLayout } from "./layouts";
+import { emptyAdhd, emptyHeadsUp, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast } from "./presets";
+import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
 export const LEGACY_DB_KEY = "tessera.db.v1";
@@ -16,6 +19,7 @@ export const defaultSettings: Settings = {
   timeFormat: "12h",
   theme: "midnight",
   look: "current",
+  layout: "stack",
   dualTone: false,
   online: false,
   accent: "ochre",
@@ -68,6 +72,18 @@ export const defaultSettings: Settings = {
   shortcuts: [],
   nameAsked: false,
   launcher: { family: "paper", variant: "paper" },
+  cloud: { provider: "off", askedSinceUnlock: false },
+  smsInbox: false,
+  lockAlerts: false,
+  moneyNames: [],
+  smsMemory: [],
+  ownAccounts: [],
+  installId: "",
+  readOnly: false,
+  homePreset: "custom",
+  adhd: emptyAdhd(),
+  presetLast: {},
+  headsUp: emptyHeadsUp(),
 };
 
 export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
@@ -76,7 +92,19 @@ export const INCOME_CATEGORIES = ["Salary", "Freelance", "Interest", "Refund", "
 export function emptyDB(): DB {
   return {
     version: 1,
-    settings: { ...defaultSettings, launcher: { ...defaultSettings.launcher }, modules: defaultSettings.modules.map((m) => ({ ...m })), tiles: defaultSettings.tiles.map((t) => ({ ...t })) },
+    settings: {
+    ...defaultSettings,
+    launcher: { ...defaultSettings.launcher },
+    cloud: { ...defaultSettings.cloud },
+    moneyNames: [...defaultSettings.moneyNames],
+    smsMemory: [...defaultSettings.smsMemory],
+    ownAccounts: [...defaultSettings.ownAccounts],
+    adhd: emptyAdhd(),
+    presetLast: {},
+    headsUp: emptyHeadsUp(),
+    modules: defaultSettings.modules.map((m) => ({ ...m })),
+    tiles: defaultSettings.tiles.map((t) => ({ ...t })),
+  },
     vehicles: [],
     fuel: [],
     services: [],
@@ -119,7 +147,20 @@ export function normalizeDB(raw: any): DB {
   if ((s.theme as string) === "light") s.theme = "paper";
   if ((s.theme as string) === "dark") s.theme = "midnight";
   s.look = parseLook(raw?.settings?.look);
+  s.layout = parseLayout(raw?.settings?.layout);
   s.dualTone = raw?.settings?.dualTone === true;
+  s.cloud = parseCloud(raw?.settings?.cloud);
+  s.smsInbox = raw?.settings?.smsInbox === true;
+  s.lockAlerts = raw?.settings?.lockAlerts === true;
+  s.readOnly = raw?.settings?.readOnly === true;
+  s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();
+  s.homePreset = parseHomePreset(raw?.settings?.homePreset);
+  s.adhd = parseAdhd(raw?.settings?.adhd);
+  s.presetLast = parsePresetLast(raw?.settings?.presetLast);
+  s.headsUp = parseHeadsUp(raw?.settings?.headsUp);
+  s.moneyNames = Array.isArray(raw?.settings?.moneyNames) ? raw.settings.moneyNames.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 40)) : [];
+  s.smsMemory = parseSmsMemory(raw?.settings?.smsMemory);
+  s.ownAccounts = Array.isArray(raw?.settings?.ownAccounts) ? raw.settings.ownAccounts.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 12)) : [];
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
   if (callName) s.givenName = callName;
@@ -163,10 +204,36 @@ export function normalizeDB(raw: any): DB {
   };
 }
 
+function parseCloud(raw: any): Settings["cloud"] {
+  const provider = raw?.provider === "drive" || raw?.provider === "onedrive" ? raw.provider : "off";
+  const cloud: Settings["cloud"] = { provider, askedSinceUnlock: raw?.askedSinceUnlock === true };
+  if (typeof raw?.lastSyncAt === "string") cloud.lastSyncAt = raw.lastSyncAt;
+  if (typeof raw?.unlockedAt === "string") cloud.unlockedAt = raw.unlockedAt;
+  return cloud;
+}
+
+function parseSmsMemory(raw: unknown): Settings["smsMemory"] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((row) => row && typeof row.key === "string" && (row.choice === "category" || row.choice === "transfer" || row.choice === "ignore"))
+    .slice(0, 80)
+    .map((row) => ({
+      key: String(row.key).slice(0, 40),
+      choice: row.choice as Settings["smsMemory"][number]["choice"],
+      category: typeof row.category === "string" ? row.category.slice(0, 40) : undefined,
+    }));
+}
+
 function normalizeTxn(raw: Txn): Txn {
   const item = typeof raw?.item === "string" ? raw.item.replace(/\s+/g, " ").trim().slice(0, 40) : "";
   const next = { ...raw };
   if (item) next.item = item;
   else delete next.item;
+  if (raw?.cash === true) next.cash = true;
+  else delete next.cash;
+  if (raw?.transfer === true) next.transfer = true;
+  else delete next.transfer;
+  if (typeof raw?.balance === "number" && Number.isFinite(raw.balance)) next.balance = raw.balance;
+  else delete next.balance;
   return next;
 }

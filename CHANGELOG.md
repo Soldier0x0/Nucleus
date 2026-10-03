@@ -8,6 +8,36 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.6
+
+A private desk on this phone for money, trips, and the next cycle window, in one locked file.
+
+- The home-screen mark fills the circle. Android still masks the icon.
+- The lock asks after the phone was locked, or after the app was fully closed. Switching away and back does not ask.
+- Turning on a lock-screen alert or the emergency card asks for that permission, and the card can show on the lock screen.
+- Bank texts stay on the phone. Debits, credits, and balances are kept. Codes and other texts are dropped.
+- An unknown sender, an unclear category, or a possible transfer between your own accounts asks once, then remembers.
+- Money shows the month in and out, a category split, and balance over time.
+- Repeating bills, a reminder the day before, a price change, cash, and a yearly money export.
+- A receipt is cropped to the page. The amount, date, and shop are read from the words on the phone and confirmed before they count.
+- One encrypted file holds money, cycle, notes, settings, and trips. Start fresh or bring a file in. The app says what is in the file before it replaces anything.
+- An optional copy of that locked file can go to your own Drive or OneDrive. It stays off until you choose it. A second phone can open the file read-only.
+- Glass and Bento sit on the existing looks, and on Paper, Midnight, Dune, and AMOLED.
+- A home-screen widget shows the next cycle window. The notification shade has no dates.
+- Search covers your notes, money, cycle, and trips.
+- Records that share a date or an amount can be linked.
+- Trips have a timeline, weather when online, stops you mark, a range warning, and a service interval from the vehicle's own kilometers.
+- The cycle window still comes from your own dates.
+- The decoy PIN hides cycle and money.
+- The greeting names the one thing due today.
+- One stop or one bill can be handed to one person.
+- Home presets rearrange the main screen. Money and Travel swipe between two screens. Empty modules stay hidden. Nothing is deleted when you switch.
+- ADHD mode shows one next action in plain type. The timer counts time spent. A day with nothing finished is a break. Motion and the buddy stay off until you turn them on.
+- One quiet heads-up at a time, from data already on the phone. Dismissing it has no penalty. Other alerts wait while ADHD mode is on.
+- A new name starts as Harsha.
+- Bikes use a bike mark. Cars keep a car mark.
+- Dragging a module opens a gap where it will land.
+
 ## v0.5
 
 Looks you can see, on the colors you already have.

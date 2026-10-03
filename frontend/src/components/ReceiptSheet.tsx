@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { TextInput, View } from "react-native";
+import { Image } from "expo-image";
 import { useStore } from "@/src/core/store";
 import { EXPENSE_CATEGORIES } from "@/src/core/defaults";
 import { parseReceipt } from "@/src/core/receipt";
+import { cropToPage, flagMismatch, readReceiptWords, receiptCounts } from "@/src/core/receiptPage";
 import { todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
 import { Button, ChipRow, Chip, T } from "./ui";
 import { Field } from "./inputs";
+import { pickSmallPhoto } from "./PhotoPick";
+import { useToast } from "./Toast";
 import { useTheme } from "@/src/theme";
 
 /** Turns pasted receipt text into an expense. The words are not read from a photo. */
 export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => void }) {
-  const { update } = useStore();
+  const { db, update } = useStore();
   const { colors } = useTheme();
+  const toast = useToast();
+  const [photo, setPhoto] = useState<string | undefined>();
   const read = parseReceipt(text);
   const [body, setBody] = useState(text);
   const [merchant, setMerchant] = useState(read.merchant);
@@ -20,6 +26,10 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
   const [date, setDate] = useState(read.date ?? todayISO());
   const [category, setCategory] = useState("Other");
   const parsed = parseReceipt(body);
+  const words = readReceiptWords(body);
+  const debit = db.txns.find((row) => row.type === "expense" && !row.transfer && row.date === (words.date ?? date));
+  const mismatch = words.amount != null && debit ? flagMismatch(words.amount, debit.amount) : false;
+  const page = cropToPage({ w: 1000, h: 1400 }, { x: 0, y: 0, w: 1000, h: 1400 });
   const value = Number(amount);
   const ready = value > 0;
   return (
@@ -30,14 +40,15 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
       testID="receipt-sheet"
       footer={
         <Button
-          label="Save expense"
+          label="Confirm and save"
           icon="check"
           disabled={!ready}
           testID="receipt-save"
           onPress={() => {
+            if (!receiptCounts(true)) return;
             update((d) => ({
               ...d,
-              txns: [...d.txns, { id: uid(), type: "expense" as const, amount: Math.round(value * 100) / 100, category, date, note: merchant.trim() || undefined }],
+              txns: [...d.txns, { id: uid(), type: "expense" as const, amount: Math.round(value * 100) / 100, category, date, note: merchant.trim() || undefined, photo }],
             }));
             onClose();
           }}
@@ -45,8 +56,23 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
       }
     >
       <T muted style={{ fontSize: 12, marginBottom: 8 }}>
-        Paste the words from a bill. Nucleus looks for a total. It does not read a photo, and it does not keep a model on the phone.
+        A photo is optional and fills the page, like a scan. The amount, date, and shop are read from the words on this phone. They count only after you confirm. Nothing is sent to a model.
       </T>
+      {photo ? <Image source={{ uri: photo }} style={{ width: "100%", aspectRatio: page.w / page.h, borderRadius: 8, marginBottom: 8, backgroundColor: colors.surfaceTertiary }} contentFit="cover" /> : null}
+      <Button
+        small
+        kind="secondary"
+        label={photo ? "Replace receipt photo" : "Add a receipt photo"}
+        testID="receipt-photo"
+        onPress={async () => {
+          const next = await pickSmallPhoto();
+          if (next === "too-big") return toast("That photo is too large. Crop it to the page.", "image-off-outline");
+          if (next === "denied") return toast("Photo access is off for Nucleus.", "image-off-outline");
+          if (!next) return;
+          setPhoto(next);
+        }}
+        style={{ marginBottom: 8 }}
+      />
       <TextInput
         testID="receipt-text"
         value={body}
@@ -70,7 +96,9 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
           <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} testID={`receipt-cat-${c}`} />
         ))}
       </ChipRow>
-      {parsed.amount == null ? <T muted style={{ fontSize: 12, marginTop: 8 }}>No total found yet. You can still type the amount.</T> : null}
+      {parsed.amount == null ? <T muted style={{ fontSize: 12, marginTop: 8 }}>No total found yet. You can still type the amount.</T> : <T style={{ fontSize: 12, marginTop: 8 }} testID="receipt-words">{words.shop || "Shop"} · {words.amount} · {words.date}</T>}
+      <T muted style={{ fontSize: 12, marginTop: 8 }} testID="receipt-crop">The photo is cropped to the page ({page.w}×{page.h}), not a small inset.</T>
+      {mismatch ? <T style={{ fontSize: 12, marginTop: 8 }} testID="receipt-mismatch">This receipt does not match the debit on the same day.</T> : null}
       <View />
     </Sheet>
   );

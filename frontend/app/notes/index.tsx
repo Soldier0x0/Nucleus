@@ -14,6 +14,7 @@ import { Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
+import { adhdOpen, typeAdhdDraft } from "@/src/core/presets";
 
 const emptyNote = (): Note => ({ id: uid(), title: "", body: "", checklist: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
 
@@ -22,9 +23,14 @@ export default function Notes() {
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; field?: string; seed?: string }>();
   const [q, setQ] = useState("");
-  const [edit, setEdit] = useState<Note | null>(() => (params.id ? db.notes.find((n) => n.id === params.id) ?? null : null));
+  const [edit, setEdit] = useState<Note | null>(() => {
+    const found = params.id ? db.notes.find((n) => n.id === params.id) ?? null : null;
+    const seed = typeof params.seed === "string" ? params.seed : "";
+    if (found && params.field === "body" && !found.body && seed) return { ...found, body: seed };
+    return found;
+  });
 
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -116,7 +122,14 @@ function NoteSheet({ note, onClose, onSaved }: { note: Note; onClose: () => void
   return (
     <Sheet visible onClose={onClose} title={exists ? "Edit note" : "New note"} testID="note-sheet" footer={<Button label="Save note" icon="check" testID="note-save-button" onPress={save} />}>
       <Field label="Title" testID="note-title-input" value={title} onChangeText={setTitle} placeholder="Wi-Fi password, packing ideas…" />
-      <Field label="Note" testID="note-body-input" value={body} onChangeText={setBody} placeholder="Anything you want to remember" multiline style={{ minHeight: 90 }} />
+      <Field label="Note" testID="note-body-input" value={body} onChangeText={(value) => {
+        setBody(value);
+        update((current) => {
+          const open = adhdOpen(current);
+          if (!open || open.recordId !== note.id) return current;
+          return typeAdhdDraft(current, value);
+        });
+      }} placeholder="Anything you want to remember" multiline style={{ minHeight: 90 }} />
       <Eyebrow style={{ marginBottom: 8 }}>Checklist · {checklist.filter((c) => c.done).length}/{checklist.length}</Eyebrow>
       {checklist.map((c) => (
         <View key={c.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}>

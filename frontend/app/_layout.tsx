@@ -15,11 +15,14 @@ import { StoreProvider, useStore } from "@/src/core/store";
 import { ToastProvider } from "@/src/components/Toast";
 import { LockGate } from "@/src/components/LockGate";
 import { BackupNudge } from "@/src/components/BackupNudge";
+import { SyncAsk } from "@/src/components/SyncAsk";
 import { UnreadableData } from "@/src/components/UnreadableData";
 import { pushCaptureText } from "@/src/core/captureBus";
 import { pushReceiptText } from "@/src/core/receiptBus";
 import { looksLikeReceipt } from "@/src/core/receipt";
 import { HomeSurface } from "@/src/components/HomeSurface";
+import { BankTextSync } from "@/src/components/BankTextSync";
+import { QuietSync } from "@/src/components/QuietSync";
 import { useCycleNotify } from "@/src/core/useCycleNotify";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -30,8 +33,8 @@ function Themed({ children }: { children: React.ReactNode }) {
   const s = db.settings;
   const themeKey = s.theme === "system" ? (scheme === "light" ? "paper" : "midnight") : s.theme;
   const theme = useMemo(
-    () => buildTheme(themeKey, s.accent, s.density === "dense", { highContrast: s.highContrast, largeTouch: s.largeTouch, reducedMotion: s.reducedMotion }, s.look, s.dualTone),
-    [themeKey, s.accent, s.density, s.highContrast, s.largeTouch, s.reducedMotion, s.look, s.dualTone],
+    () => buildTheme(themeKey, s.accent, s.density === "dense", { highContrast: s.highContrast, largeTouch: s.largeTouch, reducedMotion: s.reducedMotion }, s.look, s.dualTone, s.layout),
+    [themeKey, s.accent, s.density, s.highContrast, s.largeTouch, s.reducedMotion, s.look, s.dualTone, s.layout],
   );
   applyActiveLook(theme.look);
   const mode = theme.mode;
@@ -94,7 +97,10 @@ export default function RootLayout() {
               <ToastProvider>
                 <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
                 <BackupNudge />
+                <SyncAsk />
                 <HomeSurface />
+                <BankTextSync />
+                <QuietSync />
                 <LockGate />
               </ToastProvider>
             </Themed>

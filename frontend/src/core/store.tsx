@@ -144,6 +144,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [loadAttempt]);
 
   useEffect(() => {
+    if (!ready || !writable.current || unreadable || db.settings.installId || db.settings.readOnly) return;
+    setDb((d) => (d.settings.installId ? d : { ...d, settings: { ...d.settings, installId: uid() } }));
+  }, [ready, unreadable, db.settings.installId, db.settings.readOnly]);
+
+  useEffect(() => {
     if (!writable.current) return;
     if (timer.current) clearTimeout(timer.current);
     const generation = ++writeGen.current;
@@ -191,11 +196,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const update = useCallback((fn: (db: DB) => DB) => {
     if (!writable.current) return;
-    setDb((d) => fn(d));
+    setDb((d) => (d.settings.readOnly ? d : fn(d)));
   }, []);
   const setSettings = useCallback((patch: Partial<Settings>) => {
     if (!writable.current) return;
-    setDb((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
+    setDb((d) => (d.settings.readOnly ? d : { ...d, settings: { ...d.settings, ...patch } }));
   }, []);
   const replace = useCallback((next: DB) => {
     if (!writable.current) return;

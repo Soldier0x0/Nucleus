@@ -1,14 +1,24 @@
 package com.nucleus.widgets
 
+import android.app.Activity
+import android.app.KeyguardManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import expo.modules.kotlin.activityresult.AppContextActivityResultContract
+import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
+import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import org.json.JSONArray
@@ -29,11 +39,36 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class NucleusAndroidModule : Module() {
   private val scanning = AtomicBoolean(false)
+  private val phoneLocked = AtomicBoolean(false)
+  private var saveLauncher: AppContextActivityResultLauncher<String, Boolean>? = null
   private val main = android.os.Handler(android.os.Looper.getMainLooper())
+  private val screenOff = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      if (intent?.action == Intent.ACTION_SCREEN_OFF) phoneLocked.set(true)
+    }
+  }
 
   override fun definition() = ModuleDefinition {
     Name("NucleusAndroid")
     Events("onLan")
+
+    OnCreate {
+      val ctx = appContext.reactContext ?: return@OnCreate
+      val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+      if (Build.VERSION.SDK_INT >= 33) ctx.registerReceiver(screenOff, filter, Context.RECEIVER_NOT_EXPORTED)
+      else ctx.registerReceiver(screenOff, filter)
+    }
+
+    OnDestroy {
+      try {
+        appContext.reactContext?.unregisterReceiver(screenOff)
+      } catch (_: Exception) {
+      }
+    }
+
+    RegisterActivityContracts {
+      saveLauncher = registerForActivityResult(SaveLockedFileContract())
+    }
 
     Function("publishSnapshot") { json: String ->
       val ctx = appContext.reactContext ?: return@Function
@@ -108,6 +143,85 @@ class NucleusAndroidModule : Module() {
       scanning.set(false)
     }
 
+    Function("consumePhoneLock") {
+      val ctx = appContext.reactContext ?: return@Function false
+      val keyguard = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+      val lockedNow = keyguard.isKeyguardLocked
+      phoneLocked.getAndSet(false) || lockedNow
+    }
+
+    AsyncFunction("readSms") {
+      val ctx = appContext.reactContext ?: return@AsyncFunction "[]"
+      if (ctx.checkSelfPermission(android.Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) return@AsyncFunction "[]"
+      val cursor = ctx.contentResolver.query(Uri.parse("content://sms/inbox"), arrayOf("address", "body", "date"), null, null, "date DESC")
+        ?: return@AsyncFunction "[]"
+      val arr = org.json.JSONArray()
+      cursor.use { rows ->
+        var n = 0
+        while (rows.moveToNext() && n < 40) {
+          n += 1
+          val item = org.json.JSONObject()
+          item.put("sender", rows.getString(0) ?: "")
+          item.put("body", rows.getString(1) ?: "")
+          item.put("at", rows.getLong(2).toString())
+          arr.put(item)
+        }
+      }
+      arr.toString()
+    }
+
+    Function("showLockCard") { title: String, body: String ->
+      val ctx = appContext.reactContext ?: return@Function
+      val manager = ctx.getSystemService(NotificationManager::class.java) ?: return@Function
+      if (Build.VERSION.SDK_INT >= 26) {
+        val channel = NotificationChannel(LOCK_CHANNEL, "Lock screen", NotificationManager.IMPORTANCE_DEFAULT)
+        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        manager.createNotificationChannel(channel)
+      }
+      val notification = if (Build.VERSION.SDK_INT >= 26) {
+        Notification.Builder(ctx, LOCK_CHANNEL)
+          .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+          .setContentTitle(title.take(40))
+          .setContentText(body.take(120))
+          .setVisibility(Notification.VISIBILITY_PUBLIC)
+          .setOngoing(true)
+          .build()
+      } else {
+        @Suppress("DEPRECATION")
+        Notification.Builder(ctx)
+          .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+          .setContentTitle(title.take(40))
+          .setContentText(body.take(120))
+          .setOngoing(true)
+          .build()
+      }
+      manager.notify(LOCK_CARD_ID, notification)
+    }
+
+    Function("hideLockCard") {
+      val ctx = appContext.reactContext ?: return@Function
+      ctx.getSystemService(NotificationManager::class.java)?.cancel(LOCK_CARD_ID)
+    }
+
+    AsyncFunction("writeLockedFile") Coroutine { path: String ->
+      val ctx = appContext.reactContext ?: return@Coroutine false
+      val existing = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CLOUD_FILE, null)
+      if (!existing.isNullOrBlank() && writeToUri(ctx, Uri.parse(existing), path)) return@Coroutine true
+      val launcher = saveLauncher ?: return@Coroutine false
+      launcher.launch(path)
+    }
+
+    Function("forgetCloudFile") {
+      val ctx = appContext.reactContext ?: return@Function
+      ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(CLOUD_FILE).apply()
+    }
+
+    Function("publishCycle") { json: String ->
+      val ctx = appContext.reactContext ?: return@Function
+      ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(CYCLE, json).apply()
+      WidgetRender.refresh(ctx)
+    }
+
     Function("setLauncherIcon") { name: String ->
       val ctx = appContext.reactContext ?: return@Function
       if (name !in LAUNCHER_ALIASES) return@Function
@@ -118,6 +232,32 @@ class NucleusAndroidModule : Module() {
       for (alias in LAUNCHER_ALIASES) {
         if (alias == name) continue
         pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
+      }
+    }
+  }
+
+  private inner class SaveLockedFileContract : AppContextActivityResultContract<String, Boolean> {
+    override fun createIntent(context: Context, input: String): Intent {
+      return Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+        addCategory(Intent.CATEGORY_OPENABLE)
+        type = "application/json"
+        putExtra(Intent.EXTRA_TITLE, "nucleus-locked.json")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+      }
+    }
+
+    override fun parseResult(input: String, resultCode: Int, intent: Intent?): Boolean {
+      if (resultCode != Activity.RESULT_OK) return false
+      val uri = intent?.data ?: return false
+      val ctx = appContext.reactContext ?: return false
+      val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+      return try {
+        ctx.contentResolver.takePersistableUriPermission(uri, flags)
+        val ok = writeToUri(ctx, uri, input)
+        if (ok) ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(CLOUD_FILE, uri.toString()).apply()
+        ok
+      } catch (_: Exception) {
+        false
       }
     }
   }
@@ -186,6 +326,33 @@ class NucleusAndroidModule : Module() {
     }
     return false
   }
+}
+
+private const val LOCK_CHANNEL = "nucleus-lock"
+private const val LOCK_CARD_ID = 704
+private const val CLOUD_FILE = "cloud_file_uri"
+
+private fun writeToUri(ctx: Context, uri: Uri, path: String): Boolean {
+  return try {
+    val bytes = readLocal(ctx, path)
+    if (bytes.isEmpty()) return false
+    ctx.contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+      stream.write(bytes)
+      true
+    } ?: false
+  } catch (_: Exception) {
+    false
+  }
+}
+
+private fun readLocal(ctx: Context, path: String): ByteArray {
+  if (path.startsWith("content://")) {
+    return ctx.contentResolver.openInputStream(Uri.parse(path))?.use { it.readBytes() } ?: ByteArray(0)
+  }
+  val filePath = if (path.startsWith("file://")) Uri.parse(path).path ?: return ByteArray(0) else path
+  val file = java.io.File(filePath)
+  if (!file.isFile) return ByteArray(0)
+  return file.readBytes()
 }
 
 private val LAUNCHER_ALIASES = listOf(

@@ -17,11 +17,17 @@ import { ReceiptSheet } from "@/src/components/ReceiptSheet";
 import { subscribeReceipt, takeReceiptText } from "@/src/core/receiptBus";
 import { WhySheet } from "@/src/components/WhySheet";
 import { ModuleGate } from "@/src/components/ModuleGate";
+import { MoneyDesk } from "@/src/components/MoneyDesk";
+import { monthFlow } from "@/src/core/moneyDesk";
+import { useRealSession } from "@/src/components/useRealSession";
+import { Field } from "@/src/components/inputs";
+import { adhdOpen, typeAdhdDraft } from "@/src/core/presets";
 
 type Tab = "overview" | "transactions" | "subscriptions";
 
 export default function Money() {
-  const params = useLocalSearchParams<{ tab?: Tab }>();
+  const real = useRealSession();
+  const params = useLocalSearchParams<{ tab?: Tab; focus?: string; field?: string; seed?: string }>();
   const { db } = useStore();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
@@ -36,8 +42,9 @@ export default function Money() {
   const [exportOpen, setExportOpen] = useState(false);
   const [filter, setFilter] = useState<string>("All");
   const mt = monthTotals(db, month);
+  const flow = monthFlow(db.txns, month);
   const b = db.budget.monthly;
-  const pct = b > 0 ? mt.spent / b : 0;
+  const pct = b > 0 ? flow.out / b : 0;
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
   const insights = moneyInsights(db);
   const isCurrent = month === monthKey(todayISO());
@@ -62,6 +69,7 @@ export default function Money() {
       {tab === "transactions" ? <ChipRow testID="money-filter-row">{usedCats.map((c) => <Chip key={c} label={c} selected={filter === c} onPress={() => setFilter(c)} testID={`money-filter-${c}`} />)}</ChipRow> : null}
 
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingTop: 4, paddingBottom: insets.bottom + 96, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        <FocusNote focus={typeof params.focus === "string" ? params.focus : ""} field={typeof params.field === "string" ? params.field : ""} seed={typeof params.seed === "string" ? params.seed : ""} />
         {tab === "overview" && (
           <>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -78,21 +86,22 @@ export default function Money() {
                 <View style={{ flex: 1, gap: 8 }}>
                   <View>
                     <Eyebrow>Spent</Eyebrow>
-                    <Amount value={mt.spent} v="monoLg" testID="money-spent" />
+                    <Amount value={flow.out} v="monoLg" testID="money-spent" />
                   </View>
                   <View>
                     <Eyebrow>Income</Eyebrow>
-                    <Amount value={mt.income} v="mono" color={colors.success} />
+                    <Amount value={flow.in} v="mono" color={colors.success} />
                   </View>
                   <View>
                     <Eyebrow>{b > 0 ? "Left" : "Net"}</Eyebrow>
-                    <Amount value={b > 0 ? b - mt.spent : mt.income - mt.spent} v="mono" />
+                    <Amount value={b > 0 ? b - flow.out : flow.in - flow.out} v="mono" />
                   </View>
                 </View>
               </View>
               {b === 0 ? <Button style={{ marginTop: 12 }} small kind="ghost" icon="target" label="Set a monthly budget" onPress={() => setSheet("budget")} testID="money-set-budget-button" /> : null}
             </Card>
 
+            {real ? <MoneyDesk month={month} /> : null}
             <Card testID="money-categories-card">
               <Eyebrow style={{ marginBottom: 10 }}>By category</Eyebrow>
               {mt.categories.length === 0 ? (
@@ -215,6 +224,37 @@ export default function Money() {
       <WhySheet visible={!!why} onClose={() => setWhy(null)} title={why?.title ?? ""} why={why?.why} />
       <ModuleGate id="money" name="Money" icon="wallet-outline" />
     </View>
+  );
+}
+
+function FocusNote({ focus, field, seed }: { focus: string; field: string; seed: string }) {
+  const { db, update } = useStore();
+  const txn = db.txns.find((row) => row.id === focus);
+  const step = adhdOpen(db);
+  const [text, setText] = useState(step?.recordId === focus && step.draft ? step.draft : txn?.note || seed);
+  if (!txn || field !== "note") return null;
+  return (
+    <Card testID="money-focus-note-card">
+      <Field
+        label="Note"
+        testID="money-focus-note"
+        value={text}
+        autoFocus
+        onChangeText={(value) => {
+          setText(value);
+          update((current) => {
+            const open = adhdOpen(current);
+            if (!open || open.recordId !== txn.id) return current;
+            return typeAdhdDraft(current, value);
+          });
+        }}
+      />
+      <Button
+        label="Save"
+        testID="money-focus-save"
+        onPress={() => update((current) => ({ ...current, txns: current.txns.map((row) => (row.id === txn.id ? { ...row, note: text.trim() || undefined } : row)) }))}
+      />
+    </Card>
   );
 }
 

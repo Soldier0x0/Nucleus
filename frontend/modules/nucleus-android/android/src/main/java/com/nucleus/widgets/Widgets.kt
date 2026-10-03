@@ -12,6 +12,7 @@ import org.json.JSONObject
 
 internal const val PREFS = "nucleus_widgets"
 internal const val SNAPSHOT = "snapshot"
+internal const val CYCLE = "cycle_window"
 
 internal fun readSnapshot(context: Context): JSONObject? {
   val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(SNAPSHOT, null) ?: return null
@@ -44,6 +45,7 @@ internal object WidgetRender {
       TripWidget::class.java to "trip",
       MaintenanceWidget::class.java to "maintenance",
       BatteryWidget::class.java to "battery",
+      CycleWidget::class.java to "cycle",
     ).forEach { (cls, kind) ->
       val ids = manager.getAppWidgetIds(ComponentName(context, cls))
       for (id in ids) manager.updateAppWidget(id, bind(context, kind))
@@ -54,6 +56,7 @@ internal object WidgetRender {
 
   private fun cardFor(context: Context, kind: String, snap: JSONObject?): Card {
     if (kind == "battery") return battery(context)
+    if (kind == "cycle") return cycle(context)
     if (snap == null) return Card(label(kind), "Open Nucleus", "Open the app once to fill this", path(kind))
     return when (kind) {
       "budget" -> {
@@ -80,6 +83,20 @@ internal object WidgetRender {
         }
       }
     }
+  }
+
+  private fun cycle(context: Context): Card {
+    val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CYCLE, null)
+    val o = raw?.let {
+      try {
+        JSONObject(it)
+      } catch (_: Exception) {
+        null
+      }
+    }
+    val window = o?.optString("window").orEmpty().ifBlank { "No window yet" }
+    val shade = o?.optString("shade").orEmpty().ifBlank { "Next window" }
+    return Card("Cycle", window, shade, "/cycle")
   }
 
   private fun battery(context: Context): Card {
@@ -129,4 +146,8 @@ class MaintenanceWidget : NucleusWidget() {
 
 class BatteryWidget : NucleusWidget() {
   override val kind = "battery"
+}
+
+class CycleWidget : NucleusWidget() {
+  override val kind = "cycle"
 }

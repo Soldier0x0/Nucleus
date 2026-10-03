@@ -8,18 +8,25 @@ import { useStore } from "@/src/core/store";
 import { CURRENCIES } from "@/src/core/format";
 import { MODULES } from "@/src/core/modules";
 import { withSampleData } from "@/src/core/sample";
-import { biometricAvailable, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
+import { biometricAvailable, biometricUnlock, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Segmented, T } from "@/src/components/ui";
 import { PinPad } from "@/src/components/PinPad";
 import { Mark } from "@/src/components/Mark";
 import { Field } from "@/src/components/inputs";
 import { cleanCallName } from "@/src/core/greeting";
 import { resolveLauncher } from "@/src/core/launcher";
+import { decryptBackup, pickBackup } from "@/src/core/backup";
+import { accessMode, canOpenFile, describeContents, FILE_PASSPHRASE_KEY, replaceAllowed } from "@/src/core/vaultFile";
+import type { DB } from "@/src/core/types";
+import type { PasswordEnvelope } from "@/src/core/crypto";
+import { secureStorage } from "@/src/utils/storage";
+
+const FILE_PASS = FILE_PASSPHRASE_KEY;
 
 const STEPS = 4;
 
 export default function Onboarding() {
-  const { db, setSettings, update, prepareDecoy } = useStore();
+  const { db, setSettings, update, prepareDecoy, replace } = useStore();
   const s = db.settings;
   const { colors, sp } = useTheme();
   const scheme = useColorScheme();
@@ -33,6 +40,44 @@ export default function Onboarding() {
   const [pinErr, setPinErr] = useState<string>();
   const [pinKey, setPinKey] = useState(0);
   const [bioOk, setBioOk] = useState(false);
+  const [gate, setGate] = useState<"choose" | "fresh" | "file">("choose");
+  const [picked, setPicked] = useState<DB | null>(null);
+  const [fileLine, setFileLine] = useState("");
+  const [pass, setPass] = useState("");
+  const [pendingEnc, setPendingEnc] = useState<{ env: PasswordEnvelope; exportedAt: string } | null>(null);
+
+  const openPicked = (next: DB, line: string) => {
+    setPicked(next);
+    setFileLine(line);
+    setGate("file");
+  };
+
+  const bringFile = async () => {
+    const pickedFile = await pickBackup();
+    if (!pickedFile) return;
+    if (pickedFile.kind === "encrypted") {
+      setPendingEnc({ env: pickedFile.env, exportedAt: pickedFile.exportedAt });
+      setGate("file");
+      return;
+    }
+    openPicked(pickedFile.file.data, describeContents(pickedFile.file.data));
+  };
+
+  const applyFile = () => {
+    if (!picked || !replaceAllowed(fileLine.length > 0, true)) return;
+    const samePhone = !picked.settings.installId || picked.settings.installId === s.installId;
+    replace({
+      ...picked,
+      settings: {
+        ...picked.settings,
+        onboarded: true,
+        nameAsked: true,
+        readOnly: accessMode(samePhone) === "read-only",
+        installId: s.installId || picked.settings.installId,
+      },
+    });
+    router.replace("/(tabs)");
+  };
 
   const finish = (sample: boolean) => {
     update((d) => {
@@ -41,6 +86,55 @@ export default function Onboarding() {
     });
     router.replace("/(tabs)");
   };
+
+  if (gate !== "fresh") {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.surface, paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16, paddingHorizontal: sp.lg }} testID="onboarding-file-gate">
+        <Mark size={72} family={mark.family} variant={mark.variant} />
+        <T v="title" style={{ marginTop: 16 }}>Start fresh, or bring in a file</T>
+        <T muted style={{ marginTop: 8 }}>The file holds money, cycle, notes, settings, and trips. Nucleus says what is in it before anything is replaced.</T>
+        {fileLine ? <T style={{ marginTop: 16 }} testID="onboarding-file-describe">{fileLine}</T> : null}
+        {pendingEnc && !picked ? (
+          <View style={{ marginTop: 16, gap: 10 }}>
+            <Field label="Passphrase" testID="onboarding-file-pass" value={pass} onChangeText={setPass} secureTextEntry />
+            <Button label="Open with passphrase" testID="onboarding-file-open" onPress={async () => {
+              if (!canOpenFile({ passphrase: pass, samePhone: false, biometricOk: false })) return;
+              try {
+                const file = await decryptBackup(pendingEnc.env, pass);
+                await secureStorage.setItem(FILE_PASS, pass);
+                openPicked(file.data, describeContents(file.data));
+              } catch {
+                setFileLine("That passphrase did not open the file.");
+              }
+            }} />
+            <Button kind="secondary" label="Use biometrics on this phone" testID="onboarding-file-bio" onPress={async () => {
+              const ok = await biometricUnlock();
+              if (!canOpenFile({ passphrase: "", samePhone: true, biometricOk: ok }) || !pendingEnc) {
+                setFileLine("Biometrics can stand in for the passphrase only on this phone.");
+                return;
+              }
+              const saved = await secureStorage.getItem(FILE_PASS);
+              if (!saved) {
+                setFileLine("This phone has not saved a passphrase yet. Type it once. After that, biometrics can stand in.");
+                return;
+              }
+              try {
+                const file = await decryptBackup(pendingEnc.env, saved);
+                openPicked(file.data, describeContents(file.data));
+              } catch {
+                setFileLine("The saved passphrase did not open this file.");
+              }
+            }} />
+          </View>
+        ) : null}
+        <View style={{ marginTop: 20, gap: 10 }}>
+          {picked ? <Button label="Use this file" testID="onboarding-file-confirm" onPress={applyFile} /> : null}
+          <Button label="Start fresh" testID="onboarding-start-fresh" onPress={() => setGate("fresh")} />
+          <Button kind="secondary" label="Bring in a file" testID="onboarding-bring-file" onPress={bringFile} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface, paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }}>
@@ -157,7 +251,7 @@ export default function Onboarding() {
               <T muted style={{ marginBottom: 12 }}>
                 A 4-digit PIN locks the whole app. There is no recovery server — if you forget it, you can only erase and restore from a backup.
               </T>
-              <Field label="What should I call you?" testID="onboarding-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined })} placeholder="Asha" autoCapitalize="words" hint="Optional. Today will say good afternoon with this name." />
+              <Field label="What should I call you?" testID="onboarding-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined })} placeholder="Harsha" autoCapitalize="words" hint="Optional. Today will say good afternoon with this name." />
               {pinStage === "off" && (
                 <View style={{ gap: 10 }}>
                   <Button label="Set a PIN" icon="lock-outline" testID="onboarding-set-pin-button" onPress={() => setPinStage("enter")} />

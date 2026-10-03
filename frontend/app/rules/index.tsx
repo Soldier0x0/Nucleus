@@ -34,7 +34,7 @@ export default function Rules() {
 
   const applyReminders = async () => {
     const list = reminders(db);
-    const keys = await syncReminders(list);
+    const keys = await syncReminders(list, db.settings.lockAlerts ? "nucleus-lock" : "nucleus-reminders");
     const once = list.filter((r) => r.once && keys.includes(r.key)).map((r) => r.key);
     if (once.length) update((d) => markFired(d, once));
     setScheduled(await scheduledCount());
@@ -184,7 +184,7 @@ export default function Rules() {
             setAskPerm(false);
             if (p.granted) {
               setSettings({ remindersEnabled: true });
-              await syncReminders(reminders(db));
+              await syncReminders(reminders(db), db.settings.lockAlerts ? "nucleus-lock" : "nucleus-reminders");
               setScheduled(await scheduledCount());
               toast("Reminders are on", "bell-ring-outline");
             } else if (!p.canAskAgain && Platform.OS !== "web") {

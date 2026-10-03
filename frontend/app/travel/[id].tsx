@@ -20,11 +20,13 @@ import { WeatherCard } from "@/src/components/WeatherCard";
 import { WhySheet } from "@/src/components/WhySheet";
 import { useToast } from "@/src/components/Toast";
 import { TripSheet } from "./index";
+import { TripDesk } from "@/src/components/TripDesk";
+import { adhdOpen, typeAdhdDraft } from "@/src/core/presets";
 
 type Tab = "packing" | "plan" | "spend" | "docs";
 
 export default function TripDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, field, seed } = useLocalSearchParams<{ id: string; field?: string; seed?: string }>();
   const { db, update } = useStore();
   const { online, log } = useOnline();
   const { colors, sp } = useTheme();
@@ -37,6 +39,9 @@ export default function TripDetail() {
   const [facts, setFacts] = useState<any>(null);
   const [hols, setHols] = useState<{ date: string; name: string }[]>([]);
   const t = db.trips.find((x) => x.id === id);
+  const placeSeed = typeof seed === "string" ? seed : "";
+  const openStep = adhdOpen(db);
+  const [placeDraft, setPlaceDraft] = useState(openStep?.recordId === id && openStep.draft ? openStep.draft : t?.place?.name || placeSeed);
   const cc = t?.place?.countryCode;
   useEffect(() => {
     if (!cc || !t) return;
@@ -62,6 +67,30 @@ export default function TripDetail() {
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <Header title={t.name} testID="trip-header" right={<><IconButton icon="pencil-outline" testID="trip-edit-button" label="Edit" onPress={() => setSheet("edit")} /><IconButton icon="delete-outline" testID="trip-delete-button" label="Delete" onPress={() => setSheet("delete")} /></>} />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 32, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        {field === "place" ? (
+          <Card testID="trip-focus-place-card">
+            <Field
+              label="Place"
+              testID="trip-focus-place"
+              value={placeDraft}
+              autoFocus
+              onChangeText={(value) => {
+                setPlaceDraft(value);
+                update((current) => {
+                  const open = adhdOpen(current);
+                  if (!open || open.recordId !== t.id) return current;
+                  return typeAdhdDraft(current, value);
+                });
+              }}
+            />
+            <Button
+              label="Save"
+              testID="trip-focus-save"
+              onPress={() => update((current) => upsertTrip(current, { ...t, place: { name: placeDraft.trim() || placeSeed, lat: t.place?.lat ?? 0, lon: t.place?.lon ?? 0 } }))}
+            />
+          </Card>
+        ) : null}
+        <TripDesk trip={t} />
         <Card testID="trip-hero">
           <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
             <Ring value={r.score} size={124} stroke={12} testID="trip-readiness-ring">
