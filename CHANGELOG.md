@@ -4,6 +4,14 @@ Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published vers
 
 The Android workflow copies that section into the GitHub Release. The build stops before Gradle if the section for the next version is missing or empty.
 
+## v0.4
+
+The app on the phone is the same as v0.3. This is the build from main after the v0.3 notes were added. The version number is the only change.
+
+## v0.3
+
+The app on the phone is the same as v0.2. Nothing in the app changed after that APK. This release is the build that can finish once these notes exist.
+
 ## v0.2
 
 The app on the phone is the same as v0.1. This release only changes publishing.
