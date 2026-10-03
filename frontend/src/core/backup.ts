@@ -5,6 +5,9 @@ import { File, Paths } from "expo-file-system";
 import type { DB } from "./types";
 import { normalizeDB } from "./defaults";
 import { decryptWithPassword, encryptWithPassword, type PasswordEnvelope } from "./crypto";
+import { countsOf } from "./merge";
+
+export { countsOf, mergeDB, mergePreview } from "./merge";
 
 export const BACKUP_FORMAT = "nucleus-backup";
 const ACCEPTED = [BACKUP_FORMAT, "tessera-backup"];
@@ -20,18 +23,6 @@ export type BackupFile = {
 
 /** Result of picking a file: either readable, or an encrypted blob awaiting a password. */
 export type PickedBackup = { kind: "plain"; file: BackupFile } | { kind: "encrypted"; env: PasswordEnvelope; exportedAt: string };
-
-export const countsOf = (db: DB) => ({
-  vehicles: db.vehicles.length,
-  fuel: db.fuel.length,
-  services: db.services.length,
-  transactions: db.txns.length,
-  subscriptions: db.subscriptions.length,
-  trips: db.trips.length,
-  appliances: db.appliances.length,
-  notes: db.notes?.length ?? 0,
-  links: db.links.length,
-});
 
 export function buildBackup(db: DB): BackupFile {
   return { format: BACKUP_FORMAT, schema: 1, exportedAt: new Date().toISOString(), counts: countsOf(db), data: db };
@@ -95,38 +86,3 @@ export async function pickBackup(): Promise<PickedBackup | null> {
   }
   return parseBackup(text);
 }
-
-const byId = <T extends { id: string }>(mine: T[], theirs: T[]): T[] => {
-  const map = new Map(mine.map((x) => [x.id, x]));
-  theirs.forEach((x) => map.set(x.id, x)); // same id -> imported copy wins
-  return [...map.values()];
-};
-
-/** Merge a backup into the current device data instead of replacing it. */
-export function mergeDB(mine: DB, theirs: DB): DB {
-  return {
-    ...mine,
-    vehicles: byId(mine.vehicles, theirs.vehicles),
-    fuel: byId(mine.fuel, theirs.fuel),
-    services: byId(mine.services, theirs.services),
-    txns: byId(mine.txns, theirs.txns),
-    subscriptions: byId(mine.subscriptions, theirs.subscriptions),
-    links: byId(mine.links, theirs.links),
-    trips: byId(mine.trips, theirs.trips),
-    appliances: byId(mine.appliances, theirs.appliances),
-    notes: byId(mine.notes ?? [], theirs.notes ?? []),
-    people: byId(mine.people ?? [], theirs.people ?? []),
-    papers: byId(mine.papers ?? [], theirs.papers ?? []),
-    parts: byId(mine.parts ?? [], theirs.parts ?? []),
-    specs: byId(mine.specs ?? [], theirs.specs ?? []),
-    toolHistory: byId(mine.toolHistory, theirs.toolHistory).slice(0, 200),
-    budget: { monthly: theirs.budget.monthly || mine.budget.monthly, categories: { ...mine.budget.categories, ...theirs.budget.categories } },
-    attention: { ...mine.attention, ...theirs.attention },
-  };
-}
-
-export const mergePreview = (mine: DB, theirs: DB) => {
-  const m = countsOf(mergeDB(mine, theirs));
-  const a = countsOf(mine);
-  return Object.fromEntries(Object.entries(m).map(([k, v]) => [k, `${a[k as keyof typeof a]} → ${v}`]));
-};

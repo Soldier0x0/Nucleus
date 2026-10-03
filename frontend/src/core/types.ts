@@ -127,7 +127,7 @@ export type Budget = { monthly: number; categories: Record<string, number> };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
-export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers";
+export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net";
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
@@ -182,7 +182,19 @@ export type Settings = {
   backupNudged?: boolean;
   /** Lock-screen card. Empty fields stay hidden. The plate comes from the default vehicle. */
   emergency: { bloodGroup: string; contactName: string; contactPhone: string; note: string; showOnLock: boolean };
+  /** Long-press shortcuts on the Android icon. At most four. */
+  shortcuts: HomeShortcut[];
 };
+
+export type HomeShortcut = { id: string; label: string; url: string };
+
+export type KanbanColumn = { id: string; name: string; order: number };
+export type KanbanCard = { id: string; columnId: string; title: string; note?: string; order: number };
+export type KanbanBoard = { id: string; name: string; columns: KanbanColumn[]; cards: KanbanCard[]; createdAt: string };
+
+export type WikiPage = { id: string; title: string; body: string; createdAt: string; updatedAt: string };
+
+export type PackingTemplate = { id: string; name: string; groups: { category: string; items: string[] }[] };
 
 export type ToolHistoryItem = { id: string; tool: string; label: string; value: string; at: string };
 
@@ -220,6 +232,9 @@ export type DB = {
   papers: Paper[];
   parts: WearPart[];
   specs: HomeSpec[];
+  kanban: KanbanBoard[];
+  wiki: WikiPage[];
+  templates: PackingTemplate[];
   netlog: NetLogEntry[];
   budget: Budget;
   attention: Record<string, AttentionMark>;

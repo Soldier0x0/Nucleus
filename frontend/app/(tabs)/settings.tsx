@@ -290,6 +290,11 @@ export default function Settings() {
           <Row icon="card-account-details-outline" label="Show on the lock screen" sub="Readable without opening your records" right={<Switch testID="emergency-lock-switch" value={s.emergency.showOnLock} onValueChange={(v) => setSettings({ emergency: { ...s.emergency, showOnLock: v } })} {...sw} />} />
         </Section>
 
+        <Section title="Home screen">
+          <Row first icon="widgets-outline" label="Widgets and shortcuts" sub="Countdown, budget, trip, maintenance, battery, and a long-press on the icon" testID="settings-shortcuts" onPress={() => router.push("/shortcuts")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row icon="package-variant-closed" label="Packs" sub="Share templates, tools, checklists and rules by file" testID="settings-packs" onPress={() => router.push("/packs")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+        </Section>
+
         <Section title="Accessibility">
           <Row first icon="contrast-circle" label="High contrast" sub="Stronger text, borders and dividers" right={<Switch testID="settings-contrast-switch" value={s.highContrast} onValueChange={(v) => setSettings({ highContrast: v })} {...sw} />} />
           <Row icon="gesture-tap-button" label="Large touch targets" sub="Bigger buttons and chips" right={<Switch testID="settings-largetouch-switch" value={s.largeTouch} onValueChange={(v) => setSettings({ largeTouch: v })} {...sw} />} />
@@ -303,14 +308,14 @@ export default function Settings() {
           <Row
             icon="backup-restore"
             label="Restore from backup"
-            sub="Preview before anything is replaced"
+            sub="Merge a file from another phone, or replace this one"
             testID="settings-restore-button"
             right={<Icon name="chevron-right" size={18} color={colors.muted} />}
             onPress={async () => {
               try {
                 const b = await pickBackup();
                 if (!b) return;
-                setRestoreMode("replace");
+                setRestoreMode("merge");
                 if (b.kind === "encrypted") {
                   setRestorePw("");
                   setEncBackup({ env: b.env, exportedAt: b.exportedAt });

@@ -6,7 +6,7 @@ import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { useOnline } from "@/src/core/useOnline";
 import { countryFacts, holidays, rates } from "@/src/core/online";
-import { addTripExpense, PACK_TEMPLATES, packFromTemplate, readiness, reuseCandidate, tripStatus, tripTxns, upsertTrip } from "@/src/core/domains";
+import { addTripExpense, PACK_TEMPLATES, packFromTemplate, packingFromGroups, readiness, reuseCandidate, tripStatus, tripTxns, upsertTrip } from "@/src/core/domains";
 import { deleteEntity } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES } from "@/src/core/defaults";
 import { CURRENCIES, addDays, fmtDate, num, parseNum, uid } from "@/src/core/format";
@@ -103,6 +103,7 @@ export default function TripDetail() {
                 <View style={{ marginHorizontal: -16 }}>
                   <ChipRow testID="trip-template-row">
                     {Object.keys(PACK_TEMPLATES).map((k) => <Chip key={k} label={k} onPress={() => save({ packing: packFromTemplate(k) })} testID={`trip-template-${k}`} />)}
+                    {db.templates.map((template) => <Chip key={template.id} label={template.name} onPress={() => save({ packing: packingFromGroups(template.groups) })} testID={`trip-template-${template.id}`} />)}
                   </ChipRow>
                 </View>
                 {reuse ? <Button kind="ghost" small icon="content-duplicate" label={`Reuse "${reuse.name}" list (${reuse.packing.length} items)`} testID="trip-reuse-button" onPress={() => save({ packing: reuse.packing.map((p) => ({ ...p, id: uid(), done: false })) })} /> : null}
