@@ -51,13 +51,14 @@ test("a version at 1.0 is refused", () => {
   assert.throws(() => releaseNotes({ changelog: "## v1.0.0\n\nNo.\n", tag: "v1.0.0" }), /Refusing notes/);
 });
 
-test("the repository changelog has notes for v0.1 and v0.2", () => {
+test("the repository changelog has notes for v0.1 through v0.4", () => {
   const changelogPath = path.join(__dirname, "..", "..", "CHANGELOG.md");
   const notes = readReleaseNotes("v0.1", changelogPath);
   assert.match(notes, /home-screen icon/);
   assert.match(notes, /CSV/);
   assert.match(notes, /decoy PIN/);
-  const next = readReleaseNotes("v0.2", changelogPath);
-  assert.match(next, /same as v0\.1/);
+  assert.match(readReleaseNotes("v0.2", changelogPath), /same as v0\.1/);
+  assert.match(readReleaseNotes("v0.3", changelogPath), /same as v0\.2/);
+  assert.match(readReleaseNotes("v0.4", changelogPath), /same as v0\.3/);
   assert.equal(fs.existsSync(changelogPath), true);
 });
