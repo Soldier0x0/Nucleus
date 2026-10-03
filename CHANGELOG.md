@@ -1,8 +1,10 @@
 # Changelog
 
-Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. When a release changes the app, add that version as a new `## v0.N` section at the top. Leave older sections as they were published.
+Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. Add a new `## v0.N` section at the top when that version is ready. A later version does not need a section yet.
 
-The Android workflow builds the APK either way. It publishes a GitHub Release only when this file has a section for the version being published, and that section describes an app change. A later version does not need a section yet. Notes that only say the app is unchanged are not published.
+Each section is short bullet points of what that version added or changed. The Android workflow builds the APK either way. It publishes a GitHub Release only when the section for that version has those points. A note that only says the app is the same as the previous one is not published, and the notes step fails. A missing section does not fail the build and does not publish. An empty section fails.
+
+A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
 ## v0.5
 
@@ -16,6 +18,7 @@ Looks you can see, on the colors you already have.
 - Ink, Signal, and Poster are livelier, and they stay readable.
 - Two tones can sit on any look. The background keeps the color set. Type, buttons, and marks use a second color.
 - Paper, Midnight, Dune, and AMOLED still work with every look.
+- A release is published only when its notes are short bullet points of what that version added or changed.
 
 ## v0.4
 
@@ -29,14 +32,16 @@ A private cycle calendar on this phone.
 
 ## v0.3
 
-The app on the phone is the same as v0.2. Nothing in the app changed after that APK. This release is the build that can finish once these notes exist.
+- The file is nucleus-v0.3.apk.
+- Nothing in the app changed from v0.2. Icons, money, and the greeting are that same app, with the version name stamped 0.3.
+- This release exists because the Android job would not finish until a v0.3 section was in the changelog.
 
 ## v0.2
 
-The app on the phone is the same as v0.1. This release only changes publishing.
-
-- Every release includes the notes from this file.
-- A build stops if those notes are missing.
+- GitHub release notes are copied from this file.
+- The Android job stops before the APK build when the section for that version is missing or empty.
+- The release tag points at the commit that was built.
+- nucleus-v0.2.apk is the v0.1 phone app: home-screen icons, money words, CSV export, and the greeting name.
 
 ## v0.1
 

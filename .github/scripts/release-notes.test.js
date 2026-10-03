@@ -57,27 +57,79 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(notes, /home-screen icon/);
   assert.match(notes, /CSV/);
   assert.match(notes, /decoy PIN/);
-  assert.match(readReleaseNotes("v0.2", changelogPath), /same as v0\.1/);
-  assert.match(readReleaseNotes("v0.3", changelogPath), /same as v0\.2/);
+  const v2 = readReleaseNotes("v0.2", changelogPath);
+  assert.match(v2, /copied from this file/);
+  assert.match(v2, /missing or empty/);
+  assert.match(v2, /nucleus-v0\.2\.apk/);
+  assert.match(v2, /greeting name/);
+  const v3 = readReleaseNotes("v0.3", changelogPath);
+  assert.match(v3, /nucleus-v0\.3\.apk/);
+  assert.match(v3, /Nothing in the app changed/);
+  assert.match(v3, /This release exists because/);
   assert.match(readReleaseNotes("v0.4", changelogPath), /cycle calendar/);
   assert.match(readReleaseNotes("v0.4", changelogPath), /needs attention/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /Soft is rounder/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
+  assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  assert.equal(prepareRelease({ changelog, tag: "v0.4" }).publish, true);
-  assert.equal(prepareRelease({ changelog, tag: "v0.5" }).publish, true);
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.3" }), { publish: false, reason: "unchanged" });
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.2" }), { publish: false, reason: "unchanged" });
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5"]) {
+    assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
+  }
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.6" }), { publish: false, reason: "missing" });
 });
 
 test("a missing later version does not block the version being published", () => {
-  const changelog = "## v0.4\n\nA private cycle calendar.\n\n## v0.3\n\nThe app on the phone is the same as v0.2.\n";
+  const changelog = [
+    "## v0.4",
+    "",
+    "- A private cycle calendar on this phone.",
+    "",
+    "## v0.3",
+    "",
+    "The app on the phone is the same as v0.2.",
+    "",
+  ].join("\n");
   const ready = prepareRelease({ changelog, tag: "v0.4" });
   assert.equal(ready.publish, true);
   assert.match(ready.notes, /cycle calendar/);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.5" }), { publish: false, reason: "missing" });
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.3" }), { publish: false, reason: "unchanged" });
+  assert.throws(() => prepareRelease({ changelog, tag: "v0.3" }), /bullet points/);
+});
+
+test("a note that only says the app is the same does not publish", () => {
+  const prose = "## v0.3\n\nThe app on the phone is the same as v0.2. Nothing in the app changed.\n";
+  assert.throws(() => prepareRelease({ changelog: prose, tag: "v0.3" }), /same as the previous one/);
+  const bullets = "## v0.3\n\n- The app on the phone is the same as v0.2.\n- Nothing in the app changed.\n";
+  assert.throws(() => prepareRelease({ changelog: bullets, tag: "v0.3" }), /bullet points/);
+  const fileOnly = "## v0.3\n\n- The file is nucleus-v0.3.apk.\n";
+  assert.throws(() => prepareRelease({ changelog: fileOnly, tag: "v0.3" }), /bullet points/);
+});
+
+test("an honest republish names the file, the lack of app change, and why", () => {
+  const changelog = [
+    "## v0.3",
+    "",
+    "- The file is nucleus-v0.3.apk.",
+    "- Nothing in the app changed from v0.2.",
+    "- This release exists because the Android job would not finish until a v0.3 section was in the changelog.",
+    "",
+  ].join("\n");
+  const ready = prepareRelease({ changelog, tag: "v0.3" });
+  assert.equal(ready.publish, true);
+  assert.match(ready.notes, /nucleus-v0\.3\.apk/);
+  assert.match(ready.notes, /Nothing in the app changed/);
+  assert.match(ready.notes, /This release exists because/);
+});
+
+test("one real change point is enough even when another point says nothing changed", () => {
+  const changelog = [
+    "## v0.2",
+    "",
+    "- GitHub release notes are copied from this file.",
+    "- Nothing in the app changed from v0.1.",
+    "",
+  ].join("\n");
+  assert.equal(prepareRelease({ changelog, tag: "v0.2" }).publish, true);
 });
 
 test("an empty section for the version being published is still an error", () => {

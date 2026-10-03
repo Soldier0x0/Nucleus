@@ -24,6 +24,6 @@ If Android blocks the file, allow the browser or Files to install unknown apps, 
 
 ## Releases
 
-What each version is for is in [CHANGELOG.md](CHANGELOG.md). One section per published version, newest first. When a release changes the app, add that version’s section at the top and leave the older ones as they were published.
+What each version is for is in [CHANGELOG.md](CHANGELOG.md). One section per published version, newest first. Each section is short bullet points of what that version added or changed.
 
-The Android workflow builds the APK on every run. It publishes a GitHub Release from main when the changelog has notes for that version. It does not need a section for the version after that, and it does not publish a release whose notes say the app is unchanged.
+The Android workflow builds the APK on every run. It publishes a GitHub Release from main only when the changelog has those points for that version. It does not need a section for the version after that. A note that only says the app is the same as the previous one does not publish.
