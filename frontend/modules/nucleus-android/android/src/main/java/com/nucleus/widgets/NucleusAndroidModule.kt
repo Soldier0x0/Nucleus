@@ -199,7 +199,7 @@ class NucleusAndroidModule : Module() {
     }
 
     Function("hideLockCard") {
-      val ctx = appContext.reactContext ?: return@Function
+      val ctx = appContext.reactContext ?: return@Function Unit
       ctx.getSystemService(NotificationManager::class.java)?.cancel(LOCK_CARD_ID)
     }
 
@@ -212,7 +212,7 @@ class NucleusAndroidModule : Module() {
     }
 
     Function("forgetCloudFile") {
-      val ctx = appContext.reactContext ?: return@Function
+      val ctx = appContext.reactContext ?: return@Function Unit
       ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(CLOUD_FILE).apply()
     }
 
