@@ -1,0 +1,130 @@
+# Builds a single installable Nucleus release APK.
+#
+# The JavaScript bundle is compiled into the APK, so the file can be copied to
+# a phone and installed without Expo Go or a development server.
+#
+# Download it from the run's Artifacts section. The file is named nucleus.apk.
+# The APK contains only arm64-v8a, which is what current phones use.
+#
+# Signing:
+# - With no secrets, the APK is signed with the debug keystore that Expo puts in
+#   every generated Android project. The certificate stays the same across
+#   builds, so a newer APK can replace an older one.
+# - To sign with your own key, add these repository secrets:
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+#   ANDROID_KEY_PASSWORD.
+#   Create the base64 value with: base64 -w 0 release.keystore
+
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_NO_TELEMETRY: "1"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install the SDK packages this app compiles against
+        run: |
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          if [ -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          else
+            SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -path '*/bin/sdkmanager' -print -quit)
+          fi
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.1.12297006"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JavaScript dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Set the Android version code
+        working-directory: frontend
+        env:
+          ANDROID_VERSION_CODE: ${{ github.run_number }}
+        run: node ../.github/scripts/stamp-android-version.js
+
+      - name: Generate the Android project
+        working-directory: frontend
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Configure release signing
+        working-directory: frontend
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "${ANDROID_KEYSTORE_BASE64}" ]; then
+            echo "Signing with the debug keystore bundled by Expo prebuild."
+            exit 0
+          fi
+          if [ -z "${ANDROID_KEYSTORE_PASSWORD}" ] || [ -z "${ANDROID_KEY_ALIAS}" ] || [ -z "${ANDROID_KEY_PASSWORD}" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 is set, but ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, or ANDROID_KEY_PASSWORD is missing."
+            exit 1
+          fi
+          echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > android/app/release.keystore
+          cat ../.github/android-release-signing.gradle >> android/app/build.gradle
+
+      - name: Build the release APK
+        working-directory: frontend/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a
+
+      - name: Collect the APK
+        run: |
+          found=$(find frontend/android/app/build/outputs/apk/release -type f -name '*.apk' | wc -l)
+          if [ "$found" -ne 1 ]; then
+            echo "Expected one release APK, found ${found}."
+            find frontend/android/app/build/outputs/apk -type f -name '*.apk' -print
+            exit 1
+          fi
+          cp frontend/android/app/build/outputs/apk/release/*.apk nucleus.apk
+          ls -lh nucleus.apk
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nucleus-apk
+          path: nucleus.apk
+          if-no-files-found: error
+          retention-days: 30
