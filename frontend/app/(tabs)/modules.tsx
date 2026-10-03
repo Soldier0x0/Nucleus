@@ -8,9 +8,10 @@ import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { MODULES, moduleById, TILE_META } from "@/src/core/modules";
+import { shownInDecoy } from "@/src/core/profiles";
 import type { DB, ModuleId } from "@/src/core/types";
 import { Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
-import { DragRow, moveItem } from "@/src/components/Reorderable";
+import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 
 function move<T>(arr: T[], i: number, dir: -1 | 1) {
   const j = i + dir;
@@ -28,7 +29,7 @@ export default function Modules() {
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const s = db.settings;
   const planned = MODULES.filter((m) => m.status === "planned");
-  const visible = session === "real" ? s.modules : s.modules.filter((m) => m.id !== "cycle");
+  const visible = session === "real" ? s.modules : s.modules.filter((m) => shownInDecoy(m.id));
   const withHidden = (nextVisible: typeof visible) => [...nextVisible, ...s.modules.filter((m) => !visible.some((row) => row.id === m.id))];
   const sw = { trackColor: { true: colors.brandPrimary, false: colors.surfaceTertiary }, thumbColor: colors.surfaceSecondary };
 
@@ -39,8 +40,9 @@ export default function Modules() {
         <T v="title" testID="modules-title">Modules</T>
       </View>
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
-        <T muted style={{ fontSize: 12, marginBottom: 10 }}>Hold a row, then drag. The arrows do the same thing.</T>
+        <T muted style={{ fontSize: 12, marginBottom: 10 }}>Hold a row, then drag. The other rows open a gap where it will land.</T>
         <Eyebrow style={{ marginBottom: 8 }}>Installed · {visible.length}</Eyebrow>
+        <ReorderGroup rowHeight={76} orderKey={visible.map((m) => m.id).join("\n")}>
         {visible.map((ms, i) => {
           const m = moduleById(ms.id);
           return (
@@ -68,10 +70,12 @@ export default function Modules() {
             </DragRow>
           );
         })}
+        </ReorderGroup>
 
         <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>Home board</Eyebrow>
         <T muted style={{ fontSize: 12, marginBottom: 8 }}>These tiles stay on the home screen. They are not reset each day. A trip board is a temporary extra — switch back to Home when you return.</T>
         <View style={[styles.list, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
+          <ReorderGroup rowHeight={56} orderKey={s.tiles.map((t) => t.id).join("\n")}>
           {s.tiles.map((t, i) => {
             const meta = TILE_META[t.id];
             const modOff = meta.module && !s.modules.find((m) => m.id === meta.module)?.enabled;
@@ -90,6 +94,7 @@ export default function Modules() {
               </DragRow>
             );
           })}
+          </ReorderGroup>
         </View>
 
         {planned.length ? <Eyebrow style={{ marginTop: 20, marginBottom: 8 }}>On the roadmap</Eyebrow> : null}

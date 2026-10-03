@@ -1,5 +1,6 @@
 import React from "react";
-import { Pressable, PressableProps, ScrollView, StyleProp, StyleSheet, Text, TextProps, TextStyle, View, ViewStyle } from "react-native";
+import { Platform, Pressable, PressableProps, ScrollView, StyleProp, StyleSheet, Text, TextProps, TextStyle, View, ViewStyle } from "react-native";
+import { BlurView } from "expo-blur";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
@@ -115,9 +116,10 @@ export function Press({ style, onPress, haptic = true, children, disabled, ...re
 }
 
 export function Card({ children, style, testID, onPress, onLongPress, tone = "default" }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; testID?: string; onPress?: () => void; onLongPress?: () => void; tone?: "default" | "tint" | "inverse" }) {
-  const { colors, sp, look, mode } = useTheme();
+  const { colors, sp, look, mode, layout } = useTheme();
   const bg = tone === "tint" ? colors.brandTertiary : tone === "inverse" ? colors.surfaceInverse : colors.surfaceSecondary;
   const pop = look.choices.pop;
+  const frost = layout.frost && tone === "default";
   const shadow: ViewStyle =
     look.choices.cards === "shadow"
       ? {
@@ -129,25 +131,38 @@ export function Card({ children, style, testID, onPress, onLongPress, tone = "de
         }
       : {};
   const base: ViewStyle = {
-    backgroundColor: bg,
+    backgroundColor: frost ? "transparent" : bg,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: tone === "default" ? colors.border : "transparent",
-    padding: sp.lg,
+    padding: layout.bento ? sp.xl : sp.lg,
+    minHeight: layout.bento ? 112 : undefined,
+    overflow: frost ? "hidden" : undefined,
     ...shadow,
     ...(pop === "ink" ? { borderWidth: 2, borderColor: colors.onSurface } : {}),
     ...(pop === "signal" ? { borderLeftWidth: 4, borderLeftColor: colors.brandPrimary } : {}),
     ...(pop === "poster" ? { borderTopWidth: 4, borderTopColor: colors.brandPrimary } : {}),
   };
+  const body = (
+    <>
+      {frost ? (
+        <>
+          {Platform.OS === "web" ? null : <BlurView intensity={28} tint={mode === "dark" ? "dark" : "light"} style={StyleSheet.absoluteFill} />}
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: bg, opacity: 0.72 }]} />
+        </>
+      ) : null}
+      {children}
+    </>
+  );
   if (onPress || onLongPress)
     return (
       <Press testID={testID} onPress={onPress} onLongPress={onLongPress} delayLongPress={320} style={[base, style]}>
-        {children}
+        {body}
       </Press>
     );
   return (
     <View testID={testID} style={[base, style]}>
-      {children}
+      {body}
     </View>
   );
 }

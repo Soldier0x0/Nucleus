@@ -13,7 +13,13 @@ import { passwordStrength, type PasswordEnvelope } from "@/src/core/crypto";
 import { biometricAvailable, clearFailures, clearPin, hasDecoyPin, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
 import { MODULES } from "@/src/core/modules";
 import { EXPORTS, exportData, timeline } from "@/src/core/exports";
-import { scheduledCount } from "@/src/core/notify";
+import { allowLockScreenChannel, notifyOnce, scheduledCount } from "@/src/core/notify";
+import { shownInDecoy } from "@/src/core/profiles";
+import { enableFeature } from "@/src/native/enableFeature";
+import { forgetCloudFile, hideLockCard, showLockCard } from "@/src/native/android";
+import { uploadLockedCopy } from "@/src/native/cloudFile";
+import { secureStorage } from "@/src/utils/storage";
+import { accessMode, cloudScope, describeContents, FILE_PASSPHRASE_KEY, uploadNotices } from "@/src/core/vaultFile";
 import { dataHealth } from "@/src/core/life";
 import { useRouter } from "expo-router";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "@/src/components/ui";
@@ -86,6 +92,8 @@ export default function Settings() {
   const [restorePw, setRestorePw] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [cloudPassOpen, setCloudPassOpen] = useState(false);
+  const [cloudPass, setCloudPass] = useState("");
   const [exportWarn, setExportWarn] = useState(false);
   const [exportPw, setExportPw] = useState("");
   const [exportEncrypt, setExportEncrypt] = useState(true);
@@ -108,7 +116,7 @@ export default function Settings() {
         {session === "real" ? (
           <Section title="You">
             <View style={{ padding: 12 }}>
-              <Field label="What should I call you?" testID="settings-call-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined, nameAsked: true })} placeholder="Asha" autoCapitalize="words" hint="Shown on Today. A decoy PIN does not see this." />
+              <Field label="What should I call you?" testID="settings-call-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined, nameAsked: true })} placeholder="Harsha" autoCapitalize="words" hint="Shown on Today. A decoy PIN does not see this." />
             </View>
           </Section>
         ) : null}
@@ -254,14 +262,14 @@ export default function Settings() {
                 />
               </View>
               <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
-                <T v="label" style={{ marginBottom: 8 }}>Re-lock after background</T>
-                <Segmented testID="settings-lock-timeout" value={String(s.lockTimeoutSec)} onChange={(v) => setSettings({ lockTimeoutSec: Number(v) })} options={[{ value: "0", label: "Instantly" }, { value: "30", label: "30 s" }, { value: "300", label: "5 min" }]} />
+                <T v="label" style={{ marginBottom: 8 }}>When the lock asks</T>
+                <T muted style={{ fontSize: 12 }} testID="settings-lock-policy">It asks when you open the app after it was fully closed, and after the phone was locked. Switching away and coming back does not ask, even after half a minute.</T>
               </View>
               <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
                 <T v="label" style={{ marginBottom: 4 }}>Ask again for these modules</T>
                 <T muted style={{ fontSize: 12, marginBottom: 8 }}>Opening them needs your PIN or biometrics again.</T>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {MODULES.filter((m) => m.status === "available" && (session === "real" || m.id !== "cycle")).map((m) => {
+                  {MODULES.filter((m) => m.status === "available" && (session === "real" || shownInDecoy(m.id))).map((m) => {
                     const on = (s.moduleLocks ?? []).includes(m.id as ModuleId);
                     return (
                       <Chip
@@ -302,11 +310,33 @@ export default function Settings() {
             <TextInput testID="emergency-phone" value={s.emergency.contactPhone} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, contactPhone: t } })} placeholder="Phone" placeholderTextColor={colors.muted} keyboardType="phone-pad" style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
             <TextInput testID="emergency-note" value={s.emergency.note} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, note: t } })} placeholder="Note, such as an allergy" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
           </View>
-          <Row icon="card-account-details-outline" label="Show on the lock screen" sub="Readable without opening your records" right={<Switch testID="emergency-lock-switch" value={s.emergency.showOnLock} onValueChange={(v) => setSettings({ emergency: { ...s.emergency, showOnLock: v } })} {...sw} />} />
+          <Row icon="card-account-details-outline" label="Show on the lock screen" sub="Asks for notification permission, then the card can show before unlock" right={<Switch testID="emergency-lock-switch" value={s.emergency.showOnLock} onValueChange={async (v) => {
+            if (!v) {
+              setSettings({ emergency: { ...s.emergency, showOnLock: false } });
+              hideLockCard();
+              return;
+            }
+            if (!(await enableFeature("emergency-card"))) return toast("Allow notifications so the card can show on the lock screen", "alert-circle-outline");
+            await allowLockScreenChannel();
+            setSettings({ emergency: { ...s.emergency, showOnLock: true }, lockAlerts: true });
+            const plate = db.vehicles.find((vehicle) => vehicle.id === s.defaultVehicleId)?.plate;
+            showLockCard("Emergency", [s.emergency.bloodGroup, s.emergency.contactName, s.emergency.contactPhone, plate, s.emergency.note].filter(Boolean).join(" · ") || "Emergency card");
+          }} {...sw} />} />
+          <Row icon="bell-outline" label="Lock-screen alerts" sub="Reminders use the same permission and can show on the lock screen" right={<Switch testID="settings-lock-alerts" value={s.lockAlerts} onValueChange={async (v) => {
+            if (!v) return setSettings({ lockAlerts: false });
+            if (!(await enableFeature("lock-alerts"))) return toast("Allow notifications to show alerts on the lock screen", "alert-circle-outline");
+            await allowLockScreenChannel();
+            setSettings({ lockAlerts: true });
+          }} {...sw} />} />
+          <Row icon="message-text-outline" label="Bank texts" sub="Read debit, credit, and balance lines on this phone. Codes are dropped." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={async (v) => {
+            if (!v) return setSettings({ smsInbox: false });
+            if (!(await enableFeature("sms-inbox"))) return toast("Allow reading texts so bank lines can stay on this phone", "alert-circle-outline");
+            setSettings({ smsInbox: true });
+          }} {...sw} />} />
         </Section>
 
         <Section title="Home screen">
-          <Row first icon="widgets-outline" label="Widgets and shortcuts" sub="Countdown, budget, trip, maintenance, battery, and a long-press on the icon" testID="settings-shortcuts" onPress={() => router.push("/shortcuts")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row first icon="widgets-outline" label="Widgets and shortcuts" sub="Countdown, budget, trip, maintenance, battery, the next cycle window, and a long-press on the icon" testID="settings-shortcuts" onPress={() => router.push("/shortcuts")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="package-variant-closed" label="Packs" sub="Share templates, tools, checklists and rules by file" testID="settings-packs" onPress={() => router.push("/packs")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
         </Section>
 
@@ -314,6 +344,35 @@ export default function Settings() {
           <Row first icon="contrast-circle" label="High contrast" sub="Stronger text, borders and dividers" right={<Switch testID="settings-contrast-switch" value={s.highContrast} onValueChange={(v) => setSettings({ highContrast: v })} {...sw} />} />
           <Row icon="gesture-tap-button" label="Large touch targets" sub="Bigger buttons and chips" right={<Switch testID="settings-largetouch-switch" value={s.largeTouch} onValueChange={(v) => setSettings({ largeTouch: v })} {...sw} />} />
           <Row icon="motion-outline" label="Reduce motion" sub="Skip tile animations and press effects" right={<Switch testID="settings-motion-switch" value={s.reducedMotion} onValueChange={(v) => setSettings({ reducedMotion: v })} {...sw} />} />
+        </Section>
+
+        <Section title="Locked file">
+          <View style={{ padding: 12, gap: 8 }}>
+            <T muted style={{ fontSize: 12 }}>One file holds money, cycle, notes, settings, and trips. It opens with the passphrase. Biometrics stay on this phone and can stand in for that passphrase here. A copy to Drive or OneDrive stays off until you choose it. The first time, you sign in there and Nucleus keeps permission for that one file. A failed upload is one notification.</T>
+            <Segmented testID="settings-cloud" value={s.cloud.provider} onChange={(provider) => {
+              if (provider !== s.cloud.provider) forgetCloudFile();
+              setSettings({ cloud: { ...s.cloud, provider, lastSyncAt: provider === s.cloud.provider ? s.cloud.lastSyncAt : undefined, askedSinceUnlock: provider === s.cloud.provider ? s.cloud.askedSinceUnlock : false } });
+            }} options={[{ value: "off", label: "Off" }, { value: "drive", label: "Drive" }, { value: "onedrive", label: "OneDrive" }]} />
+            {s.cloud.provider !== "off" ? (
+              <>
+                <T style={{ fontSize: 12 }} testID="settings-cloud-scope">{cloudScope(s.cloud.provider)}</T>
+                <Button small label="Sign in and store this file" testID="settings-cloud-upload" onPress={async () => {
+                  const saved = await secureStorage.getItem(FILE_PASSPHRASE_KEY);
+                  if (!saved) {
+                    setCloudPass("");
+                    setCloudPassOpen(true);
+                    return;
+                  }
+                  const ok = await uploadLockedCopy(db, saved);
+                  const notices = uploadNotices(ok);
+                  const notice = notices[0];
+                  if (notice) await notifyOnce(notice.title, "The locked file is still only on this phone.");
+                  else setSettings({ cloud: { ...s.cloud, lastSyncAt: new Date().toISOString(), askedSinceUnlock: true } });
+                  toast(ok ? "The locked file is stored" : notice?.title ?? "Backup did not upload", ok ? "cloud-check-outline" : "cloud-off-outline");
+                }} />
+              </>
+            ) : null}
+          </View>
         </Section>
 
         <Section title="Your data">
@@ -519,9 +578,10 @@ export default function Settings() {
       <Sheet visible={!!restore} onClose={() => setRestore(null)} title="Restore preview" testID="restore-sheet">
         {restore ? (
           <>
+            <T style={{ marginBottom: 8 }} testID="restore-describe">{describeContents(restore.data)}</T>
             <T muted style={{ marginBottom: 10 }}>
               Exported {new Date(restore.exportedAt).toLocaleString()}
-              {restore.encrypted ? " · password protected" : ""}
+              {restore.encrypted ? " · password protected" : ""}. {accessMode(Boolean(!restore.data.settings.installId || restore.data.settings.installId === s.installId)) === "read-only" ? "This phone can open it read-only." : "This phone can edit it."}
             </T>
             <Segmented
               testID="restore-mode"
@@ -551,8 +611,10 @@ export default function Settings() {
               icon={restoreMode === "merge" ? "merge" : "backup-restore"}
               testID="restore-confirm-button"
               onPress={() => {
-                if (restoreMode === "merge") update((d) => mergeDB(d, restore.data));
-                else replace({ ...restore.data, settings: { ...restore.data.settings, onboarded: true, lockEnabled: s.lockEnabled, unlockMethod: s.unlockMethod, biometricEnabled: s.biometricEnabled, moduleLocks: s.moduleLocks } });
+                const samePhone = !restore.data.settings.installId || restore.data.settings.installId === s.installId;
+                const readOnly = accessMode(samePhone) === "read-only";
+                if (restoreMode === "merge" && !readOnly) update((d) => mergeDB(d, restore.data));
+                else replace({ ...restore.data, settings: { ...restore.data.settings, onboarded: true, lockEnabled: s.lockEnabled, unlockMethod: s.unlockMethod, biometricEnabled: s.biometricEnabled, moduleLocks: s.moduleLocks, installId: s.installId || restore.data.settings.installId, readOnly } });
                 setRestore(null);
                 toast(restoreMode === "merge" ? "Backup merged" : "Backup restored", "check-circle-outline");
               }}
@@ -620,6 +682,20 @@ export default function Settings() {
           ))}
         </View>
         <T muted style={{ fontSize: 12, marginTop: 12 }}>Reminders are counted from the phone&apos;s own scheduler. Nothing here is sent anywhere.</T>
+      </Sheet>
+
+      <Sheet visible={cloudPassOpen} onClose={() => setCloudPassOpen(false)} title="Passphrase for the locked file" testID="cloud-pass-sheet">
+        <T style={{ marginBottom: 12 }}>This passphrase opens the file. It stays on this phone and can be unlocked with biometrics here. It is not written into the file.</T>
+        <Field label="Passphrase" testID="cloud-pass" value={cloudPass} onChangeText={setCloudPass} secureTextEntry />
+        <Button label="Sign in and store this file" testID="cloud-pass-save" disabled={!cloudPass.trim()} onPress={async () => {
+          const ok = await uploadLockedCopy(db, cloudPass);
+          const notices = uploadNotices(ok);
+          const notice = notices[0];
+          if (notice) await notifyOnce(notice.title, "The locked file is still only on this phone.");
+          else setSettings({ cloud: { ...s.cloud, lastSyncAt: new Date().toISOString(), askedSinceUnlock: true } });
+          toast(ok ? "The locked file is stored" : notice?.title ?? "Backup did not upload", ok ? "cloud-check-outline" : "cloud-off-outline");
+          if (ok) setCloudPassOpen(false);
+        }} />
       </Sheet>
 
       <Sheet visible={confirmReset} onClose={() => setConfirmReset(false)} title="Erase everything?" testID="reset-sheet">

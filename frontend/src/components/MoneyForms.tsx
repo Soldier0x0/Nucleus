@@ -26,6 +26,8 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const [otherName, setOtherName] = useState("");
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
+  const [cash, setCash] = useState(false);
+  const [ownTransfer, setOwnTransfer] = useState(false);
   const [date, setDate] = useState(todayISO());
   const cats = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   // most-used categories first
@@ -45,7 +47,7 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const save = () => {
     if (!(value > 0)) return;
     const category = cat === "Other" ? categoryFromOther(otherName) : cat;
-    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category, item: cat === "Other" ? undefined : item, date, note: note.trim() || undefined, photo }), recents: { ...d.recents, lastCategory: category } }));
+    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category, item: cat === "Other" ? undefined : item, date, note: note.trim() || undefined, photo, cash: cash || undefined, transfer: ownTransfer || undefined }), recents: { ...d.recents, lastCategory: category } }));
     toast(`${type === "expense" ? "Expense" : "Income"} ${money(value, db.settings.currency)} saved`, "check-circle-outline");
     setAmt("");
     setNote("");
@@ -99,6 +101,12 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
       {cat === "Other" ? <Field label="Name this category (optional)" testID="txn-other-name" value={otherName} onChangeText={setOtherName} placeholder="Dividend, School fees" hint="Leave blank and it stays Other." /> : null}
       {type === "expense" ? <PhotoNote uri={photo} onChange={setPhoto} testID="txn-photo" /> : null}
       <DateField label="Date" value={date} onChange={(v) => setDate(v ?? todayISO())} testID="txn-date" />
+      {type === "expense" ? (
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+          <Button small kind={cash ? "primary" : "secondary"} label="Cash" testID="txn-cash" onPress={() => setCash((v) => !v)} />
+          <Button small kind={ownTransfer ? "primary" : "secondary"} label="Own account" testID="txn-transfer" onPress={() => setOwnTransfer((v) => !v)} />
+        </View>
+      ) : null}
     </Sheet>
   );
 }

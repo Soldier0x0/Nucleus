@@ -5,16 +5,18 @@ import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
 import { useStore } from "@/src/core/store";
 import { exportBounds, moneyCsv, type ExportSpan } from "@/src/core/moneyWords";
+import { yearlyMoneyCsv } from "@/src/core/moneyDesk";
 import { todayISO } from "@/src/core/format";
 import { DateField } from "./inputs";
 import { Sheet } from "./Sheet";
 import { Button, Chip, ChipRow, T } from "./ui";
 import { useToast } from "./Toast";
 
-const SPANS: { id: ExportSpan; label: string }[] = [
+const SPANS: { id: ExportSpan | "year"; label: string }[] = [
   { id: "month", label: "This month" },
   { id: "30", label: "Past 30 days" },
   { id: "60", label: "Past 60 days" },
+  { id: "year", label: "This year" },
   { id: "custom", label: "Custom" },
 ];
 
@@ -22,13 +24,13 @@ export function MoneyExport({ visible, onClose }: { visible: boolean; onClose: (
   const { db } = useStore();
   const toast = useToast();
   const today = todayISO();
-  const [span, setSpan] = useState<ExportSpan>("month");
+  const [span, setSpan] = useState<ExportSpan | "year">("month");
   const [from, setFrom] = useState(today.slice(0, 7) + "-01");
   const [to, setTo] = useState(today);
 
   const share = async () => {
-    const bounds = exportBounds(today, span, from, to);
-    const csv = moneyCsv(db.txns, db.settings.currency, bounds.from, bounds.to);
+    const bounds = span === "year" ? { from: `${today.slice(0, 4)}-01-01`, to: `${today.slice(0, 4)}-12-31` } : exportBounds(today, span, from, to);
+    const csv = span === "year" ? yearlyMoneyCsv(db.txns, db.settings.currency, today.slice(0, 4)) : moneyCsv(db.txns, db.settings.currency, bounds.from, bounds.to);
     if (Platform.OS === "web") {
       await Clipboard.setStringAsync(csv);
       toast("Spreadsheet copied", "content-copy");

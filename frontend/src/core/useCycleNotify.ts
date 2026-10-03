@@ -19,12 +19,13 @@ export function useCycleNotify() {
     String(db.settings.quietHours.enabled),
     String(db.settings.quietHours.from),
     String(db.settings.quietHours.to),
+    db.settings.homePreset,
     db.cycle.days.map((d) => `${d.date}:${d.bleeding ?? ""}:${d.ended ? "e" : ""}`).join("|"),
   ].join("~");
 
   useEffect(() => {
     if (!ready) return;
-    const notices = session === "real" && enabled ? cycleNotices(db.cycle, db.settings.quietHours, todayISO()) : [];
+    const notices = session === "real" && enabled && db.settings.homePreset !== "adhd" ? cycleNotices(db.cycle, db.settings.quietHours, todayISO()) : [];
     syncCycleNotices(notices.map((notice) => ({ id: notice.id, title: notice.title, at: new Date(notice.at) }))).catch(() => {});
   }, [ready, key, session, enabled, db.cycle, db.settings.quietHours]);
 }

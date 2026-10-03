@@ -4,18 +4,18 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { search } from "@/src/core/search";
+import { ownSearch } from "@/src/core/ownSearch";
 import { EmptyState, Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
 
 const SUGGEST = ["Fuel", "Electricity", "Netflix", "Activa", "EMI", "Food"];
 
 export default function Search() {
-  const { db } = useStore();
+  const { db, session } = useStore();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [q, setQ] = useState("");
-  const groups = useMemo(() => search(db, q), [db, q]);
+  const groups = useMemo(() => ownSearch(db, q, session), [db, q, session]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>

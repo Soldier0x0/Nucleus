@@ -16,13 +16,17 @@ import { WeatherCard } from "@/src/components/WeatherCard";
 import { CaptureBar } from "@/src/components/CaptureBar";
 import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
-import { DragRow, moveItem } from "@/src/components/Reorderable";
+import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
+import { PRESET_CHOICES, customItems, rowsFor, tileHasData } from "@/src/core/presets";
+import { AdhdPanel, HeadsUpCard, PresetGrid, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
 import type { Board, TileId } from "@/src/core/types";
 import { homeSchedule, readiness, tripStatus } from "@/src/core/domains";
-import { greetingLine } from "@/src/core/greeting";
+import { homeLine, oneDueToday } from "@/src/core/dueGreeting";
+import { repeatingBills } from "@/src/core/moneyDesk";
+import { choreDueDate } from "@/src/core/domains";
 
 export default function Today() {
   const { db, setSettings, session } = useStore();
@@ -37,11 +41,19 @@ export default function Today() {
   const today = todayISO();
   const d = new Date();
   const hour = d.getHours();
-  const greeting = greetingLine(hour, session === "real" ? db.settings.givenName : undefined);
+  const dues = [
+    ...(session === "real" && on("money") ? db.subscriptions.filter((sub) => sub.active && sub.nextRenewal === today).map((sub) => ({ title: sub.name, date: today })) : []),
+    ...(session === "real" && on("money") ? repeatingBills(db.txns).filter((bill) => bill.next === today).map((bill) => ({ title: bill.name, date: today })) : []),
+    ...db.chores.filter((chore) => choreDueDate(chore, today) === 0).map((chore) => ({ title: chore.name, date: today })),
+  ];
+  const greeting = homeLine(hour, session === "real" ? db.settings.givenName : undefined, oneDueToday(dues, today)?.title ?? null);
   const contentW = Math.min(width, 720) - sp.lg * 2;
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
-  const tileIds: TileId[] = activeBoard ? activeBoard.tiles : db.settings.tiles.filter((t) => t.enabled).map((t) => t.id);
+  const chosenTiles: TileId[] = activeBoard ? activeBoard.tiles : db.settings.tiles.filter((t) => t.enabled).map((t) => t.id);
+  const preset = db.settings.homePreset;
+  const tileIds: TileId[] = chosenTiles.filter((id) => tileHasData(db, id));
+  const tileRows = rowsFor(customItems(tileIds));
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
   const [arrange, setArrange] = useState(false);
@@ -307,21 +319,39 @@ export default function Today() {
         <CaptureBar />
       </View>
       <View style={{ marginHorizontal: -4 }}>
-          <ChipRow testID="today-board-row">
+          <ChipRow testID="today-preset-row">
+            {PRESET_CHOICES.map((choice) => (
+              <Chip key={choice.id} label={choice.name} icon={choice.icon} selected={preset === choice.id} testID={`today-preset-${choice.id}`} onPress={() => setSettings({ homePreset: choice.id })} />
+            ))}
+          </ChipRow>
+          {preset === "custom" ? <ChipRow testID="today-board-row">
             <Chip label="Home" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
             {boards.map((b) => (
               <Chip key={b.id} label={b.name} icon={b.icon} selected={activeBoard?.id === b.id} testID={`today-board-${b.id}`} onPress={() => setSettings({ activeBoardId: b.id })} />
             ))}
             {activeBoard ? <Chip label="Edit" icon="pencil-outline" testID="today-board-edit" onPress={() => setBoardSheet({ board: activeBoard })} /> : null}
             <Chip label="New board" icon="plus" testID="today-board-new" onPress={() => setBoardSheet({ board: null })} />
-        </ChipRow>
+        </ChipRow> : null}
       </View>
       <ScrollView contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24, gap: sp.md, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         {!anyModule ? (
           <EmptyState testID="today-empty" icon="view-grid-plus-outline" title="Your workbench is empty" body="Turn on a module to start adding tiles here." action={<Button label="Open module library" icon="view-grid-outline" onPress={() => router.push("/(tabs)/modules")} testID="today-open-modules-button" />} />
+        ) : preset === "adhd" ? (
+          <AdhdPanel />
+        ) : preset === "money" || preset === "travel" ? (
+          <SwipeHome preset={preset} />
+        ) : preset === "custom" ? (
+          tileRows.map((row, index) => (
+            <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
+              {row.items.map((item) => (
+                <View key={item.id} style={{ flex: 1 }}>{renderTile(item.id, index)}</View>
+              ))}
+            </View>
+          ))
         ) : (
-          tileIds.map((t, i) => renderTile(t, i))
+          <PresetGrid preset={preset} />
         )}
+        {preset === "adhd" ? null : <HeadsUpCard />}
         <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
           <Icon name="tune-variant" size={18} color={colors.muted} />
           <T muted v="label">Customize home</T>
@@ -330,6 +360,7 @@ export default function Today() {
       </ScrollView>
       <Sheet visible={arrange} onClose={() => setArrange(false)} title={activeBoard ? `Arrange ${activeBoard.name}` : "Arrange home"} testID="today-arrange">
         <T muted style={{ marginBottom: 10 }}>Hold a row, then drag. This order is saved on this device.</T>
+        <ReorderGroup rowHeight={52} orderKey={(activeBoard ? activeBoard.tiles : db.settings.tiles.map((t) => t.id)).join("\n")}>
         {(activeBoard ? activeBoard.tiles.map((id) => ({ id })) : db.settings.tiles).map((t, i, arr) => (
           <DragRow
             key={t.id}
@@ -349,6 +380,7 @@ export default function Today() {
             </View>
           </DragRow>
         ))}
+        </ReorderGroup>
       </Sheet>
       {boardSheet ? <BoardSheet board={boardSheet.board} onClose={() => setBoardSheet(null)} /> : null}
     </View>

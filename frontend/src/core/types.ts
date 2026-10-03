@@ -5,7 +5,7 @@
 export type EntityKind = "vehicle" | "fuel" | "service" | "txn" | "subscription" | "trip" | "appliance" | "note" | "media" | "paper";
 
 export type PackItem = { id: string; name: string; category: string; done: boolean };
-export type ItineraryItem = { id: string; date: string; time: string; title: string; place?: string; note?: string };
+export type ItineraryItem = { id: string; date: string; time: string; title: string; place?: string; note?: string; stop?: "fuel" | "snack" };
 export type TripDoc = { id: string; name: string; have: boolean; expiry?: string };
 export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string; elevation?: number };
 export type Trip = {
@@ -21,6 +21,8 @@ export type Trip = {
   itinerary: ItineraryItem[];
   docs: TripDoc[];
   createdAt: string;
+  /** Weather was saved on this phone before leaving. */
+  weatherSaved?: boolean;
 };
 export type MaintPlan = { id: string; name: string; everyMonths: number; lastDone: string; cost?: number };
 export type Appliance = {
@@ -111,6 +113,12 @@ export type Txn = {
   photo?: string;
   origAmount?: number;
   origCurrency?: string;
+  /** Cash you entered yourself. It counts as spending. */
+  cash?: boolean;
+  /** A move between your own accounts. It is not spending. */
+  transfer?: boolean;
+  /** A balance line from a bank text, used as a point on the balance chart. */
+  balance?: number;
 };
 
 export type Subscription = {
@@ -133,9 +141,40 @@ export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rul
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
+export type HomePresetId = "custom" | "money" | "travel" | "home" | "desk" | "workshop" | "adhd";
+export type AdhdKind = "money" | "trip" | "log";
+export type AdhdTask = {
+  id: string;
+  line: string;
+  started: boolean;
+  parked: boolean;
+  kind: AdhdKind;
+  recordId: string;
+  field: string;
+  seed: string;
+  draft: string;
+  timerStartedAt: number;
+};
+export type AdhdSettings = {
+  tasks: AdhdTask[];
+  /** Finished tasks only. One plain line each. */
+  finished: { line: string }[];
+  reminder: { line: string; snoozedUntil?: string };
+  motionOn: boolean;
+  /** Off until the user turns it on. */
+  buddyOn: boolean;
+  kindMs: Record<AdhdKind, number>;
+};
+export type HeadsUpChoice = "Yes" | "No";
+export type HeadsUpState = { dismissed: string[]; answers: { id: string; choice: HeadsUpChoice }[] };
 export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper";
 /** A visual look. Color sets stay on `theme`. Current matches the original app. */
 export type LookId = "current" | "soft" | "tight" | "plain" | "cards" | "ink" | "signal" | "poster";
+/** Sits on a look. Stack is the current rows. Glass frosts cards. Bento uses a few big tiles. */
+export type LayoutId = "stack" | "glass" | "bento";
+export type CloudProvider = "off" | "drive" | "onedrive";
+export type CloudSync = { provider: CloudProvider; lastSyncAt?: string; askedSinceUnlock: boolean; unlockedAt?: string };
+export type SmsMemoryRow = { key: string; choice: "category" | "transfer" | "ignore"; category?: string };
 export type IconFamily = "paper" | "metal" | "glass" | "tiles";
 export type IconVariant = "paper" | "midnight" | "dune" | "amoled";
 /** `match` follows the app theme. The other values are a fixed picture. */
@@ -163,6 +202,8 @@ export type Settings = {
   theme: ThemeKey;
   /** Shape, space, type, cards, and pop. Independent of the color set. */
   look: LookId;
+  /** Glass or Bento on top of the look. Stack keeps the current rows. */
+  layout: LayoutId;
   /** Background keeps the color set. Type, buttons, and marks use a second color. */
   dualTone: boolean;
   online: boolean;
@@ -202,6 +243,30 @@ export type Settings = {
   nameAsked: boolean;
   /** Home-screen picture. Paper press on the paper ground is the default. */
   launcher: LauncherChoice;
+  /** Locked-file copy to Drive or OneDrive. Off until chosen. */
+  cloud: CloudSync;
+  /** Bank texts may be read on this phone. Off until chosen. */
+  smsInbox: boolean;
+  /** Reminders and the emergency card may show on the lock screen. */
+  lockAlerts: boolean;
+  /** Categories you named. Unused ones can be removed. */
+  moneyNames: string[];
+  /** One answer for an unknown sender, a category, or an own-account transfer. */
+  smsMemory: SmsMemoryRow[];
+  /** Endings of your own accounts, so a transfer is not treated as spending. */
+  ownAccounts: string[];
+  /** This phone's id. A file from another phone opens read-only. */
+  installId: string;
+  /** A file from another phone. Looking is allowed. Editing is not. */
+  readOnly: boolean;
+  /** Which home arrangement is on screen. Records stay where they are. */
+  homePreset: HomePresetId;
+  /** One next action, typed text, and finished lines. No scores. */
+  adhd: AdhdSettings;
+  /** Last thing opened in each preset. */
+  presetLast: Partial<Record<HomePresetId, string>>;
+  /** Heads-ups already dismissed or answered. Dismissal is not a miss. */
+  headsUp: HeadsUpState;
 };
 
 export type HomeShortcut = { id: string; label: string; url: string };
@@ -225,7 +290,7 @@ export type CycleDay = {
   id: string;
   date: string;
   bleeding?: CycleBleeding;
-  /** She tapped ended on this day. Spotting never carries this. */
+  /** Ended was tapped on this day. Spotting never carries this. */
   ended?: boolean;
   flow?: CycleFlow;
   symptom?: CycleSymptom;

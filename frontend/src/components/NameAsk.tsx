@@ -17,7 +17,7 @@ export function NameAsk() {
       <T muted style={{ marginBottom: 12 }}>
         This is only for the greeting. A decoy PIN never shows it.
       </T>
-      <Field label="Name" testID="name-ask-input" value={draft} onChangeText={setDraft} placeholder="Asha" autoCapitalize="words" />
+      <Field label="Name" testID="name-ask-input" value={draft} onChangeText={setDraft} placeholder="Harsha" autoCapitalize="words" />
       <Button kind="ghost" label="Not now" testID="name-ask-skip" onPress={() => save("")} />
     </Sheet>
   );

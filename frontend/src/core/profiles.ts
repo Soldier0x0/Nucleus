@@ -4,6 +4,8 @@
  */
 import type { DB, Settings } from "./types";
 import { DB_KEY, emptyDB } from "./defaults";
+import { parseLayout } from "./layouts";
+import { parseHomePreset } from "./presets";
 import { withSampleData } from "./sample";
 
 export const DECOY_DB_KEY = "nucleus.profile.decoy.v1";
@@ -62,6 +64,7 @@ export function shellSettings(from: Settings): Settings {
     timeFormat: from.timeFormat,
     theme: from.theme,
     look: from.look,
+    layout: parseLayout(from.layout),
     dualTone: from.dualTone,
     accent: from.accent,
     density: from.density,
@@ -77,16 +80,30 @@ export function shellSettings(from: Settings): Settings {
     quietHours: { ...from.quietHours },
     emergency: { ...from.emergency },
     launcher: { ...from.launcher },
+    homePreset: parseHomePreset(from.homePreset),
     nameAsked: true,
     modules: base.modules.map((m) => ({ ...m })),
     tiles: base.tiles.map((t) => ({ ...t })),
   };
 }
 
+/** Cycle and money stay off the decoy, even if a saved document lists them again. */
+export function shownInDecoy(id: string): boolean {
+  return id !== "cycle" && id !== "money";
+}
+
 /** A believable workspace. It copies appearance only — never the real records. */
 export function buildDecoyDB(from: DB): DB {
   const db = withSampleData({ ...emptyDB(), settings: shellSettings(from.settings) });
-  db.settings = { ...db.settings, modules: db.settings.modules.filter((m) => m.id !== "cycle") };
+  db.settings = {
+    ...db.settings,
+    modules: db.settings.modules
+      .filter((m) => m.id !== "cycle")
+      .map((m) => (m.id === "money" ? { ...m, enabled: false, hidden: true } : m)),
+  };
   db.cycle = emptyDB().cycle;
+  db.txns = [];
+  db.subscriptions = [];
+  db.budget = { monthly: 0, categories: {} };
   return db;
 }

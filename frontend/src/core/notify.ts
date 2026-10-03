@@ -32,6 +32,28 @@ export async function permissionState(): Promise<PermissionState> {
   return { granted: p.status === "granted", canAskAgain: p.canAskAgain, undetermined: p.status === "undetermined" };
 }
 
+/** One local notification. A failed upload uses this once. */
+export async function notifyOnce(title: string, body: string) {
+  if (!notificationsSupported) return;
+  ensureHandler();
+  await Notifications.scheduleNotificationAsync({
+    content: { title, body, data: { key: "once" } },
+    trigger: null,
+  }).catch(() => {});
+}
+
+/** Public lock-screen visibility. The card is allowed to show before the phone is unlocked. */
+export async function allowLockScreenChannel() {
+  if (!notificationsSupported || Platform.OS !== "android") return;
+  ensureHandler();
+  await Notifications.setNotificationChannelAsync("nucleus-lock", {
+    name: "Lock screen",
+    importance: Notifications.AndroidImportance.DEFAULT,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    sound: null,
+  }).catch(() => {});
+}
+
 export async function requestPermission(): Promise<PermissionState> {
   if (!notificationsSupported) return { granted: false, canAskAgain: false, undetermined: false };
   ensureHandler();
@@ -52,7 +74,8 @@ async function cancelScheduled(keepCycle: boolean) {
     existing.map(async (item) => {
       const key = item.content?.data?.key;
       const cycle = typeof key === "string" && key.startsWith(CYCLE_PREFIX);
-      if (keepCycle && cycle) return;
+      const quiet = typeof key === "string" && (key.startsWith("heads-up") || key.startsWith("adhd:"));
+      if (keepCycle && (cycle || quiet)) return;
       if (!keepCycle && !cycle) return;
       await Notifications.cancelScheduledNotificationAsync(item.identifier).catch(() => {});
     }),
@@ -60,18 +83,19 @@ async function cancelScheduled(keepCycle: boolean) {
 }
 
 /** Replace rule reminders. Cycle alarms use their own ids and are left in place. */
-export async function syncReminders(list: Reminder[]): Promise<string[]> {
+export async function syncReminders(list: Reminder[], channelId = "nucleus-reminders"): Promise<string[]> {
   if (!notificationsSupported) return [];
   const p = await permissionState();
   if (!p.granted) return [];
   ensureHandler();
+  if (channelId === "nucleus-lock") await allowLockScreenChannel();
   await cancelScheduled(true);
   const done: string[] = [];
   for (const r of list) {
     try {
       await Notifications.scheduleNotificationAsync({
         content: { title: r.title, body: r.body, data: { key: r.key } },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.at, channelId: "nucleus-reminders" },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: r.at, channelId },
       });
       done.push(r.key);
     } catch {

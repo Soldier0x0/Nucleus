@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
-import type { LookId } from "./core/types";
+import type { LayoutId, LookId, ThemeKey } from "./core/types";
 import { dualTonePatch, resolveLook, type ResolvedLook } from "./core/looks";
+import { resolveLayout, type ResolvedLayout } from "./core/layouts";
 
 export const palettes = {
   light: {
@@ -179,6 +180,7 @@ export type Theme = {
   touch: number;
   look: ResolvedLook;
   dualTone: boolean;
+  layout: ResolvedLayout;
 };
 
 const contrasted = (c: Colors, mode: "light" | "dark"): Colors => ({
@@ -190,6 +192,20 @@ const contrasted = (c: Colors, mode: "light" | "dark"): Colors => ({
   divider: mode === "dark" ? "#6A7079" : "#8A9098",
 });
 
+function themeForLayout(themeKey: string): ThemeKey {
+  switch (themeKey) {
+    case "system":
+    case "midnight":
+    case "amoled":
+    case "graphite":
+    case "dune":
+    case "paper":
+      return themeKey;
+    default:
+      return "midnight";
+  }
+}
+
 export function buildTheme(
   themeKey: string,
   accentKey: string,
@@ -197,13 +213,15 @@ export function buildTheme(
   a11y: A11y = { highContrast: false, largeTouch: false, reducedMotion: false },
   lookId: LookId = "current",
   dualTone = false,
+  layoutId: LayoutId = "stack",
 ): Theme {
   const look = resolveLook(lookId);
+  const layout = resolveLayout(layoutId, lookId, themeForLayout(themeKey));
   const f = (dense ? 0.75 : 1) * look.space;
   const sp = Object.fromEntries(Object.entries(spacing).map(([k, v]) => [k, Math.round(v * f)])) as typeof spacing;
   const mode = (THEMES[themeKey] ?? THEMES.midnight).mode;
   const base = buildColors(themeKey, accentKey, dualTone);
-  return { mode, colors: a11y.highContrast ? contrasted(base, mode) : base, dense, sp, a11y, touch: a11y.largeTouch ? 1.25 : 1, look, dualTone };
+  return { mode, colors: a11y.highContrast ? contrasted(base, mode) : base, dense, sp, a11y, touch: a11y.largeTouch ? 1.25 : 1, look, dualTone, layout };
 }
 
 export const ThemeContext = createContext<Theme>(buildTheme("midnight", "ochre", false));
