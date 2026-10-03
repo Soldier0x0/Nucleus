@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { IconButton, T } from "./ui";
 
 /** Lightweight bottom sheet built on Modal (portal above tabs). */
@@ -35,8 +35,8 @@ export function Sheet({ visible, onClose, title, children, testID, footer }: { v
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   sheet: { maxHeight: "90%", borderTopLeftRadius: radius.lg + 4, borderTopRightRadius: radius.lg + 4, borderWidth: 1, borderBottomWidth: 0 },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginTop: 8 },
   head: { flexDirection: "row", alignItems: "center", paddingLeft: 16, paddingRight: 6, paddingTop: 4 },
-});
+}));

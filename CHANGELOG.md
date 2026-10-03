@@ -4,6 +4,19 @@ Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published vers
 
 The Android workflow builds the APK either way. It publishes a GitHub Release only when this file has a section for the version being published, and that section describes an app change. A later version does not need a section yet. Notes that only say the app is unchanged are not published.
 
+## v0.5
+
+Looks you can see, on the colors you already have.
+
+- Current stays the default and looks the same as before.
+- Soft is rounder, with slightly larger type and more space between rows.
+- Tight is sharper and closer.
+- Plain is big type, with very little decoration.
+- Cards keeps those same shapes and adds a soft shadow.
+- Ink, Signal, and Poster are livelier, and they stay readable.
+- Two tones can sit on any look. The background keeps the color set. Type, buttons, and marks use a second color.
+- Paper, Midnight, Dune, and AMOLED still work with every look.
+
 ## v0.4
 
 A private cycle calendar on this phone.

@@ -61,11 +61,14 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.3", changelogPath), /same as v0\.2/);
   assert.match(readReleaseNotes("v0.4", changelogPath), /cycle calendar/);
   assert.match(readReleaseNotes("v0.4", changelogPath), /needs attention/);
+  assert.match(readReleaseNotes("v0.5", changelogPath), /Soft is rounder/);
+  assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
   assert.equal(prepareRelease({ changelog, tag: "v0.4" }).publish, true);
+  assert.equal(prepareRelease({ changelog, tag: "v0.5" }).publish, true);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.3" }), { publish: false, reason: "unchanged" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.2" }), { publish: false, reason: "unchanged" });
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.5" }), { publish: false, reason: "missing" });
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.6" }), { publish: false, reason: "missing" });
 });
 
 test("a missing later version does not block the version being published", () => {

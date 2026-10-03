@@ -61,6 +61,8 @@ export function shellSettings(from: Settings): Settings {
     tempUnit: from.tempUnit,
     timeFormat: from.timeFormat,
     theme: from.theme,
+    look: from.look,
+    dualTone: from.dualTone,
     accent: from.accent,
     density: from.density,
     privacyMode: from.privacyMode,

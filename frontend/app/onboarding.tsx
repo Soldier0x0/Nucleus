@@ -3,7 +3,7 @@ import { Platform, ScrollView, StyleSheet, Switch, useColorScheme, View } from "
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInRight } from "react-native-reanimated";
-import { radius, THEMES, useTheme } from "@/src/theme";
+import { radius, THEMES, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { CURRENCIES } from "@/src/core/format";
 import { MODULES } from "@/src/core/modules";
@@ -252,8 +252,8 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   progress: { flexDirection: "row", gap: 6, marginBottom: 4 },
   ico: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1 },
   modRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: radius.lg, borderWidth: 1, marginBottom: 10 },
-});
+}));

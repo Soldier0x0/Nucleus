@@ -1,7 +1,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import type { Why } from "@/src/core/intelligence";
 import { Sheet } from "./Sheet";
 import { Button, Eyebrow, Icon, T } from "./ui";
@@ -59,8 +59,8 @@ export function WhySheet({ visible, onClose, title, why, route, actions }: { vis
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   table: { borderWidth: 1, borderRadius: radius.md, marginTop: 8, marginBottom: 12 },
   row: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, minHeight: 40 },
   rule: { flexDirection: "row", gap: 10, padding: 12, borderRadius: radius.md },
-});
+}));

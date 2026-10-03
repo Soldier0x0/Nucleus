@@ -10,7 +10,7 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import { buildTheme, ThemeContext } from "@/src/theme";
+import { applyActiveLook, buildTheme, ThemeContext } from "@/src/theme";
 import { StoreProvider, useStore } from "@/src/core/store";
 import { ToastProvider } from "@/src/components/Toast";
 import { LockGate } from "@/src/components/LockGate";
@@ -30,9 +30,10 @@ function Themed({ children }: { children: React.ReactNode }) {
   const s = db.settings;
   const themeKey = s.theme === "system" ? (scheme === "light" ? "paper" : "midnight") : s.theme;
   const theme = useMemo(
-    () => buildTheme(themeKey, s.accent, s.density === "dense", { highContrast: s.highContrast, largeTouch: s.largeTouch, reducedMotion: s.reducedMotion }),
-    [themeKey, s.accent, s.density, s.highContrast, s.largeTouch, s.reducedMotion],
+    () => buildTheme(themeKey, s.accent, s.density === "dense", { highContrast: s.highContrast, largeTouch: s.largeTouch, reducedMotion: s.reducedMotion }, s.look, s.dualTone),
+    [themeKey, s.accent, s.density, s.highContrast, s.largeTouch, s.reducedMotion, s.look, s.dualTone],
   );
+  applyActiveLook(theme.look);
   const mode = theme.mode;
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});

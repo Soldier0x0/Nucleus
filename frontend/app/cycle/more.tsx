@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addDays, fmtDate, todayISO } from "@/src/core/format";
 import type { CycleFlow, CycleProduct, CycleState, CycleSymptom } from "@/src/core/types";
@@ -284,6 +284,6 @@ function Row({ label, sub, value, onChange, testID, sw }: { label: string; sub: 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   search: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 12, marginBottom: 4 },
-});
+}));

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { useOnline } from "@/src/core/useOnline";
 import { countryFacts, holidays, rates } from "@/src/core/online";
@@ -294,9 +294,9 @@ function TripExpenseSheet({ trip, onClose }: { trip: Trip; onClose: () => void }
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   miss: { flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: radius.md, marginTop: 12 },
   check: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 },
   addRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: radius.md, paddingLeft: 12, marginTop: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: radius.lg, padding: 10 },
-});
+}));

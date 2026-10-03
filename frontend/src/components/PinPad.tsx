@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { Icon, Press } from "./ui";
 
 /** Numeric PIN pad with dot display. Calls onComplete when `length` digits are entered. */
@@ -71,9 +71,9 @@ export function PinPad({ length = 4, onComplete, error, onBiometric, testID = "p
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   dots: { flexDirection: "row", gap: 16, marginBottom: 8 },
   dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 14, justifyContent: "center" },
   key: { borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
-});
+}));

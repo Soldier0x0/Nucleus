@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useRef, useState } from 
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { Icon } from "./ui";
 
 type ToastT = { id: number; msg: string; icon?: string };
@@ -35,7 +35,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export const useToast = () => useContext(Ctx);
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   wrap: { position: "absolute", left: 16, right: 16, alignItems: "center" },
   toast: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.md, maxWidth: 480 },
-});
+}));

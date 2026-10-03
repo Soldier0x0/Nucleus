@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { vehicleStats } from "@/src/core/intelligence";
 import { deleteVehicle, SERVICE_LABEL } from "@/src/core/actions";
@@ -240,7 +240,7 @@ export default function VehicleDetail() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   why: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", height: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, marginTop: 12 },
   stat: { flex: 1, borderWidth: 1, borderRadius: radius.lg, padding: 12 },
   list: { borderWidth: 1, borderRadius: radius.lg },
@@ -248,4 +248,4 @@ const styles = StyleSheet.create({
   tl: { flexDirection: "row", gap: 12 },
   node: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   actions: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1 },
-});
+}));

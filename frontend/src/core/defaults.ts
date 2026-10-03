@@ -2,6 +2,7 @@ import type { DB, Settings, Txn } from "./types";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { cleanCallName } from "./greeting";
 import { parseLauncher } from "./launcher";
+import { parseLook } from "./looks";
 
 export const DB_KEY = "nucleus.db.v1";
 export const LEGACY_DB_KEY = "tessera.db.v1";
@@ -14,6 +15,8 @@ export const defaultSettings: Settings = {
   tempUnit: "C",
   timeFormat: "12h",
   theme: "midnight",
+  look: "current",
+  dualTone: false,
   online: false,
   accent: "ochre",
   density: "comfortable",
@@ -115,6 +118,8 @@ export function normalizeDB(raw: any): DB {
   // v1 (Nucleus) theme values -> Nucleus themes
   if ((s.theme as string) === "light") s.theme = "paper";
   if ((s.theme as string) === "dark") s.theme = "midnight";
+  s.look = parseLook(raw?.settings?.look);
+  s.dualTone = raw?.settings?.dualTone === true;
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
   if (callName) s.givenName = callName;

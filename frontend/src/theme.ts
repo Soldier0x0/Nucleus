@@ -1,4 +1,6 @@
 import { createContext, useContext } from "react";
+import type { LookId } from "./core/types";
+import { dualTonePatch, resolveLook, type ResolvedLook } from "./core/looks";
 
 export const palettes = {
   light: {
@@ -89,12 +91,12 @@ export const accents: Record<string, { name: string; base: string; light2: strin
   rose: { name: "Rose", base: "#B85C72", light2: "#D58A9B", tint: "#F6E1E6", onTint: "#6E2A3A", tintDark: "#36202A", onTintDark: "#F6E1E6" },
 };
 
-export function buildColors(themeKey: string, accentKey: string): Colors {
+export function buildColors(themeKey: string, accentKey: string, dualTone = false): Colors {
   const t = THEMES[themeKey] ?? THEMES.midnight;
   const mode = t.mode;
   const base = t.colors;
   const a = accents[accentKey] ?? accents.ochre;
-  return {
+  const painted = {
     ...base,
     brand: a.base,
     brandPrimary: a.base,
@@ -102,6 +104,8 @@ export function buildColors(themeKey: string, accentKey: string): Colors {
     brandTertiary: mode === "light" ? a.tint : a.tintDark,
     onBrandTertiary: mode === "light" ? a.onTint : a.onTintDark,
   };
+  if (!dualTone) return painted;
+  return { ...painted, ...dualTonePatch(painted.surface, mode) };
 }
 
 export const fonts = {
@@ -116,7 +120,51 @@ export const fonts = {
 
 export const type = { sm: 12, base: 14, lg: 16, xl: 20, "2xl": 24, "3xl": 32 };
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, "2xl": 32, "3xl": 48 };
-export const radius = { sm: 4, md: 8, lg: 12, pill: 999 };
+
+const currentRadius = { sm: 4, md: 8, lg: 12, pill: 999 };
+let activeRadius = { ...currentRadius };
+
+/** Read during render, and again when a look rebuilds a stylesheet. */
+export const radius = {
+  get sm() {
+    return activeRadius.sm;
+  },
+  get md() {
+    return activeRadius.md;
+  },
+  get lg() {
+    return activeRadius.lg;
+  },
+  get pill() {
+    return activeRadius.pill;
+  },
+};
+
+const lookRebuilders = new Set<() => void>();
+
+/** StyleSheet.create copies numbers once. Register a rebuild so a look can replace them. */
+export function bindLookStyles<T extends object>(build: () => T): T {
+  let current = build();
+  const proxy = new Proxy({} as T, {
+    get(_target, prop) {
+      return current[prop as keyof T];
+    },
+  });
+  lookRebuilders.add(() => {
+    current = build();
+  });
+  return proxy;
+}
+
+let appliedRadius = "";
+
+export function applyActiveLook(look: ResolvedLook) {
+  const key = `${look.radius.sm}:${look.radius.md}:${look.radius.lg}:${look.radius.pill}`;
+  if (key === appliedRadius) return;
+  appliedRadius = key;
+  activeRadius = { ...look.radius };
+  for (const rebuild of lookRebuilders) rebuild();
+}
 
 export type A11y = { highContrast: boolean; largeTouch: boolean; reducedMotion: boolean };
 
@@ -124,11 +172,13 @@ export type Theme = {
   mode: "light" | "dark";
   colors: Colors;
   dense: boolean;
-  /** density-aware spacing */
+  /** density-aware spacing, also scaled by the look */
   sp: typeof spacing;
   a11y: A11y;
   /** multiplier for control heights (large-touch mode) */
   touch: number;
+  look: ResolvedLook;
+  dualTone: boolean;
 };
 
 const contrasted = (c: Colors, mode: "light" | "dark"): Colors => ({
@@ -140,12 +190,20 @@ const contrasted = (c: Colors, mode: "light" | "dark"): Colors => ({
   divider: mode === "dark" ? "#6A7079" : "#8A9098",
 });
 
-export function buildTheme(themeKey: string, accentKey: string, dense: boolean, a11y: A11y = { highContrast: false, largeTouch: false, reducedMotion: false }): Theme {
-  const f = dense ? 0.75 : 1;
+export function buildTheme(
+  themeKey: string,
+  accentKey: string,
+  dense: boolean,
+  a11y: A11y = { highContrast: false, largeTouch: false, reducedMotion: false },
+  lookId: LookId = "current",
+  dualTone = false,
+): Theme {
+  const look = resolveLook(lookId);
+  const f = (dense ? 0.75 : 1) * look.space;
   const sp = Object.fromEntries(Object.entries(spacing).map(([k, v]) => [k, Math.round(v * f)])) as typeof spacing;
   const mode = (THEMES[themeKey] ?? THEMES.midnight).mode;
-  const base = buildColors(themeKey, accentKey);
-  return { mode, colors: a11y.highContrast ? contrasted(base, mode) : base, dense, sp, a11y, touch: a11y.largeTouch ? 1.25 : 1 };
+  const base = buildColors(themeKey, accentKey, dualTone);
+  return { mode, colors: a11y.highContrast ? contrasted(base, mode) : base, dense, sp, a11y, touch: a11y.largeTouch ? 1.25 : 1, look, dualTone };
 }
 
 export const ThemeContext = createContext<Theme>(buildTheme("midnight", "ochre", false));

@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import * as Device from "expo-device";
 import * as Battery from "expo-battery";
 import { Accelerometer, Barometer, Gyroscope, LightSensor, Magnetometer } from "expo-sensors";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { exportData } from "@/src/core/exports";
 import { num, todayISO } from "@/src/core/format";
@@ -288,6 +288,6 @@ export default function Lab() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   touch: { height: 160, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", marginTop: 10, overflow: "hidden" },
-});
+}));

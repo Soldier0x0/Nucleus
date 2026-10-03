@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { search } from "@/src/core/search";
 import { EmptyState, Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
@@ -67,10 +67,10 @@ export default function Search() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingBottom: 8, borderBottomWidth: 1 },
   box: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderRadius: radius.md, paddingLeft: 12, marginRight: 8 },
   sug: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, justifyContent: "center" },
   list: { borderWidth: 1, borderRadius: radius.lg, marginTop: 8 },
   item: { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, minHeight: 56 },
-});
+}));
