@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ICON_CLAIMS_FULL_TRANSPARENCY, ICON_GROUND_OPAQUE, MARK_OUTER_RADIUS, markFillRatio } from "./iconFill.ts";
+import { ICON_CLAIMS_FULL_TRANSPARENCY, ICON_GROUND_OPAQUE, MARK_CANVAS, MARK_OUTER_RADIUS, MARK_STROKE, markFillRatio } from "./iconFill.ts";
 import { shouldAskBiometric } from "./lockPolicy.ts";
 import { askToEnable, lockScreenVisibility, staysEnabled } from "./featureAccess.ts";
 import { applyInbox, countsAsSpending, decideBankLine, filterInbox, memoryKey } from "./smsMoney.ts";
@@ -22,6 +22,8 @@ import type { LookId, ThemeKey } from "./types.ts";
 test("the launcher mark fills the circle and stays opaque under the mask", () => {
   assert.ok(markFillRatio() >= 0.82);
   assert.ok(MARK_OUTER_RADIUS * 2 >= 82);
+  assert.ok(MARK_OUTER_RADIUS * 2 >= 100);
+  assert.ok(MARK_OUTER_RADIUS - MARK_STROKE < (72 / 108) * (MARK_CANVAS / 2));
   assert.equal(ICON_GROUND_OPAQUE, true);
   assert.equal(ICON_CLAIMS_FULL_TRANSPARENCY, false);
 });

@@ -94,7 +94,7 @@ function assertChangePoints(text, tag) {
 }
 
 function releaseNotes({ changelog, tag, apkName }) {
-  if (!/^v0\.[1-9]\d*$/.test(tag)) {
+  if (!/^v0\.[1-9]\d*(?:\.\d+)?$/.test(tag)) {
     throw new Error(`Refusing notes for ${tag}. Releases stay at v0.1, v0.2, and so on.`);
   }
   const changes = changelogSection(changelog, tag);
@@ -180,7 +180,7 @@ function assertThisReleaseOnly({ changelog, tag, publishedTags = [] }) {
  * previous one throws: that version was started without publishable notes.
  */
 function prepareRelease({ changelog, tag, apkName }) {
-  if (!/^v0\.[1-9]\d*$/.test(tag)) {
+  if (!/^v0\.[1-9]\d*(?:\.\d+)?$/.test(tag)) {
     throw new Error(`Refusing notes for ${tag}. Releases stay at v0.1, v0.2, and so on.`);
   }
   const text = sectionBody(changelog, tag);

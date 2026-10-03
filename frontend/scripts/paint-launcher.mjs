@@ -53,8 +53,8 @@ function paint(family, variant) {
   const cx = (SIZE - 1) / 2;
   const cy = cx;
   const scale = SIZE / 100;
-  const outer = 47 * scale;
-  const stroke = (family === "glass" ? 4.5 : family === "metal" ? 9 : 8) * scale;
+  const outer = 50 * scale;
+  const stroke = 22 * scale;
   const core = (family === "glass" ? 22 : family === "tiles" ? 14 : 16) * scale;
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {

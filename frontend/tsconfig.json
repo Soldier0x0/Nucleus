@@ -26,6 +26,7 @@
     "src/core/vehicleMarks.test.ts",
     "src/core/reorder.test.ts",
     "src/core/presets.test.ts",
-    "src/core/proactive.test.ts"
+    "src/core/proactive.test.ts",
+    "src/core/layouts.test.ts"
   ]
 }

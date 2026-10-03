@@ -132,7 +132,7 @@ export function Card({ children, style, testID, onPress, onLongPress, tone = "de
       : {};
   const base: ViewStyle = {
     backgroundColor: frost ? "transparent" : bg,
-    borderRadius: radius.lg,
+    borderRadius: look.radius.lg,
     borderWidth: 1,
     borderColor: tone === "default" ? colors.border : "transparent",
     padding: layout.bento ? sp.xl : sp.lg,

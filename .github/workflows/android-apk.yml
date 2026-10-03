@@ -64,7 +64,7 @@ jobs:
           set -euo pipefail
           tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")' 2>/dev/null || true)
           # shellcheck disable=SC2086
-          name=$(node .github/scripts/next-android-version.js $tags)
+          name=$(node .github/scripts/next-android-version.js --changelog CHANGELOG.md $tags)
           echo "name=${name}" >> "$GITHUB_OUTPUT"
           echo "tag=v${name}" >> "$GITHUB_OUTPUT"
           echo "Next release is v${name}"

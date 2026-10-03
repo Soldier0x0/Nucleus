@@ -18,11 +18,12 @@ import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
-import { PRESET_CHOICES, customItems, rowsFor, tileHasData } from "@/src/core/presets";
+import { presentHome } from "@/src/core/layouts";
+import { PRESET_CHOICES, presetBoard, tilePlaceholder } from "@/src/core/presets";
 import { AdhdPanel, HeadsUpCard, PresetGrid, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
-import type { Board, TileId } from "@/src/core/types";
+import type { Board } from "@/src/core/types";
 import { homeSchedule, readiness, tripStatus } from "@/src/core/domains";
 import { homeLine, oneDueToday } from "@/src/core/dueGreeting";
 import { repeatingBills } from "@/src/core/moneyDesk";
@@ -30,7 +31,7 @@ import { choreDueDate } from "@/src/core/domains";
 
 export default function Today() {
   const { db, setSettings, session } = useStore();
-  const { colors, sp, a11y } = useTheme();
+  const { colors, sp, a11y, layout } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -50,14 +51,24 @@ export default function Today() {
   const contentW = Math.min(width, 720) - sp.lg * 2;
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
-  const chosenTiles: TileId[] = activeBoard ? activeBoard.tiles : db.settings.tiles.filter((t) => t.enabled).map((t) => t.id);
   const preset = db.settings.homePreset;
-  const tileIds: TileId[] = chosenTiles.filter((id) => tileHasData(db, id));
-  const tileRows = rowsFor(customItems(tileIds));
+  const customPresented = presentHome(layout.layout, presetBoard(db, "custom", session));
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
   const [arrange, setArrange] = useState(false);
   useReminderSync();
+
+  const placeholder = (id: string, idx: number) => {
+    const copy = tilePlaceholder(id);
+    return (
+      <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(60 * idx).duration(260)}>
+        <Card testID={`today-${id}-tile`} onPress={() => router.push(copy.route as never)} onLongPress={() => setArrange(true)} style={customPresented.cardMin > 0 ? { minHeight: customPresented.cardMin } : undefined}>
+          <Eyebrow>{copy.title}</Eyebrow>
+          <T v="h2" style={{ marginTop: 6 }}>{copy.line}</T>
+        </Card>
+      </Animated.View>
+    );
+  };
 
   const renderTile = (id: string, idx: number) => {
     const delay = 60 * idx;
@@ -104,16 +115,16 @@ export default function Today() {
       );
     }
     if (id === "weather") {
-      if (!db.settings.homeCity) return null;
+      if (!db.settings.homeCity) return placeholder(id, idx);
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <WeatherCard place={db.settings.homeCity} testID="today-weather-tile" />
         </Animated.View>
       );
     }
-    if (id === "trip" && on("travel")) {
+    if (id === "trip") {
       const t = [...db.trips].filter((x) => tripStatus(x) !== "past").sort((a, b) => a.start.localeCompare(b.start))[0];
-      if (!t) return null;
+      if (!t) return placeholder(id, idx);
       const r = readiness(db, t);
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
@@ -131,9 +142,9 @@ export default function Today() {
         </Animated.View>
       );
     }
-    if (id === "home" && on("home")) {
+    if (id === "home") {
       const n = homeSchedule(db)[0];
-      if (!n) return null;
+      if (!n) return placeholder(id, idx);
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-home-tile" onPress={() => router.push("/home")} onLongPress={() => setArrange(true)}>
@@ -152,7 +163,7 @@ export default function Today() {
         </Animated.View>
       );
     }
-    if (id === "budget" && on("money")) {
+    if (id === "budget") {
       const mt = monthTotals(db, monthKey(today));
       const b = db.budget.monthly;
       const pct = b > 0 ? mt.spent / b : 0;
@@ -183,7 +194,7 @@ export default function Today() {
         </Animated.View>
       );
     }
-    if (id === "vehicle" && on("vehicles")) {
+    if (id === "vehicle") {
       const v = db.vehicles.find((x) => x.id === db.settings.defaultVehicleId) ?? db.vehicles[0];
       if (!v)
         return (
@@ -220,9 +231,9 @@ export default function Today() {
         </Animated.View>
       );
     }
-    if (id === "subscriptions" && on("money")) {
+    if (id === "subscriptions") {
       const subs = db.subscriptions.filter((s) => s.active).sort((a, b) => a.nextRenewal.localeCompare(b.nextRenewal)).slice(0, 3);
-      if (!subs.length) return null;
+      if (!subs.length) return placeholder(id, idx);
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-subscriptions-tile" onPress={() => router.push("/money?tab=subscriptions")} onLongPress={() => setArrange(true)}>
@@ -247,9 +258,9 @@ export default function Today() {
         </Animated.View>
       );
     }
-    if (id === "notes" && on("notes")) {
+    if (id === "notes") {
       const pinned = db.notes.filter((n) => n.pinned).slice(0, 3);
-      if (!pinned.length) return null;
+      if (!pinned.length) return placeholder(id, idx);
       return (
         <Animated.View key={id} entering={a11y.reducedMotion ? undefined : FadeInDown.delay(delay).duration(260)}>
           <Card testID="today-notes-tile" onPress={() => router.push("/notes")} onLongPress={() => setArrange(true)}>
@@ -270,7 +281,7 @@ export default function Today() {
         </Animated.View>
       );
     }
-    if (id === "tools" && on("tools")) {
+    if (id === "tools") {
       const tools = [
         ["units", "swap-horizontal", "Units"],
         ["percent", "percent-outline", "GST %"],
@@ -293,7 +304,7 @@ export default function Today() {
         </Animated.View>
       );
     }
-    return null;
+    return placeholder(id, idx);
   };
 
   return (
@@ -341,7 +352,7 @@ export default function Today() {
         ) : preset === "money" || preset === "travel" ? (
           <SwipeHome preset={preset} />
         ) : preset === "custom" ? (
-          tileRows.map((row, index) => (
+          customPresented.rows.map((row, index) => (
             <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
               {row.items.map((item) => (
                 <View key={item.id} style={{ flex: 1 }}>{renderTile(item.id, index)}</View>

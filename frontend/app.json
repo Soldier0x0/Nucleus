@@ -23,7 +23,7 @@
       "package": "com.nucleus.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#DDD4C5"
+        "backgroundColor": "#F3EDE4"
       },
       "permissions": [
         "android.permission.USE_BIOMETRIC",

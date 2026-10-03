@@ -1,5 +1,6 @@
 import type { LayoutId, LookId, ThemeKey } from "./types";
 import { resolveLook, type ResolvedLook } from "./looks";
+import { rowsFor, type PresetItem } from "./presets";
 
 export type { LayoutId };
 
@@ -28,6 +29,32 @@ export function resolveLayout(layout: LayoutId, look: LookId, theme: ThemeKey): 
       return { layout, frost: false, bento: true, look: resolved, theme };
     case "stack":
       return { layout, frost: false, bento: false, look: resolved, theme };
+    default: {
+      const unreachable: never = layout;
+      return unreachable;
+    }
+  }
+}
+
+export type HomePresentation = {
+  frost: boolean;
+  cardMin: number;
+  rows: { items: PresetItem[] }[];
+};
+
+/** How the home screen arranges the tiles for this layout. */
+export function presentHome(layout: LayoutId, items: PresetItem[]): HomePresentation {
+  switch (layout) {
+    case "bento":
+      return {
+        frost: false,
+        cardMin: 112,
+        rows: items.map((item) => ({ items: [{ id: item.id, size: "large" }] })),
+      };
+    case "glass":
+      return { frost: true, cardMin: 0, rows: rowsFor(items) };
+    case "stack":
+      return { frost: false, cardMin: 0, rows: rowsFor(items) };
     default: {
       const unreachable: never = layout;
       return unreachable;
