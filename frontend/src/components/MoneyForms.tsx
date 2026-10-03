@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addTxn, nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/src/core/defaults";
@@ -188,8 +188,8 @@ export function BudgetSheet({ visible, onClose }: { visible: boolean; onClose: (
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   display: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: radius.lg, paddingHorizontal: 16, height: 72, marginTop: 12 },
   pad: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
   key: { width: "31.8%", height: 52, borderRadius: radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-});
+}));

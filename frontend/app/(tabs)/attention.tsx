@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { AttentionItem } from "@/src/core/intelligence";
@@ -155,10 +155,10 @@ export default function Attention() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   count: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 10, height: 44 },
   item: { borderWidth: 1, borderLeftWidth: 4, borderRadius: radius.lg, padding: 14, marginBottom: 10 },
   ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   act: { flexDirection: "row", alignItems: "center", gap: 4, height: 36, paddingHorizontal: 12, borderRadius: radius.md },
   swipe: { justifyContent: "center", paddingHorizontal: 18, borderRadius: radius.lg, marginBottom: 10 },
-});
+}));

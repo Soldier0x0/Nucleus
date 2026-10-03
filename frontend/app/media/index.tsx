@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity } from "@/src/core/actions";
 import type { MediaItem, MediaKind, MediaStatus } from "@/src/core/types";
@@ -210,7 +210,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   card: { width: "48%", flexGrow: 1, borderWidth: 1, borderRadius: radius.lg, padding: 12 },
   cover: { width: "100%", height: 132, borderRadius: radius.md, marginBottom: 10 },
-});
+}));

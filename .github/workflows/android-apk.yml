@@ -7,9 +7,14 @@
 # nucleus-v0.1.apk, nucleus-v0.2.apk, and so on. The version stays below 1.
 # Download that file from Releases. It is the APK, not the Actions artifact zip.
 # Notes come from the CHANGELOG.md section for the version being published.
-# A missing section for a later version does not fail the build and does not
-# publish. Notes that say the app is unchanged do not publish. Pull requests
-# build the APK and do not create a release.
+# That section must be short bullet points of what the version added or changed.
+# Without those points the release is not published and the notes step fails.
+# A note that only says the app is the same as the previous one is not enough.
+# A republish must name the file, say that nothing in the app changed, and say
+# why the release exists. One pull request publishes one version. A section for
+# any other unpublished version fails the job, so the next release cannot be
+# pre-seeded. A missing section for a later version does not fail the build and
+# does not publish. Pull requests build the APK and do not create a release.
 # The APK contains only arm64-v8a, which is what current phones use.
 #
 # Signing:
@@ -97,6 +102,10 @@ jobs:
           echo "name=${name}" >> "$GITHUB_OUTPUT"
           echo "tag=v${name}" >> "$GITHUB_OUTPUT"
           echo "Next release is v${name}"
+          # One release, one version. Fail before the APK build when the changelog
+          # documents anything besides this version and versions already tagged.
+          # shellcheck disable=SC2086
+          node .github/scripts/release-notes.js --only-this-version "v${name}" $tags
 
       - name: Set the Android version
         working-directory: frontend
@@ -179,5 +188,6 @@ jobs:
           test -s release-notes.md
           # Target the commit that was checked out and built. Without this,
           # gh release create tags the default branch instead.
+          # This is the only tag this run creates. A later version is not tagged here.
           gh release create "$TAG" "nucleus-${TAG}.apk" --title "$TAG" --target "$GITHUB_SHA" --latest --notes-file release-notes.md
           echo "Release ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"

@@ -9,7 +9,7 @@ import { useStore } from "@/src/core/store";
 import { visibleAttention } from "@/src/core/attention";
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
+  const { colors, look } = useTheme();
   const { db } = useStore();
   const urgent = visibleAttention(db).filter((i) => i.severity === "urgent").length;
 
@@ -44,7 +44,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: { backgroundColor: colors.surfaceSecondary, borderTopColor: colors.border, ...(Platform.OS === "web" ? { height: 64 } : {}) },
         tabBarItemStyle: { alignSelf: "center" },
-        tabBarLabelStyle: { fontFamily: fonts.textSemi, fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: look.plain ? fonts.text : fonts.textSemi, fontSize: look.typeScale === 1 ? 11 : Math.round(11 * look.typeScale) },
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { TILE_META } from "@/src/core/modules";
 import type { Board, TileId } from "@/src/core/types";
@@ -90,7 +90,7 @@ export function BoardSheet({ board, onClose }: { board: Board | null; onClose: (
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   list: { borderWidth: 1, borderRadius: radius.lg },
   row: { flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 12, paddingRight: 4, minHeight: 52 },
-});
+}));

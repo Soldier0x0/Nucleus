@@ -20,6 +20,7 @@
     "src/core/moneyWords.test.ts",
     "src/core/greeting.test.ts",
     "src/core/launcher.test.ts",
-    "src/core/cycle.test.ts"
+    "src/core/cycle.test.ts",
+    "src/core/looks.test.ts"
   ]
 }
