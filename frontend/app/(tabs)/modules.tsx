@@ -4,7 +4,7 @@ import { ScrollView } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { MODULES, moduleById, TILE_META } from "@/src/core/modules";
@@ -151,10 +151,10 @@ function countLine(db: DB, id: ModuleId) {
   return n ? ` · ${n}` : "";
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: radius.lg, paddingLeft: 12, paddingVertical: 4, marginBottom: 10 },
   ic: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   list: { borderWidth: 1, borderRadius: radius.lg },
   tileRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 12, paddingRight: 8, minHeight: 56 },
   planned: { width: "48%", flexGrow: 1, borderWidth: 1, borderStyle: "dashed", borderRadius: radius.lg, padding: 12 },
-});
+}));

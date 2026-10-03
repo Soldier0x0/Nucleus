@@ -134,6 +134,8 @@ export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
 export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper";
+/** A visual look. Color sets stay on `theme`. Current matches the original app. */
+export type LookId = "current" | "soft" | "tight" | "plain" | "cards" | "ink" | "signal" | "poster";
 export type IconFamily = "paper" | "metal" | "glass" | "tiles";
 export type IconVariant = "paper" | "midnight" | "dune" | "amoled";
 /** `match` follows the app theme. The other values are a fixed picture. */
@@ -159,6 +161,10 @@ export type Settings = {
   tempUnit: "C" | "F";
   timeFormat: "12h" | "24h";
   theme: ThemeKey;
+  /** Shape, space, type, cards, and pop. Independent of the color set. */
+  look: LookId;
+  /** Background keeps the color set. Type, buttons, and marks use a second color. */
+  dualTone: boolean;
   online: boolean;
   homeCity?: Place;
   accent: string;

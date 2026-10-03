@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity, linkedRefs } from "@/src/core/actions";
 import type { ChecklistItem, Note } from "@/src/core/types";
@@ -155,6 +155,6 @@ function NoteSheet({ note, onClose, onSaved }: { note: Note; onClose: () => void
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   searchBox: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 12 },
-});
+}));

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { homeSchedule, logMaintenance, ROOMS, upsertAppliance } from "@/src/core/domains";
 import { applianceOwnership } from "@/src/core/life";
@@ -162,4 +162,4 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
   );
 }
 
-const styles = StyleSheet.create({ ic: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" } });
+const styles = bindLookStyles(() => StyleSheet.create({ ic: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" } }));

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { Insight, moneyInsights, monthSeries, monthTotals } from "@/src/core/intelligence";
 import { addMonths, daysBetween, fmtDate, monthKey, monthLabel, num, todayISO } from "@/src/core/format";
@@ -218,7 +218,7 @@ export default function Money() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   insight: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: radius.lg, padding: 12, marginBottom: 8 },
   ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   list: { borderWidth: 1, borderRadius: radius.lg },
@@ -226,4 +226,4 @@ const styles = StyleSheet.create({
   sub: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderRadius: radius.lg, padding: 12 },
   daybox: { width: 52, height: 52, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   actions: { position: "absolute", left: 0, right: 0, bottom: 0, flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: 1 },
-});
+}));

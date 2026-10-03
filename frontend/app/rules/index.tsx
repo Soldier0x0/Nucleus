@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Linking, Platform, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import type { Rule, RuleAction, RuleTriggerKind } from "@/src/core/types";
 import { dryRun, evaluateRule, markFired, reminders, ruleSentence, TRIGGERS, triggerMeta } from "@/src/core/rules";
@@ -312,7 +312,7 @@ function RuleSheet({ rule, onClose, onSaved }: { rule: Rule; onClose: () => void
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   ic: { width: 40, height: 40, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   preview: { borderRadius: radius.lg, padding: 14, marginTop: 4 },
-});
+}));

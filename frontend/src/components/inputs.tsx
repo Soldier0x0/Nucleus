@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
-import { fonts, radius, useTheme } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { addDays, addMonths, fmtDate, parseISO, toISODate, todayISO } from "@/src/core/format";
 import { Icon, Press, T } from "./ui";
 import { Sheet } from "./Sheet";
@@ -152,7 +152,7 @@ export function OptionSheet({ visible, onClose, title, options, value, onPick, t
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   label: { fontFamily: fonts.textMedium, fontSize: 12, marginBottom: 6, letterSpacing: 0.2 },
   box: { flexDirection: "row", alignItems: "center", minHeight: 50, borderWidth: 1, borderRadius: radius.md },
   input: { flex: 1, paddingHorizontal: 14, fontSize: 16, minHeight: 48 },
@@ -163,4 +163,4 @@ const styles = StyleSheet.create({
   day: { borderRadius: radius.md },
   quick: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, justifyContent: "center" },
   opt: { flexDirection: "row", alignItems: "center", minHeight: 50, borderBottomWidth: 1 },
-});
+}));

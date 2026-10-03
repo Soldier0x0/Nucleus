@@ -14,9 +14,8 @@
 #
 # The job stays on the free GitHub runner. It reuses the Gradle cache between
 # runs and skips release lint. A docs, changelog, or README-only change does
-# not compile. A green
-# pull-request APK for the same git tree is what gets published, so the merge
-# does not compile that tree a second time.
+# not compile. A green pull-request APK for the same git tree is what gets
+# published, so the merge does not compile that tree a second time.
 # The APK contains only arm64-v8a, which is what current phones use.
 #
 # Signing:

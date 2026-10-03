@@ -1,8 +1,27 @@
 # Changelog
 
-Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. Add that version as a new `## v0.N` section when its pull request is ready. One pull request documents one version, the one it publishes. Do not add notes for a later version to keep the next build from failing.
+Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published version has one section below, newest first. Add a new `## v0.N` section at the top when that version is ready. A later version does not need a section yet.
 
-Each section is short bullet points of what that version added or changed. A release is published only when a green APK exists and this file has those points for that one version. A missing section does not fail the build and does not publish. A note that only says the app is the same as the previous one is not enough. A change that is only docs, this file, or the README does not build an APK.
+Each section is short bullet points of what that version added or changed. A release is published only when a green APK exists and this file has those points for that one version. A missing section does not fail the build and does not publish. An empty section fails. A note that only says the app is the same as the previous one is not published, and that check fails. The job stays on the free GitHub runner, reuses the Gradle cache, and does not build an APK when a change is only docs, this file, or the README. A green pull-request build is the APK that gets published, so a merge does not compile that same git tree again.
+
+One pull request publishes one version. That version is the only one it may document. It may be a version such as v0.5, or a sub-version such as v0.5.1, and it is still only one of them. Do not add notes or a tag for a later version to keep the next build from failing. The workflow fails if this file has a section for any other version that has not already shipped.
+
+A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
+
+## v0.5
+
+Looks you can see, on the colors you already have.
+
+- Current stays the default and looks the same as before.
+- Soft is rounder, with slightly larger type and more space between rows.
+- Tight is sharper and closer.
+- Plain is big type, with very little decoration.
+- Cards keeps those same shapes and adds a soft shadow.
+- Ink, Signal, and Poster are livelier, and they stay readable.
+- Two tones can sit on any look. The background keeps the color set. Type, buttons, and marks use a second color.
+- Paper, Midnight, Dune, and AMOLED still work with every look.
+- A release is published only when its notes are short bullet points of what that version added or changed.
+- One pull request documents only the version it publishes. It does not add notes for a later version.
 
 ## v0.4
 
@@ -16,14 +35,16 @@ A private cycle calendar on this phone.
 
 ## v0.3
 
-The app on the phone is the same as v0.2. Nothing in the app changed after that APK. This release is the build that can finish once these notes exist.
+- The file is nucleus-v0.3.apk.
+- Nothing in the app changed from v0.2. Icons, money, and the greeting are that same app, with the version name stamped 0.3.
+- This release exists because the Android job would not finish until a v0.3 section was in the changelog.
 
 ## v0.2
 
-The app on the phone is the same as v0.1. This release only changes publishing.
-
-- Every release includes the notes from this file.
-- A build stops if those notes are missing.
+- GitHub release notes are copied from this file.
+- The Android job stops before the APK build when the section for that version is missing or empty.
+- The release tag points at the commit that was built.
+- nucleus-v0.2.apk is the v0.1 phone app: home-screen icons, money words, CSV export, and the greeting name.
 
 ## v0.1
 

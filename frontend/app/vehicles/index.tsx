@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { radius, useTheme } from "@/src/theme";
+import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { vehicleStats } from "@/src/core/intelligence";
 import { fuelLabel, vehicleBody } from "@/src/core/life";
@@ -71,4 +71,4 @@ export default function Vehicles() {
   );
 }
 
-const styles = StyleSheet.create({ ic: { width: 84, height: 48, borderRadius: radius.md, alignItems: "center", justifyContent: "center", overflow: "hidden" } });
+const styles = bindLookStyles(() => StyleSheet.create({ ic: { width: 84, height: 48, borderRadius: radius.md, alignItems: "center", justifyContent: "center", overflow: "hidden" } }));

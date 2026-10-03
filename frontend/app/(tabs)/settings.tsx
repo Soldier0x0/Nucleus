@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { accents, radius, THEMES, useTheme } from "@/src/theme";
+import { accents, radius, THEMES, useTheme, bindLookStyles } from "@/src/theme";
 import { geocode } from "@/src/core/online";
 import type { ModuleId, Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
@@ -18,6 +18,7 @@ import { dataHealth } from "@/src/core/life";
 import { useRouter } from "expo-router";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "@/src/components/ui";
 import { LauncherPicker } from "@/src/components/LauncherPicker";
+import { LookPicker } from "@/src/components/LookPicker";
 import { cleanCallName } from "@/src/core/greeting";
 import { Field } from "@/src/components/inputs";
 import { Sheet } from "@/src/components/Sheet";
@@ -35,7 +36,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Row({ icon, label, sub, right, first, testID, onPress }: { icon: string; label: string; sub?: string; right?: React.ReactNode; first?: boolean; testID?: string; onPress?: () => void }) {
-  const { colors } = useTheme();
+  const { colors, look } = useTheme();
   const inner = (
     <>
       <Icon name={icon} size={20} color={colors.muted} />
@@ -46,7 +47,7 @@ function Row({ icon, label, sub, right, first, testID, onPress }: { icon: string
       {right}
     </>
   );
-  const st = [styles.row, !first && { borderTopWidth: 1, borderTopColor: colors.divider }];
+  const st = [styles.row, { minHeight: look.row, paddingVertical: look.space === 1 ? 8 : Math.round(8 * look.space) }, !first && { borderTopWidth: 1, borderTopColor: colors.divider }];
   return onPress ? (
     <Press testID={testID} onPress={onPress} style={st}>
       {inner}
@@ -114,6 +115,7 @@ export default function Settings() {
 
         <Section title="Appearance">
           <View style={{ padding: 12, gap: 12 }}>
+            <T v="label">Color</T>
             <View style={{ marginHorizontal: -12 }}>
               <ChipRow testID="settings-theme-row">
                 {[["system", "System", undefined], ...Object.entries(THEMES).map(([k, t]) => [k, t.name, t.swatch])].map(([k, n, sw]) => (
@@ -124,6 +126,7 @@ export default function Settings() {
                 ))}
               </ChipRow>
             </View>
+            <LookPicker />
             <Segmented testID="settings-density" value={s.density} onChange={(v) => setSettings({ density: v })} options={[{ value: "comfortable", label: "Comfortable" }, { value: "dense", label: "Dense" }]} />
             <LauncherPicker />
           </View>
@@ -636,10 +639,10 @@ export default function Settings() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = bindLookStyles(() => StyleSheet.create({
   group: { borderWidth: 1, borderRadius: radius.lg, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 12, minHeight: 56, paddingVertical: 8 },
   swatchWrap: { flexShrink: 0, flexDirection: "row", alignItems: "center", gap: 6, height: 36, paddingLeft: 4, paddingRight: 12, borderRadius: radius.pill, borderWidth: 1.5 },
   swatch: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   warn: { flexDirection: "row", gap: 10, padding: 12, borderRadius: radius.md },
-});
+}));

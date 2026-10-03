@@ -6,9 +6,12 @@ const path = require("node:path");
  * CHANGELOG.md is the source. The workflow publishes a release only when the
  * section for that version has short bullet points of what was added or
  * changed. A note that only says the app is the same as the previous one is
- * not enough. One pull request publishes one version: a section for any other
- * unpublished version is refused. A missing later version is not an error.
- * An empty section for the version being published is an error.
+ * not enough. A republish is publishable only when the points name the file,
+ * say that nothing in the app changed, and say why the release exists.
+ * A missing later version is not an error. An empty section, or a section
+ * without those points, is an error.
+ * One pull request publishes one version. A changelog section for any other
+ * unpublished version is an error, so the next release cannot be pre-seeded.
  */
 function sectionBody(changelog, tag) {
   const heading = `## ${tag}`;
@@ -45,6 +48,7 @@ function pointBody(point) {
   return point.replace(/^-\s+/, "").trim();
 }
 
+/** A point that does not say what was added or changed. */
 function isSameAsPoint(point) {
   const body = pointBody(point);
   return (
@@ -66,12 +70,17 @@ function isWhyPoint(point) {
   return /^(this release exists|the release exists)\b/i.test(body);
 }
 
+/**
+ * A republish may be published when the bullets name the apk, say that nothing
+ * in the app changed, and say why the release exists. A same-as line alone
+ * does not qualify.
+ */
 function describesHonestRepublish(points) {
   const text = points.map(pointBody).join("\n");
   return (
     /nucleus-v0\.\d+\.apk/i.test(text) &&
     (/nothing in the app changed/i.test(text) || /the app( on the phone)? is the same as/i.test(text)) &&
-    /(this|the) release exists because/i.test(text)
+    (/(this|the) release exists because/i.test(text))
   );
 }
 
@@ -82,6 +91,25 @@ function assertChangePoints(text, tag) {
   throw new Error(
     `CHANGELOG.md section for ${tag} needs short bullet points of what was added or changed. A note that only says the app is the same as the previous one is not enough.`,
   );
+}
+
+function releaseNotes({ changelog, tag, apkName }) {
+  if (!/^v0\.[1-9]\d*$/.test(tag)) {
+    throw new Error(`Refusing notes for ${tag}. Releases stay at v0.1, v0.2, and so on.`);
+  }
+  const changes = changelogSection(changelog, tag);
+  assertChangePoints(changes, tag);
+  const file = apkName || `nucleus-${tag}.apk`;
+  return [
+    `Nucleus ${tag} for Android.`,
+    "",
+    changes,
+    "",
+    `Download ${file} and install it over the current app. Do not uninstall. Uninstalling wipes the data on the phone.`,
+    "",
+    "This file is the APK itself.",
+    "",
+  ].join("\n");
 }
 
 function documentedVersions(changelog) {
@@ -106,7 +134,9 @@ function compareVersions(leftTag, rightTag) {
   const left = versionRank(leftTag);
   const right = versionRank(rightTag);
   if (!left || !right) {
-    throw new Error(`Refusing notes for ${left ? rightTag : leftTag}. Releases stay at v0.1, v0.2, and so on.`);
+    throw new Error(
+      `Refusing notes for ${left ? rightTag : leftTag}. Releases stay at v0.1, v0.2, and so on.`,
+    );
   }
   if (left.minor !== right.minor) return left.minor - right.minor;
   if (left.patch === right.patch) return 0;
@@ -116,8 +146,10 @@ function compareVersions(leftTag, rightTag) {
 }
 
 /**
- * Already shipped versions may stay in the file. The only other section allowed
- * is the version this pull request publishes. A later section is a pre-seed.
+ * The changelog may record versions that already shipped, plus the one version
+ * this pull request publishes. A later section, or any other unpublished
+ * version, is a pre-seeded release and is refused. With no published tags yet,
+ * only a section newer than this version is refused.
  */
 function assertThisReleaseOnly({ changelog, tag, publishedTags = [] }) {
   if (!versionRank(tag)) {
@@ -141,28 +173,11 @@ function assertThisReleaseOnly({ changelog, tag, publishedTags = [] }) {
   );
 }
 
-function releaseNotes({ changelog, tag, apkName }) {
-  if (!/^v0\.[1-9]\d*$/.test(tag)) {
-    throw new Error(`Refusing notes for ${tag}. Releases stay at v0.1, v0.2, and so on.`);
-  }
-  const changes = changelogSection(changelog, tag);
-  const file = apkName || `nucleus-${tag}.apk`;
-  return [
-    `Nucleus ${tag} for Android.`,
-    "",
-    changes,
-    "",
-    `Download ${file} and install it over the current app. Do not uninstall. Uninstalling wipes the data on the phone.`,
-    "",
-    "This file is the APK itself.",
-    "",
-  ].join("\n");
-}
-
 /**
  * Whether this tag should become a GitHub Release.
- * A missing section skips publishing. An empty section, or a section without
- * bullet points of what changed, throws.
+ * A missing section skips publishing. An empty section, a section with no
+ * bullet points, or a section that only says the app is the same as the
+ * previous one throws: that version was started without publishable notes.
  */
 function prepareRelease({ changelog, tag, apkName }) {
   if (!/^v0\.[1-9]\d*$/.test(tag)) {
@@ -189,7 +204,7 @@ if (require.main === module) {
   const tag = onlyThis || ifReady ? args[1] : args[0];
   if (!tag) {
     console.error(
-      "Usage: node .github/scripts/release-notes.js [--if-ready | --only-this-version] v0.4 [published tags...]",
+      "Usage: node .github/scripts/release-notes.js [--if-ready | --only-this-version] v0.5 [published tags...]",
     );
     process.exit(1);
   }
@@ -212,8 +227,10 @@ if (require.main === module) {
 }
 
 module.exports = {
+  assertChangePoints,
   assertThisReleaseOnly,
   changelogSection,
+  compareVersions,
   prepareRelease,
   releaseNotes,
   readReleaseNotes,
