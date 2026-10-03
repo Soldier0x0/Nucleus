@@ -74,6 +74,8 @@ export function shellSettings(from: Settings): Settings {
     reducedMotion: from.reducedMotion,
     quietHours: { ...from.quietHours },
     emergency: { ...from.emergency },
+    launcher: { ...from.launcher },
+    nameAsked: true,
     modules: base.modules.map((m) => ({ ...m })),
     tiles: base.tiles.map((t) => ({ ...t })),
   };

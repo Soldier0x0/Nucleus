@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Platform, StyleSheet, View } from "react-native";
+import { AppState, Platform, StyleSheet, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ScreenCapture from "expo-screen-capture";
 import { useTheme } from "@/src/theme";
@@ -7,6 +7,8 @@ import { useStore } from "@/src/core/store";
 import { biometricUnlock, clearFailures, readBackoff, registerFailure, verifyPin } from "@/src/core/security";
 import { PinPad } from "./PinPad";
 import { Mark } from "./Mark";
+import { NameAsk } from "./NameAsk";
+import { resolveLauncher } from "@/src/core/launcher";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
@@ -17,6 +19,8 @@ import { Sheet } from "./Sheet";
 export function LockGate() {
   const { db, openReal, openDecoy, wipeDeviceData } = useStore();
   const s = db.settings;
+  const scheme = useColorScheme();
+  const mark = resolveLauncher(s.launcher, s.theme, scheme);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [locked, setLocked] = useState(s.onboarded && s.lockEnabled);
@@ -78,7 +82,7 @@ export function LockGate() {
     };
   }, [locked, attempt]);
 
-  if (!locked && !covered) return null;
+  if (!locked && !covered) return <NameAsk />;
 
   if (!locked && covered)
     return (
@@ -90,7 +94,7 @@ export function LockGate() {
   return (
     <View testID="lock-screen" style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface, paddingTop: insets.top + 28, paddingBottom: insets.bottom + 8, paddingHorizontal: 24 }]}>
       <View style={{ alignItems: "center" }}>
-        <Mark size={88} />
+        <Mark size={88} family={mark.family} variant={mark.variant} />
         <Eyebrow style={{ marginTop: 14 }}>Nucleus is locked</Eyebrow>
         <T v="title" style={{ marginTop: 4 }}>
           {waitSec > 0 ? "Too many attempts" : "Enter your PIN"}
