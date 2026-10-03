@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,8 @@ import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
 import { Bar, MonthBars, Ring } from "@/src/components/charts";
 import { BudgetSheet, SubscriptionSheet, TxnSheet } from "@/src/components/MoneyForms";
+import { ReceiptSheet } from "@/src/components/ReceiptSheet";
+import { subscribeReceipt, takeReceiptText } from "@/src/core/receiptBus";
 import { WhySheet } from "@/src/components/WhySheet";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
@@ -28,6 +30,7 @@ export default function Money() {
   const [sheet, setSheet] = useState<null | "txn" | "budget" | "sub">(null);
   const [editSub, setEditSub] = useState<Subscription | undefined>();
   const [why, setWhy] = useState<Insight | null>(null);
+  const [receipt, setReceipt] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All");
   const mt = monthTotals(db, month);
   const b = db.budget.monthly;
@@ -37,6 +40,11 @@ export default function Money() {
   const isCurrent = month === monthKey(todayISO());
   const maxCat = Math.max(1, ...mt.categories.map(([, v]) => v), ...Object.values(db.budget.categories));
 
+  useEffect(() => {
+    const waiting = takeReceiptText();
+    if (waiting) setReceipt(waiting);
+    return subscribeReceipt(setReceipt);
+  }, []);
   const txnList = [...db.txns].filter((t) => filter === "All" || t.category === filter).sort((a, b2) => b2.date.localeCompare(a.date));
   const usedCats = ["All", ...Array.from(new Set(db.txns.map((t) => t.category)))];
   const subs = [...db.subscriptions].sort((a, b2) => Number(b2.active) - Number(a.active) || a.nextRenewal.localeCompare(b2.nextRenewal));
@@ -44,7 +52,7 @@ export default function Money() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Money" testID="money-header" right={<View style={{ flexDirection: "row" }}><IconButton icon="chart-timeline-variant" testID="money-plan-button" label="Plan" onPress={() => router.push("/money/plan")} /><IconButton icon="target" testID="money-budget-button" label="Budget" onPress={() => setSheet("budget")} /></View>} />
+      <Header title="Money" testID="money-header" right={<View style={{ flexDirection: "row" }}><IconButton icon="text-box-outline" testID="money-receipt-button" label="Receipt text" onPress={() => setReceipt("")} /><IconButton icon="chart-timeline-variant" testID="money-plan-button" label="Plan" onPress={() => router.push("/money/plan")} /><IconButton icon="target" testID="money-budget-button" label="Budget" onPress={() => setSheet("budget")} /></View>} />
       <View style={{ paddingHorizontal: sp.lg, paddingVertical: 10, backgroundColor: colors.surface }}>
         <Segmented testID="money-tabs" value={tab} onChange={setTab} options={[{ value: "overview", label: "Overview" }, { value: "transactions", label: "Activity" }, { value: "subscriptions", label: "Subs" }]} />
       </View>
@@ -193,6 +201,7 @@ export default function Money() {
       {sheet === "txn" ? <TxnSheet visible onClose={() => setSheet(null)} /> : null}
       {sheet === "budget" ? <BudgetSheet visible onClose={() => setSheet(null)} /> : null}
       {sheet === "sub" ? <SubscriptionSheet visible onClose={() => setSheet(null)} sub={editSub} /> : null}
+      {receipt != null ? <ReceiptSheet text={receipt} onClose={() => setReceipt(null)} /> : null}
       <WhySheet visible={!!why} onClose={() => setWhy(null)} title={why?.title ?? ""} why={why?.why} />
       <ModuleGate id="money" name="Money" icon="wallet-outline" />
     </View>

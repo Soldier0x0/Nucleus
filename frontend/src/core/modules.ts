@@ -63,6 +63,9 @@ export const MODULES: ModuleManifest[] = [
   { id: "lab", name: "Phone Lab", icon: "chip", route: "/lab", description: "Sensors, battery, display and touch tests — live only while open.", entities: [], emits: [], consumes: [], capabilities: ["sensors.read"], status: "available" },
   { id: "media", name: "Media", icon: "filmstrip-box-multiple", route: "/media", description: "Movies, series, books and games — progress, ratings and reviews.", entities: ["media"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
   { id: "papers", name: "Papers", icon: "file-document-outline", route: "/papers", description: "Licence, registration, insurance, passport and FASTag — the page and the date it expires.", entities: ["paper"], emits: ["paper.expiring"], consumes: [], capabilities: ["storage.local", "attention.publish"], status: "available" },
+  { id: "kanban", name: "Kanban", icon: "view-column-outline", route: "/kanban", description: "Columns and cards for work you move by hand.", entities: ["kanban"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
+  { id: "wiki", name: "Wiki", icon: "book-open-variant", route: "/wiki", description: "Pages that link to each other with [[titles]].", entities: ["wiki"], emits: [], consumes: [], capabilities: ["storage.local"], status: "available" },
+  { id: "net", name: "Network", icon: "access-point-network", route: "/net", description: "Ping, DNS, and a scan of this phone's own network. Online must be on.", entities: [], emits: [], consumes: [], capabilities: ["network.optional"], status: "available" },
 ];
 
 export const moduleById = (id: string) => MODULES.find((m) => m.id === id)!;

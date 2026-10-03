@@ -292,16 +292,17 @@ Everything in "Core features" above:
 - encrypted backups, CSV and calendar export
 - Year in Review, Timeline and Diagnostics
 
-### Phase 2: Installed-app extras
-- Android home-screen widgets in small, medium and large sizes (countdown, budget, trip, maintenance, battery).
-- Home-screen shortcuts that open a favourite tool or Board.
-- These need an installed app build and cannot run in the Expo Go preview. The emergency card on Nucleus's own lock screen is already in the app (see Life desk).
+### Phase 2: Installed-app extras (in the app)
+- Android home-screen widgets for a countdown, the budget, the next trip, maintenance, and the battery. Resize them on the home screen. They fill when you open Nucleus. Amounts follow privacy mode.
+- Shortcuts from a long-press on the Nucleus icon, up to four, opening a tool or a board.
+- These need the installed APK. The emergency card on Nucleus's own lock screen is already in the app (see Life desk).
 
-### Phase 3: Ecosystem
-- Shareable "packs": bundles of templates, custom tools, checklists and rules, shared by file or QR code, with permissions you approve one at a time.
-- Moving data between your own devices by file, with merging.
-- Kanban boards and a personal wiki with backlinks.
-- Network tools (ping, DNS lookup, local network scan) and an optional, clearly labelled receipt text scanner.
+### Phase 3: Ecosystem (in the app)
+- Packs: templates, custom tools, checklists and rules, shared as a file. A short pack can also be shown as a code. On the other phone you approve each row before it is added.
+- A backup file from another phone merges into this one. Settings on this phone stay as they are.
+- Kanban boards and a wiki. A wiki page links to another with `[[Page title]]`, and the page lists what links back to it.
+- Network checks: ping, DNS, and a scan of this phone's own private network. Online must be on. The scan runs only while that screen is open, and it does not save the addresses it finds.
+- Receipt text: paste or share the words from a bill, and Nucleus reads the total with fixed rules. It does not read a photo and it does not load a model.
 
 ### Life desk (approved and in the app)
 These use records you already keep. None of them call a model.
@@ -323,7 +324,8 @@ These use records you already keep. None of them call a model.
 - Habit tracker.
 - Password vault.
 - A chat assistant. That would need an on-device or cloud model, and both fight the battery and the local-first rule.
-- Receipt text scanning and a network scanner stay in Phase 3 and stay off unless asked for again.
+- A photo model for receipts. The receipt tool reads text you paste or share.
+- A scan of any network other than this phone's own private subnet.
 
 ### Later, not a backend
 - Copying an encrypted backup between your own devices (file merge already exists). A cloud account that syncs by itself is not part of this app.

@@ -17,6 +17,9 @@ export const DEFAULT_DOCS = ["Passport / ID", "Tickets", "Hotel booking", "Trave
 export const packFromTemplate = (t: string): PackItem[] =>
   Object.entries(PACK_TEMPLATES[t] ?? {}).flatMap(([category, items]) => items.map((name) => ({ id: uid(), name, category, done: false })));
 
+export const packingFromGroups = (groups: { category: string; items: string[] }[]): PackItem[] =>
+  groups.flatMap((g) => g.items.map((name) => ({ id: uid(), name, category: g.category, done: false })));
+
 export const newDocs = (names = DEFAULT_DOCS): TripDoc[] => names.map((name) => ({ id: uid(), name, have: false }));
 
 export function tripTxns(db: DB, tripId: string): Txn[] {

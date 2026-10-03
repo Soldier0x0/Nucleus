@@ -36,6 +36,9 @@ export const defaultSettings: Settings = {
     { id: "media", enabled: false, hidden: false },
     { id: "lab", enabled: false, hidden: false },
     { id: "papers", enabled: true, hidden: false },
+    { id: "kanban", enabled: true, hidden: false },
+    { id: "wiki", enabled: true, hidden: false },
+    { id: "net", enabled: false, hidden: false },
   ],
   tiles: [
     { id: "attention", enabled: true },
@@ -55,6 +58,7 @@ export const defaultSettings: Settings = {
   reducedMotion: false,
   quietHours: { enabled: true, from: 22, to: 7 },
   emergency: { bloodGroup: "", contactName: "", contactPhone: "", note: "", showOnLock: false },
+  shortcuts: [],
 };
 
 export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
@@ -86,6 +90,9 @@ export function emptyDB(): DB {
     papers: [],
     parts: [],
     specs: [],
+    kanban: [],
+    wiki: [],
+    templates: [],
     netlog: [],
     budget: { monthly: 0, categories: {} },
     attention: {},
@@ -102,6 +109,12 @@ export function normalizeDB(raw: any): DB {
   if ((s.theme as string) === "light") s.theme = "paper";
   if ((s.theme as string) === "dark") s.theme = "midnight";
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
+  s.shortcuts = Array.isArray(raw?.settings?.shortcuts)
+    ? raw.settings.shortcuts
+        .filter((x: any) => x && typeof x.id === "string" && typeof x.label === "string" && typeof x.url === "string" && x.url.startsWith("nucleus://open?"))
+        .slice(0, 4)
+        .map((x: any) => ({ id: String(x.id).slice(0, 40), label: String(x.label).slice(0, 24), url: String(x.url).slice(0, 180) }))
+    : [];
   const knownMods = base.settings.modules.map((m) => m.id);
   s.modules = [
     ...(raw?.settings?.modules ?? []).filter((m: any) => knownMods.includes(m.id)),
@@ -125,5 +138,8 @@ export function normalizeDB(raw: any): DB {
     papers: Array.isArray(raw?.papers) ? raw.papers : [],
     parts: Array.isArray(raw?.parts) ? raw.parts : [],
     specs: Array.isArray(raw?.specs) ? raw.specs : [],
+    kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],
+    wiki: Array.isArray(raw?.wiki) ? raw.wiki : [],
+    templates: Array.isArray(raw?.templates) ? raw.templates : [],
   };
 }

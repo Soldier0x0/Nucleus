@@ -15,6 +15,9 @@ import { LockGate } from "@/src/components/LockGate";
 import { BackupNudge } from "@/src/components/BackupNudge";
 import { UnreadableData } from "@/src/components/UnreadableData";
 import { pushCaptureText } from "@/src/core/captureBus";
+import { pushReceiptText } from "@/src/core/receiptBus";
+import { looksLikeReceipt } from "@/src/core/receipt";
+import { HomeSurface } from "@/src/components/HomeSurface";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -44,7 +47,9 @@ function takeSharedUrl(url: string | null) {
   if (!url || !url.includes("capture")) return;
   const parsed = Linking.parse(url);
   const text = parsed.queryParams?.text;
-  if (typeof text === "string" && text.trim()) pushCaptureText(text);
+  if (typeof text !== "string" || !text.trim()) return;
+  if (looksLikeReceipt(text)) pushReceiptText(text);
+  else pushCaptureText(text);
 }
 
 export default function RootLayout() {
@@ -75,6 +80,7 @@ export default function RootLayout() {
               <ToastProvider>
                 <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />
                 <BackupNudge />
+                <HomeSurface />
                 <LockGate />
               </ToastProvider>
             </Themed>
