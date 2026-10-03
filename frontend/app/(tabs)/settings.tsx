@@ -17,6 +17,9 @@ import { scheduledCount } from "@/src/core/notify";
 import { dataHealth } from "@/src/core/life";
 import { useRouter } from "expo-router";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "@/src/components/ui";
+import { LauncherPicker } from "@/src/components/LauncherPicker";
+import { cleanCallName } from "@/src/core/greeting";
+import { Field } from "@/src/components/inputs";
 import { Sheet } from "@/src/components/Sheet";
 import { PinPad } from "@/src/components/PinPad";
 import { useToast } from "@/src/components/Toast";
@@ -101,6 +104,14 @@ export default function Settings() {
         <T v="title" testID="settings-title">Settings</T>
       </View>
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        {session === "real" ? (
+          <Section title="You">
+            <View style={{ padding: 12 }}>
+              <Field label="What should I call you?" testID="settings-call-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined, nameAsked: true })} placeholder="Asha" autoCapitalize="words" hint="Shown on Today. A decoy PIN does not see this." />
+            </View>
+          </Section>
+        ) : null}
+
         <Section title="Appearance">
           <View style={{ padding: 12, gap: 12 }}>
             <View style={{ marginHorizontal: -12 }}>
@@ -114,6 +125,7 @@ export default function Settings() {
               </ChipRow>
             </View>
             <Segmented testID="settings-density" value={s.density} onChange={(v) => setSettings({ density: v })} options={[{ value: "comfortable", label: "Comfortable" }, { value: "dense", label: "Dense" }]} />
+            <LauncherPicker />
           </View>
           <View style={{ marginHorizontal: -4, paddingBottom: 4 }}>
             <ChipRow testID="settings-accent-row">
@@ -170,7 +182,7 @@ export default function Settings() {
               <T muted style={{ fontSize: 12 }}>Each profile keeps its own records, theme and boards. Hold is for tiles — tap a profile to switch.</T>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {profiles.map((p) => (
-                  <Chip key={p.id} label={p.name} selected={p.id === activeProfileId} testID={`profile-${p.id}`} onPress={() => switchProfile(p.id)} />
+                  <Chip key={p.id} label={p.id === activeProfileId && s.givenName ? s.givenName : p.name} selected={p.id === activeProfileId} testID={`profile-${p.id}`} onPress={() => switchProfile(p.id)} />
                 ))}
               </View>
               <TextInput testID="profile-name-input" value={profileName} onChangeText={setProfileName} placeholder="New profile name" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />

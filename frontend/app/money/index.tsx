@@ -11,6 +11,8 @@ import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
 import { Bar, MonthBars, Ring } from "@/src/components/charts";
 import { BudgetSheet, SubscriptionSheet, TxnSheet } from "@/src/components/MoneyForms";
+import { MoneyExport } from "@/src/components/MoneyExport";
+import { itemTotals } from "@/src/core/moneyWords";
 import { ReceiptSheet } from "@/src/components/ReceiptSheet";
 import { subscribeReceipt, takeReceiptText } from "@/src/core/receiptBus";
 import { WhySheet } from "@/src/components/WhySheet";
@@ -31,6 +33,7 @@ export default function Money() {
   const [editSub, setEditSub] = useState<Subscription | undefined>();
   const [why, setWhy] = useState<Insight | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [filter, setFilter] = useState<string>("All");
   const mt = monthTotals(db, month);
   const b = db.budget.monthly;
@@ -52,7 +55,7 @@ export default function Money() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Money" testID="money-header" right={<View style={{ flexDirection: "row" }}><IconButton icon="text-box-outline" testID="money-receipt-button" label="Receipt text" onPress={() => setReceipt("")} /><IconButton icon="chart-timeline-variant" testID="money-plan-button" label="Plan" onPress={() => router.push("/money/plan")} /><IconButton icon="target" testID="money-budget-button" label="Budget" onPress={() => setSheet("budget")} /></View>} />
+      <Header title="Money" testID="money-header" right={<View style={{ flexDirection: "row" }}><IconButton icon="download-outline" testID="money-export-button" label="Export spending" onPress={() => setExportOpen(true)} /><IconButton icon="text-box-outline" testID="money-receipt-button" label="Receipt text" onPress={() => setReceipt("")} /><IconButton icon="chart-timeline-variant" testID="money-plan-button" label="Plan" onPress={() => router.push("/money/plan")} /><IconButton icon="target" testID="money-budget-button" label="Budget" onPress={() => setSheet("budget")} /></View>} />
       <View style={{ paddingHorizontal: sp.lg, paddingVertical: 10, backgroundColor: colors.surface }}>
         <Segmented testID="money-tabs" value={tab} onChange={setTab} options={[{ value: "overview", label: "Overview" }, { value: "transactions", label: "Activity" }, { value: "subscriptions", label: "Subs" }]} />
       </View>
@@ -106,6 +109,12 @@ export default function Money() {
                         {lim ? <T muted v="mono" style={{ fontSize: 12 }}> / {num(lim, 0)}</T> : null}
                       </View>
                       <Bar value={v} max={maxCat} limit={lim} />
+                      {itemTotals(mt.txns, c).map(([item, amount]) => (
+                        <View key={item} style={{ flexDirection: "row", marginLeft: 8, marginTop: 4 }} testID={`money-item-${c}-${item}`}>
+                          <T muted style={{ flex: 1 }}>{item}</T>
+                          <Amount value={amount} />
+                        </View>
+                      ))}
                     </View>
                   );
                 })
@@ -150,8 +159,8 @@ export default function Money() {
                 <Press key={t.id} testID={`txn-row-${i}`} onPress={() => router.push(`/record/txn/${t.id}`)} style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
                   <Icon name={t.type === "income" ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline"} size={20} color={t.type === "income" ? colors.success : colors.muted} />
                   <View style={{ flex: 1 }}>
-                    <T v="label" numberOfLines={1}>{t.note || t.category}</T>
-                    <T muted style={{ fontSize: 12 }}>{t.category} · {fmtDate(t.date)}{db.links.some((l) => l.to.kind === "txn" && l.to.id === t.id) ? " · linked" : ""}</T>
+                    <T v="label" numberOfLines={1}>{t.item || t.note || t.category}</T>
+                    <T muted style={{ fontSize: 12 }}>{[t.category, t.item && t.note ? t.note : "", fmtDate(t.date), db.links.some((l) => l.to.kind === "txn" && l.to.id === t.id) ? "linked" : ""].filter(Boolean).join(" · ")}</T>
                   </View>
                   <Amount value={t.type === "income" ? t.amount : -t.amount} color={t.type === "income" ? colors.success : undefined} />
                 </Press>
@@ -202,6 +211,7 @@ export default function Money() {
       {sheet === "budget" ? <BudgetSheet visible onClose={() => setSheet(null)} /> : null}
       {sheet === "sub" ? <SubscriptionSheet visible onClose={() => setSheet(null)} sub={editSub} /> : null}
       {receipt != null ? <ReceiptSheet text={receipt} onClose={() => setReceipt(null)} /> : null}
+      {exportOpen ? <MoneyExport visible onClose={() => setExportOpen(false)} /> : null}
       <WhySheet visible={!!why} onClose={() => setWhy(null)} title={why?.title ?? ""} why={why?.why} />
       <ModuleGate id="money" name="Money" icon="wallet-outline" />
     </View>

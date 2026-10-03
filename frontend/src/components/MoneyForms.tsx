@@ -4,6 +4,7 @@ import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addTxn, nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/src/core/defaults";
+import { categoryFromOther, classifyMoney, moneySuggestions } from "@/src/core/moneyWords";
 import type { Subscription } from "@/src/core/types";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
@@ -21,6 +22,8 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const [amt, setAmt] = useState("");
   const recentCat = db.recents.lastCategory;
   const [cat, setCat] = useState(recentCat && EXPENSE_CATEGORIES.includes(recentCat) ? recentCat : "Food");
+  const [item, setItem] = useState<string | undefined>();
+  const [otherName, setOtherName] = useState("");
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
   const [date, setDate] = useState(todayISO());
@@ -38,9 +41,11 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
     setAmt((a) => (a === "0" && k !== "." ? k : a + k));
   };
   const value = parseNum(amt);
+  const suggestions = moneySuggestions(note, type);
   const save = () => {
     if (!(value > 0)) return;
-    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category: cat, date, note: note.trim() || undefined, photo }), recents: { ...d.recents, lastCategory: cat } }));
+    const category = cat === "Other" ? categoryFromOther(otherName) : cat;
+    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category, item: cat === "Other" ? undefined : item, date, note: note.trim() || undefined, photo }), recents: { ...d.recents, lastCategory: category } }));
     toast(`${type === "expense" ? "Expense" : "Income"} ${money(value, db.settings.currency)} saved`, "check-circle-outline");
     setAmt("");
     setNote("");
@@ -50,7 +55,12 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
 
   return (
     <Sheet visible={visible} onClose={onClose} title="Quick entry" testID="txn-sheet" footer={<Button label={`Save ${type}`} icon="check" onPress={save} disabled={!(value > 0)} testID="txn-save-button" />}>
-      <Segmented testID="txn-type" value={type} onChange={(v) => (setType(v), setCat(v === "expense" ? "Food" : "Salary"))} options={[{ value: "expense", label: "Expense" }, { value: "income", label: "Income" }]} />
+      <Segmented testID="txn-type" value={type} onChange={(v) => {
+        setType(v);
+        const hit = classifyMoney(note, v);
+        setCat(hit?.category ?? (v === "expense" ? "Food" : "Salary"));
+        setItem(hit?.item);
+      }} options={[{ value: "expense", label: "Expense" }, { value: "income", label: "Income" }]} />
       <View style={[styles.display, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}>
         <Icon name={type === "expense" ? "arrow-up-bold-circle-outline" : "arrow-down-bold-circle-outline"} size={22} color={type === "expense" ? colors.error : colors.success} />
         <Text testID="txn-amount-display" numberOfLines={1} adjustsFontSizeToFit style={{ flex: 1, textAlign: "right", fontFamily: fonts.monoBold, fontSize: 36, color: amt ? colors.onSurface : colors.muted }}>
@@ -59,8 +69,8 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
       </View>
       <View style={{ marginHorizontal: -16 }}>
         <ChipRow testID="txn-category-row">
-          {ordered.map((c) => (
-            <Chip key={c} label={c} selected={cat === c} onPress={() => setCat(c)} testID={`txn-category-${c}`} />
+          {(ordered.includes(cat) ? ordered : [cat, ...ordered]).map((c) => (
+            <Chip key={c} label={c} selected={cat === c} onPress={() => (setCat(c), setItem(undefined))} testID={`txn-category-${c}`} />
           ))}
         </ChipRow>
       </View>
@@ -71,7 +81,22 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
           </Press>
         ))}
       </View>
-      <Field label="Note (optional)" testID="txn-note-input" value={note} onChangeText={setNote} placeholder="What was it for?" />
+      <Field label="Note (optional)" testID="txn-note-input" value={note} onChangeText={(text) => {
+        setNote(text);
+        const hit = classifyMoney(text, type);
+        if (hit) {
+          setCat(hit.category);
+          setItem(hit.item);
+        }
+      }} placeholder="What was it for?" />
+      {suggestions.length ? (
+        <ChipRow testID="txn-suggestions">
+          {suggestions.map((s) => (
+            <Chip key={`${s.hit.category}:${s.label}`} label={s.label} selected={item === s.hit.item && cat === s.hit.category} onPress={() => (setCat(s.hit.category), setItem(s.hit.item))} testID={`txn-suggest-${s.label}`} />
+          ))}
+        </ChipRow>
+      ) : null}
+      {cat === "Other" ? <Field label="Name this category (optional)" testID="txn-other-name" value={otherName} onChangeText={setOtherName} placeholder="Dividend, School fees" hint="Leave blank and it stays Other." /> : null}
       {type === "expense" ? <PhotoNote uri={photo} onChange={setPhoto} testID="txn-photo" /> : null}
       <DateField label="Date" value={date} onChange={(v) => setDate(v ?? todayISO())} testID="txn-date" />
     </Sheet>
@@ -85,7 +110,11 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
   const [amount, setAmount] = useState(sub ? String(sub.amount) : "");
   const [cycle, setCycle] = useState<Subscription["cycle"]>(sub?.cycle ?? "monthly");
   const [next, setNext] = useState(sub?.nextRenewal ?? nextCycleDate(todayISO(), "monthly"));
-  const [category, setCategory] = useState(sub?.category ?? "Subscriptions");
+  const known = ["Subscriptions", "Bills", "Entertainment", "Health", "Loan EMI", "Other"];
+  const initialCategory = sub?.category ?? "Subscriptions";
+  const customCategory = !!sub && !known.includes(initialCategory);
+  const [category, setCategory] = useState(customCategory ? "Other" : initialCategory);
+  const [otherName, setOtherName] = useState(customCategory ? initialCategory : "");
   const [err, setErr] = useState<Record<string, string>>({});
   const save = () => {
     const a = parseNum(amount);
@@ -94,7 +123,8 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
     if (!(a > 0)) e.amount = "Enter the amount";
     setErr(e);
     if (Object.keys(e).length) return;
-    update((d) => upsertSubscription(d, { id: sub?.id ?? uid(), name: name.trim(), amount: a, cycle, nextRenewal: next, category, active: sub?.active ?? true }));
+    const filed = category === "Other" ? categoryFromOther(otherName) : category;
+    update((d) => upsertSubscription(d, { id: sub?.id ?? uid(), name: name.trim(), amount: a, cycle, nextRenewal: next, category: filed, active: sub?.active ?? true }));
     toast(sub ? "Subscription updated" : `${name.trim()} added`, "autorenew");
     onClose();
   };
@@ -116,6 +146,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
           ))}
         </ChipRow>
       </View>
+      {category === "Other" ? <Field label="Name this category (optional)" testID="subscription-other-name" value={otherName} onChangeText={setOtherName} placeholder="School fees" hint="Leave blank and it stays Other." /> : null}
       {sub ? (
         <Button
           kind="ghost"

@@ -1,5 +1,7 @@
-import type { DB, Settings } from "./types";
+import type { DB, Settings, Txn } from "./types";
 import { emptyCycle, normalizeCycle } from "./cycle";
+import { cleanCallName } from "./greeting";
+import { parseLauncher } from "./launcher";
 
 export const DB_KEY = "nucleus.db.v1";
 export const LEGACY_DB_KEY = "tessera.db.v1";
@@ -61,6 +63,8 @@ export const defaultSettings: Settings = {
   quietHours: { enabled: true, from: 22, to: 7 },
   emergency: { bloodGroup: "", contactName: "", contactPhone: "", note: "", showOnLock: false },
   shortcuts: [],
+  nameAsked: false,
+  launcher: { family: "paper", variant: "paper" },
 };
 
 export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
@@ -69,7 +73,7 @@ export const INCOME_CATEGORIES = ["Salary", "Freelance", "Interest", "Refund", "
 export function emptyDB(): DB {
   return {
     version: 1,
-    settings: { ...defaultSettings, modules: defaultSettings.modules.map((m) => ({ ...m })), tiles: defaultSettings.tiles.map((t) => ({ ...t })) },
+    settings: { ...defaultSettings, launcher: { ...defaultSettings.launcher }, modules: defaultSettings.modules.map((m) => ({ ...m })), tiles: defaultSettings.tiles.map((t) => ({ ...t })) },
     vehicles: [],
     fuel: [],
     services: [],
@@ -112,6 +116,11 @@ export function normalizeDB(raw: any): DB {
   if ((s.theme as string) === "light") s.theme = "paper";
   if ((s.theme as string) === "dark") s.theme = "midnight";
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
+  const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
+  if (callName) s.givenName = callName;
+  else delete s.givenName;
+  s.nameAsked = raw?.settings?.nameAsked === true;
+  s.launcher = parseLauncher(raw?.settings?.launcher);
   s.shortcuts = Array.isArray(raw?.settings?.shortcuts)
     ? raw.settings.shortcuts
         .filter((x: any) => x && typeof x.id === "string" && typeof x.label === "string" && typeof x.url === "string" && x.url.startsWith("nucleus://open?"))
@@ -144,6 +153,15 @@ export function normalizeDB(raw: any): DB {
     kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],
     wiki: Array.isArray(raw?.wiki) ? raw.wiki : [],
     templates: Array.isArray(raw?.templates) ? raw.templates : [],
+    txns: Array.isArray(raw?.txns) ? raw.txns.map(normalizeTxn) : [],
     cycle: normalizeCycle(raw?.cycle),
   };
+}
+
+function normalizeTxn(raw: Txn): Txn {
+  const item = typeof raw?.item === "string" ? raw.item.replace(/\s+/g, " ").trim().slice(0, 40) : "";
+  const next = { ...raw };
+  if (item) next.item = item;
+  else delete next.item;
+  return next;
 }

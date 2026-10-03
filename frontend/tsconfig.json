@@ -17,6 +17,9 @@
     "src/core/personal.test.ts",
     "src/core/life.test.ts",
     "src/core/roadmap.test.ts",
+    "src/core/moneyWords.test.ts",
+    "src/core/greeting.test.ts",
+    "src/core/launcher.test.ts",
     "src/core/cycle.test.ts"
   ]
 }

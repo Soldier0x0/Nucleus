@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo } from "react";
 import * as Linking from "expo-linking";
 import { useColorScheme, View } from "react-native";
+import { applyLauncherIcon } from "@/src/native/android";
+import { resolveLauncher } from "@/src/core/launcher";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
@@ -35,6 +37,10 @@ function Themed({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+  useEffect(() => {
+    if (!ready) return;
+    applyLauncherIcon(resolveLauncher(s.launcher, s.theme, scheme).alias);
+  }, [ready, s.launcher, s.theme, scheme]);
   if (!ready) return null;
   return (
     <ThemeContext.Provider value={theme}>

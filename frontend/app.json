@@ -2,7 +2,7 @@
   "expo": {
     "name": "Nucleus",
     "slug": "nucleus",
-    "version": "1.0.0",
+    "version": "0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "nucleus",
@@ -23,7 +23,7 @@
       "package": "com.nucleus.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B0D12"
+        "backgroundColor": "#DDD4C5"
       },
       "permissions": [
         "android.permission.USE_BIOMETRIC",
@@ -60,7 +60,8 @@
         }
       ],
       "@react-native-vector-icons/material-design-icons",
-      "./plugins/withTextShare"
+      "./plugins/withTextShare",
+      "./plugins/withLauncherIcons"
     ],
     "experiments": {
       "typedRoutes": false

@@ -106,6 +106,8 @@ export type Txn = {
   category: string;
   date: string;
   note?: string;
+  /** Word-list group inside the category, such as Carrot under Groceries. */
+  item?: string;
   photo?: string;
   origAmount?: number;
   origCurrency?: string;
@@ -132,6 +134,10 @@ export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
 export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper";
+export type IconFamily = "paper" | "metal" | "glass" | "tiles";
+export type IconVariant = "paper" | "midnight" | "dune" | "amoled";
+/** `match` follows the app theme. The other values are a fixed picture. */
+export type LauncherChoice = { family: IconFamily; variant: IconVariant | "match" };
 
 /** Visual automation: "when <trigger> then <actions>". Evaluated locally, never in the cloud. */
 export type RuleTriggerKind = "renewal" | "expiry" | "tripStart" | "maintenance" | "serviceKm" | "budgetPct" | "bigExpense";
@@ -184,6 +190,12 @@ export type Settings = {
   emergency: { bloodGroup: string; contactName: string; contactPhone: string; note: string; showOnLock: boolean };
   /** Long-press shortcuts on the Android icon. At most four. */
   shortcuts: HomeShortcut[];
+  /** What the greeting calls you. Lives in this document, never in the profile index. */
+  givenName?: string;
+  /** The one-time "what should I call you?" prompt has already been shown. */
+  nameAsked: boolean;
+  /** Home-screen picture. Paper press on the paper ground is the default. */
+  launcher: LauncherChoice;
 };
 
 export type HomeShortcut = { id: string; label: string; url: string };
