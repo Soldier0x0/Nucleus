@@ -7,6 +7,7 @@
  */
 import type { DB } from "./types";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./defaults";
+import { classifyMoney } from "./moneyWords";
 import { addFuel, addTxn, nextCycleDate, upsertSubscription } from "./actions";
 import { currentOdometer } from "./intelligence";
 import { money, num, todayISO, uid } from "./format";
@@ -37,9 +38,13 @@ export function parseCapture(db: DB, input: string): Capture | null {
   if (m) {
     const income = !!m[1], amount = Number(m[2]);
     if (!(amount > 0)) return { error: "Amount must be above 0" };
-    const category = matchCat(m[3], income ? INCOME_CATEGORIES : EXPENSE_CATEGORIES);
-    const note = [category === "Other" ? m[3] : "", m[4] ?? ""].join(" ").trim() || undefined;
-    return { icon: income ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline", label: `${income ? "Income" : "Expense"} · ${money(amount, cur)} · ${category}${note ? ` · ${note}` : ""}`, apply: (d) => addTxn(d, { id: uid(), type: income ? "income" : "expense", amount, category, date: todayISO(), note }) };
+    const typed = (m[4] ?? "").trim();
+    const hit = classifyMoney([m[3], typed].filter(Boolean).join(" "), income ? "income" : "expense");
+    const category = hit?.category ?? matchCat(m[3], income ? INCOME_CATEGORIES : EXPENSE_CATEGORIES);
+    const item = hit?.item;
+    const note = (hit ? typed || (m[3].toLowerCase() === category.toLowerCase() ? "" : m[3]) : [category === "Other" ? m[3] : "", typed].filter(Boolean).join(" ")).trim() || undefined;
+    const detail = [category, item, note].filter((part, i, all) => part && all.indexOf(part) === i).join(" · ");
+    return { icon: income ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline", label: `${income ? "Income" : "Expense"} · ${money(amount, cur)} · ${detail}`, apply: (d) => addTxn(d, { id: uid(), type: income ? "income" : "expense", amount, category, date: todayISO(), note, ...(item ? { item } : {}) }) };
   }
   return { error: "Try: 450 food lunch · fuel 5.4L 560 · netflix 649 monthly" };
 }

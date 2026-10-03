@@ -49,7 +49,7 @@ export default function RecordDetail() {
     fields = [["Vehicle", vName(e.vehicleId)], ["Date", fmtDate(e.date)], ["Odometer", `${num(e.odometer, 0)} ${s.distanceUnit}`], ["Cost", money(e.cost, cur)], ...(Object.entries(e.details) as [string, string][]).map(([k, v]) => [k[0].toUpperCase() + k.slice(1), v] as [string, string])];
   } else if (kind === "txn") {
     headline = `${e.type === "income" ? "+" : "-"}${money(e.amount, cur)}`;
-    fields = [["Type", e.type], ["Category", e.category], ["Date", fmtDate(e.date)], ...(e.origCurrency ? ([["Original", `${num(e.origAmount, 2)} ${e.origCurrency}`]] as [string, string][]) : []), ...(e.note ? ([["Note", e.note]] as [string, string][]) : [])];
+    fields = [["Type", e.type], ["Category", e.category], ...(e.item ? ([["Item", e.item]] as [string, string][]) : []), ["Date", fmtDate(e.date)], ...(e.origCurrency ? ([["Original", `${num(e.origAmount, 2)} ${e.origCurrency}`]] as [string, string][]) : []), ...(e.note ? ([["Note", e.note]] as [string, string][]) : [])];
   } else if (kind === "subscription") {
     headline = e.name;
     fields = [["Amount", money(e.amount, cur)], ["Cycle", e.cycle], ["Next renewal", fmtDate(e.nextRenewal)], ["Category", e.category], ["Status", e.active ? "Active" : "Paused"]];

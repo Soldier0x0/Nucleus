@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Platform, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Switch, useColorScheme, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInRight } from "react-native-reanimated";
@@ -8,11 +8,13 @@ import { useStore } from "@/src/core/store";
 import { CURRENCIES } from "@/src/core/format";
 import { MODULES } from "@/src/core/modules";
 import { withSampleData } from "@/src/core/sample";
-import { biometricAvailable, setPin } from "@/src/core/security";
+import { biometricAvailable, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Segmented, T } from "@/src/components/ui";
 import { PinPad } from "@/src/components/PinPad";
 import { Mark } from "@/src/components/Mark";
-import { setDecoyPin, verifyPin } from "@/src/core/security";
+import { Field } from "@/src/components/inputs";
+import { cleanCallName } from "@/src/core/greeting";
+import { resolveLauncher } from "@/src/core/launcher";
 
 const STEPS = 4;
 
@@ -20,6 +22,8 @@ export default function Onboarding() {
   const { db, setSettings, update, prepareDecoy } = useStore();
   const s = db.settings;
   const { colors, sp } = useTheme();
+  const scheme = useColorScheme();
+  const mark = resolveLauncher(s.launcher, s.theme, scheme);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -32,7 +36,7 @@ export default function Onboarding() {
 
   const finish = (sample: boolean) => {
     update((d) => {
-      const n = { ...d, settings: { ...d.settings, onboarded: true } };
+      const n = { ...d, settings: { ...d.settings, onboarded: true, nameAsked: true } };
       return sample ? withSampleData(n) : n;
     });
     router.replace("/(tabs)");
@@ -49,7 +53,7 @@ export default function Onboarding() {
         <Animated.View key={step} entering={FadeInRight.duration(220)}>
           {step === 0 && (
             <View testID="onboarding-welcome">
-              <Mark size={96} />
+              <Mark size={96} family={mark.family} variant={mark.variant} />
               <Eyebrow style={{ marginTop: 24 }}>Local-first personal platform</Eyebrow>
               <T v="title" style={{ fontSize: 34, marginTop: 6 }}>
                 Nucleus
@@ -150,9 +154,10 @@ export default function Onboarding() {
               <T v="title" style={{ marginTop: 6, marginBottom: 6 }}>
                 Protect your workbench
               </T>
-              <T muted style={{ marginBottom: 20 }}>
+              <T muted style={{ marginBottom: 12 }}>
                 A 4-digit PIN locks the whole app. There is no recovery server — if you forget it, you can only erase and restore from a backup.
               </T>
+              <Field label="What should I call you?" testID="onboarding-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined })} placeholder="Asha" autoCapitalize="words" hint="Optional. Today will say good afternoon with this name." />
               {pinStage === "off" && (
                 <View style={{ gap: 10 }}>
                   <Button label="Set a PIN" icon="lock-outline" testID="onboarding-set-pin-button" onPress={() => setPinStage("enter")} />
