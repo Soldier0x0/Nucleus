@@ -10,6 +10,8 @@ const path = require("node:path");
  * say that nothing in the app changed, and say why the release exists.
  * A missing later version is not an error. An empty section, or a section
  * without those points, is an error.
+ * One pull request publishes one version. A changelog section for any other
+ * unpublished version is an error, so the next release cannot be pre-seeded.
  */
 function sectionBody(changelog, tag) {
   const heading = `## ${tag}`;
@@ -110,6 +112,67 @@ function releaseNotes({ changelog, tag, apkName }) {
   ].join("\n");
 }
 
+function documentedVersions(changelog) {
+  const versions = [];
+  for (const line of String(changelog).replace(/\r\n/g, "\n").split("\n")) {
+    const match = /^## (v0\.\d+(?:\.\d+)?)$/.exec(line.trim());
+    if (match) versions.push(match[1]);
+  }
+  return versions;
+}
+
+function versionRank(tag) {
+  const match = /^v0\.(\d+)(?:\.(\d+))?$/.exec(tag);
+  if (!match) return null;
+  return {
+    minor: Number(match[1]),
+    patch: match[2] === undefined ? null : Number(match[2]),
+  };
+}
+
+function compareVersions(leftTag, rightTag) {
+  const left = versionRank(leftTag);
+  const right = versionRank(rightTag);
+  if (!left || !right) {
+    throw new Error(
+      `Refusing notes for ${left ? rightTag : leftTag}. Releases stay at v0.1, v0.2, and so on.`,
+    );
+  }
+  if (left.minor !== right.minor) return left.minor - right.minor;
+  if (left.patch === right.patch) return 0;
+  if (left.patch === null) return -1;
+  if (right.patch === null) return 1;
+  return left.patch - right.patch;
+}
+
+/**
+ * The changelog may record versions that already shipped, plus the one version
+ * this pull request publishes. A later section, or any other unpublished
+ * version, is a pre-seeded release and is refused. With no published tags yet,
+ * only a section newer than this version is refused.
+ */
+function assertThisReleaseOnly({ changelog, tag, publishedTags = [] }) {
+  if (!versionRank(tag)) {
+    throw new Error(`Refusing notes for ${tag}. Releases stay at v0.1, v0.2, and so on.`);
+  }
+  const allowed = new Set(publishedTags.filter((item) => versionRank(item)));
+  const knowPublished = allowed.size > 0;
+  allowed.add(tag);
+  const seen = new Set();
+  const outside = [];
+  for (const version of documentedVersions(changelog)) {
+    const extra = knowPublished ? !allowed.has(version) : compareVersions(version, tag) > 0;
+    if (!extra || seen.has(version)) continue;
+    seen.add(version);
+    outside.push(version);
+  }
+  outside.sort(compareVersions);
+  if (outside.length === 0) return;
+  throw new Error(
+    `CHANGELOG.md documents ${outside.join(", ")} as well as ${tag}. One pull request publishes one version. Remove the other section. Do not pre-seed the next release.`,
+  );
+}
+
 /**
  * Whether this tag should become a GitHub Release.
  * A missing section skips publishing. An empty section, a section with no
@@ -136,20 +199,26 @@ function readReleaseNotes(tag, changelogPath = path.join(process.cwd(), "CHANGEL
 
 if (require.main === module) {
   const args = process.argv.slice(2);
+  const onlyThis = args[0] === "--only-this-version";
   const ifReady = args[0] === "--if-ready";
-  const tag = ifReady ? args[1] : args[0];
+  const tag = onlyThis || ifReady ? args[1] : args[0];
   if (!tag) {
-    console.error("Usage: node .github/scripts/release-notes.js [--if-ready] v0.1");
+    console.error(
+      "Usage: node .github/scripts/release-notes.js [--if-ready | --only-this-version] v0.5 [published tags...]",
+    );
     process.exit(1);
   }
   try {
-    if (!ifReady) {
-      process.stdout.write(readReleaseNotes(tag));
-    } else {
-      const changelog = fs.readFileSync(path.join(process.cwd(), "CHANGELOG.md"), "utf8");
+    const changelog = fs.readFileSync(path.join(process.cwd(), "CHANGELOG.md"), "utf8");
+    if (onlyThis) {
+      assertThisReleaseOnly({ changelog, tag, publishedTags: args.slice(2) });
+    } else if (ifReady) {
+      assertThisReleaseOnly({ changelog, tag });
       const decision = prepareRelease({ changelog, tag });
       if (decision.publish) process.stdout.write(decision.notes);
       else console.error(`Not publishing ${tag}: ${decision.reason}. The APK build continues.`);
+    } else {
+      process.stdout.write(releaseNotes({ changelog, tag }));
     }
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
@@ -159,7 +228,9 @@ if (require.main === module) {
 
 module.exports = {
   assertChangePoints,
+  assertThisReleaseOnly,
   changelogSection,
+  compareVersions,
   prepareRelease,
   releaseNotes,
   readReleaseNotes,

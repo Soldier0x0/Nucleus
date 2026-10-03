@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
-const { changelogSection, prepareRelease, readReleaseNotes, releaseNotes } = require("./release-notes");
+const { assertThisReleaseOnly, changelogSection, prepareRelease, readReleaseNotes, releaseNotes } = require("./release-notes");
 
 const sample = `# Changelog
 
@@ -76,6 +76,60 @@ test("the repository changelog records published versions and the cycle calendar
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.6" }), { publish: false, reason: "missing" });
+  assert.doesNotThrow(() =>
+    assertThisReleaseOnly({
+      changelog,
+      tag: "v0.5",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4"],
+    }),
+  );
+});
+
+test("a pull request cannot pre-seed the following version", () => {
+  const changelog = [
+    "## v0.6",
+    "",
+    "- Later.",
+    "",
+    "## v0.5",
+    "",
+    "- Soft is rounder.",
+    "",
+    "## v0.4.1",
+    "",
+    "- A stray sub-version.",
+    "",
+    "## v0.4",
+    "",
+    "- A private cycle calendar.",
+    "",
+  ].join("\n");
+  assert.throws(
+    () => assertThisReleaseOnly({ changelog, tag: "v0.5", publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4"] }),
+    /v0\.4\.1, v0\.6/,
+  );
+  assert.throws(() => assertThisReleaseOnly({ changelog, tag: "v0.5" }), (error) => {
+    assert.match(error.message, /v0\.6/);
+    assert.doesNotMatch(error.message, /v0\.4\.1/);
+    assert.match(error.message, /One pull request publishes one version/);
+    return true;
+  });
+  const current = ["## v0.5", "", "- Soft is rounder.", "", "## v0.4", "", "- A private cycle calendar.", ""].join("\n");
+  assert.doesNotThrow(() => assertThisReleaseOnly({ changelog: current, tag: "v0.5", publishedTags: ["v0.4"] }));
+  const tens = "## v0.10\n\n- Ten.\n\n## v0.9\n\n- Nine.\n";
+  assert.throws(() => assertThisReleaseOnly({ changelog: tens, tag: "v0.9" }), /v0\.10/);
+  const sub = "## v0.5.2\n\n- Next.\n\n## v0.5.1\n\n- A fix.\n\n## v0.5\n\n- Looks.\n";
+  assert.throws(
+    () => assertThisReleaseOnly({ changelog: sub, tag: "v0.5.1", publishedTags: ["v0.5"] }),
+    /v0\.5\.2/,
+  );
+  assert.doesNotThrow(() =>
+    assertThisReleaseOnly({
+      changelog: "## v0.5.1\n\n- A fix.\n\n## v0.5\n\n- Looks.\n",
+      tag: "v0.5.1",
+      publishedTags: ["v0.5"],
+    }),
+  );
 });
 
 test("a missing later version does not block the version being published", () => {

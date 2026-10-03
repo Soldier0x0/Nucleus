@@ -4,6 +4,8 @@ Android releases stay under 1.0: v0.1, then v0.2, and so on. Each published vers
 
 Each section is short bullet points of what that version added or changed. The Android workflow builds the APK either way. It publishes a GitHub Release only when the section for that version has those points. A note that only says the app is the same as the previous one is not published, and the notes step fails. A missing section does not fail the build and does not publish. An empty section fails.
 
+One pull request publishes one version. That version is the only one it may document. It may be a version such as v0.5, or a sub-version such as v0.5.1, and it is still only one of them. Do not add notes or a tag for a later version to keep the next build from failing. The workflow fails if this file has a section for any other version that has not already shipped.
+
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
 ## v0.5
@@ -19,6 +21,7 @@ Looks you can see, on the colors you already have.
 - Two tones can sit on any look. The background keeps the color set. Type, buttons, and marks use a second color.
 - Paper, Midnight, Dune, and AMOLED still work with every look.
 - A release is published only when its notes are short bullet points of what that version added or changed.
+- One pull request documents only the version it publishes. It does not add notes for a later version.
 
 ## v0.4
 
