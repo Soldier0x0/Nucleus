@@ -127,7 +127,7 @@ export type Budget = { monthly: number; categories: Record<string, number> };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
-export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net";
+export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net" | "cycle";
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
@@ -198,6 +198,36 @@ export type PackingTemplate = { id: string; name: string; groups: { category: st
 
 export type ToolHistoryItem = { id: string; tool: string; label: string; value: string; at: string };
 
+/** One logged day. Prediction math may change later; these fields are the record. */
+export type CycleBleeding = "flow" | "spotting";
+export type CycleFlow = "light" | "medium" | "heavy";
+export type CycleSymptom = "cramps" | "low-energy" | "headache" | "bloating" | "backache" | "tender";
+export type CycleProduct = "pad" | "tampon" | "cup";
+export type CycleDay = {
+  id: string;
+  date: string;
+  bleeding?: CycleBleeding;
+  /** She tapped ended on this day. Spotting never carries this. */
+  ended?: boolean;
+  flow?: CycleFlow;
+  symptom?: CycleSymptom;
+};
+export type CycleStash = { kind: CycleProduct; count: number | null; lowAt: number };
+export type CycleState = {
+  days: CycleDay[];
+  buddyName: string;
+  buddyEmoji: string;
+  periodNudge: boolean;
+  changeNudge: boolean;
+  changeKind: CycleProduct;
+  changeHours: number;
+  changeEndsAt?: string;
+  paused: boolean;
+  packedFor?: string;
+  absorbencySeenFor?: string;
+  stash: CycleStash[];
+};
+
 /** Custom tool builder: a few inputs, one safe formula, one result. */
 export type CustomToolInput = { id: string; label: string; key: string; unit?: string; value: string };
 export type CustomTool = { id: string; name: string; icon: string; inputs: CustomToolInput[]; formula: string; outputLabel: string; unit?: string; decimals: number; sendToMoney: boolean; createdAt: string };
@@ -240,4 +270,5 @@ export type DB = {
   attention: Record<string, AttentionMark>;
   toolHistory: ToolHistoryItem[];
   recents: Record<string, string>;
+  cycle: CycleState;
 };

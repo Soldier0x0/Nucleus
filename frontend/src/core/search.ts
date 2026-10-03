@@ -24,7 +24,7 @@ export function search(db: DB, q: string): SearchGroup[] {
   const on = (id: string) => db.settings.modules.find((m) => m.id === id)?.enabled;
   const groups: SearchGroup[] = [];
 
-  const mods = MODULES.filter((m) => m.status === "available" && on(m.id) && has(m.name, m.description));
+  const mods = MODULES.filter((m) => m.id !== "cycle" && m.status === "available" && on(m.id) && has(m.name, m.description));
   const tools = on("tools") ? TOOLS.filter((t) => has(t.name, t.keys)) : [];
   if (mods.length || tools.length)
     groups.push({

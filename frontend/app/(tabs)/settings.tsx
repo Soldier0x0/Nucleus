@@ -246,7 +246,7 @@ export default function Settings() {
                 <T v="label" style={{ marginBottom: 4 }}>Ask again for these modules</T>
                 <T muted style={{ fontSize: 12, marginBottom: 8 }}>Opening them needs your PIN or biometrics again.</T>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {MODULES.filter((m) => m.status === "available").map((m) => {
+                  {MODULES.filter((m) => m.status === "available" && (session === "real" || m.id !== "cycle")).map((m) => {
                     const on = (s.moduleLocks ?? []).includes(m.id as ModuleId);
                     return (
                       <Chip

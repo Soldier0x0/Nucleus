@@ -126,7 +126,7 @@ export default function Onboarding() {
               <T muted style={{ marginBottom: 16 }}>
                 Turned-off modules use no resources and vanish from Today, search and Attention. Change anytime.
               </T>
-              {MODULES.filter((m) => m.status === "available").map((m) => {
+              {MODULES.filter((m) => m.status === "available" && m.id !== "cycle").map((m) => {
                 const on = s.modules.find((x) => x.id === m.id)?.enabled;
                 return (
                   <View key={m.id} style={[styles.modRow, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>

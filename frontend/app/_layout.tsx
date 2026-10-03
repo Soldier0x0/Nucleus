@@ -18,6 +18,7 @@ import { pushCaptureText } from "@/src/core/captureBus";
 import { pushReceiptText } from "@/src/core/receiptBus";
 import { looksLikeReceipt } from "@/src/core/receipt";
 import { HomeSurface } from "@/src/components/HomeSurface";
+import { useCycleNotify } from "@/src/core/useCycleNotify";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -52,6 +53,11 @@ function takeSharedUrl(url: string | null) {
   else pushCaptureText(text);
 }
 
+function CycleAlarms() {
+  useCycleNotify();
+  return null;
+}
+
 export default function RootLayout() {
   useEffect(() => {
     Linking.getInitialURL().then(takeSharedUrl).catch(() => {});
@@ -76,6 +82,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <StoreProvider>
+            <CycleAlarms />
             <Themed>
               <ToastProvider>
                 <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />

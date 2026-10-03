@@ -16,6 +16,7 @@
     "src/core/openDb.test.ts",
     "src/core/personal.test.ts",
     "src/core/life.test.ts",
-    "src/core/roadmap.test.ts"
+    "src/core/roadmap.test.ts",
+    "src/core/cycle.test.ts"
   ]
 }
