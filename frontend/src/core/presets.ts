@@ -178,8 +178,14 @@ export function rowsFor(items: PresetItem[]): HomeRow[] {
 }
 
 export function columnsFor(preset: HomePresetId, count: number): number {
-  if (preset === "adhd" || count < 2) return 1;
+  void preset;
+  void count;
   return 2;
+}
+
+export function rowFlex(row: HomeRow): { id: string; span: 1 | 2 }[] {
+  if (row.items.length === 1 && row.items[0].size === "large") return [{ id: row.items[0].id, span: 2 }];
+  return row.items.map((item) => ({ id: item.id, span: 1 }));
 }
 
 function fillsFor(db: DB, vehicleId: string) {

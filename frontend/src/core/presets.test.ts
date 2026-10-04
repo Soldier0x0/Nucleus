@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -139,9 +139,14 @@ test("two small items share a row and a large item stays full width", () => {
   assert.equal(travelRows[1]?.items.every((item) => item.size === "small"), true);
 });
 
-test("custom uses more than one column when the board is small", () => {
-  assert.ok(columnsFor("custom", 3) >= 2);
-  assert.equal(columnsFor("custom", 1), 1);
+test("every board has two columns and a large card keeps a full row", () => {
+  assert.equal(columnsFor("custom", 1), 2);
+  assert.equal(columnsFor("adhd", 1), 2);
+  assert.equal(columnsFor("home", 4), 2);
+  const money = rowsFor(presetItems("money"));
+  assert.deepEqual(rowFlex(money[0]), [{ id: "balance", span: 2 }]);
+  assert.deepEqual(rowFlex(money[1]).map((item) => item.span), [1, 1]);
+  assert.deepEqual(rowFlex({ items: [{ id: "notes", size: "small" }] }), [{ id: "notes", span: 1 }]);
 });
 
 test("ADHD mode renders a single next action and does not wipe stored data", () => {

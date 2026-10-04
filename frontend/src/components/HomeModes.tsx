@@ -19,6 +19,7 @@ import {
   presetThingLabel,
   presetTileTitle,
   recallAdhdTask,
+  rowFlex,
   rememberPreset,
   reviewAdhdDay,
   setAdhdBuddy,
@@ -157,23 +158,28 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
           <T>{lastLabel}</T>
         </Card>
       ) : null}
-      {presented.rows.map((row, index) => (
-        <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
-          {row.items.map((item) => {
-            const copy = slotCopy(db, item.id);
-            const title = presetTileTitle(item.id);
-            const line = copy.line === title ? "" : copy.line;
-            return (
-              <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
-                <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, copy.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
-                  <T v={item.size === "large" ? "h2" : "label"}>{title}</T>
-                  {line ? <T muted numberOfLines={2}>{line}</T> : null}
-                </Card>
-              </View>
-            );
-          })}
-        </View>
-      ))}
+      {presented.rows.map((row, index) => {
+        const flexes = rowFlex(row);
+        const loneSmall = flexes.length === 1 && flexes[0].span === 1;
+        return (
+          <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
+            {row.items.map((item) => {
+              const copy = slotCopy(db, item.id);
+              const title = presetTileTitle(item.id);
+              const line = copy.line === title ? "" : copy.line;
+              return (
+                <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
+                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, copy.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
+                    <T v={item.size === "large" ? "h2" : "label"}>{title}</T>
+                    {line ? <T muted numberOfLines={2}>{line}</T> : null}
+                  </Card>
+                </View>
+              );
+            })}
+            {loneSmall ? <View style={{ flex: 1 }} /> : null}
+          </View>
+        );
+      })}
     </View>
   );
 }
