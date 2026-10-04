@@ -72,7 +72,7 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7"]) {
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1"]) {
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
   assert.match(readReleaseNotes("v0.6", changelogPath), /Empty modules stay hidden/);
@@ -91,6 +91,8 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.6.3", changelogPath), /stamped into that APK/);
   assert.match(readReleaseNotes("v0.6.3", changelogPath), /Travel insurance/);
   assert.equal(prepareRelease({ changelog, tag: "v0.7" }).publish, true);
+  assert.equal(prepareRelease({ changelog, tag: "v0.7.1" }).publish, true);
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.2" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8" }), { publish: false, reason: "missing" });
   assert.match(readReleaseNotes("v0.7", changelogPath), /Activa · 5\.6 L/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /last board wraps to the first/);
@@ -101,11 +103,19 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.7", changelogPath), /smaller, shorter splash/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /restricted settings/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /does not turn the permission on/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /Remove sample data/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /Paper/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /bento/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /forecast/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /Google Pay/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /not SMS/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /Allow restricted settings/);
+  assert.match(readReleaseNotes("v0.7.1", changelogPath), /thumbprint/);
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.7",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3"],
+      tag: "v0.7.1",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7"],
     }),
   );
 });

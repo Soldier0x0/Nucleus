@@ -22,7 +22,7 @@ internal fun bankListenerEnabled(context: Context): Boolean {
 internal object BankNotices {
   private val gate = Any()
 
-  fun add(context: Context, sender: String, body: String, at: Long) {
+  fun add(context: Context, sender: String, body: String, at: Long, app: String = "") {
     val cleanBody = body.trim().take(500)
     if (cleanBody.isEmpty()) return
     synchronized(gate) {
@@ -36,6 +36,7 @@ internal object BankNotices {
       item.put("sender", sender.trim().take(80).ifBlank { "bank" })
       item.put("body", cleanBody)
       item.put("at", at.toString())
+      item.put("app", app.take(120))
       arr.put(item)
       val start = maxOf(0, arr.length() - 40)
       val trimmed = JSONArray()
@@ -65,7 +66,7 @@ class BankNoticeService : NotificationListenerService() {
     val big = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
     val body = listOf(title, text, big).map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(" ")
     if (body.isBlank()) return
-    BankNotices.add(this, title.ifBlank { notice.packageName }, body, notice.postTime)
+    BankNotices.add(this, title.ifBlank { notice.packageName }, body, notice.postTime, notice.packageName)
     sendBroadcast(Intent(BANK_ACTION).setPackage(packageName))
   }
 }

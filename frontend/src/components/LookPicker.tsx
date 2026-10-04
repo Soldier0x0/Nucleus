@@ -18,14 +18,14 @@ export function LookPicker() {
       <T v="label">Layout</T>
       <ChipRow testID="settings-layout-row">
         {LAYOUT_LIST.map((layout) => (
-          <Chip key={layout.id} label={layout.name} selected={s.layout === layout.id} onPress={() => setSettings({ layout: layout.id })} testID={`settings-layout-${layout.id}`} />
+          <Chip key={layout.id} label={layout.name} selected={s.layout === layout.id} onPress={() => setSettings({ layout: layout.id, appearanceChosen: true })} testID={`settings-layout-${layout.id}`} />
         ))}
       </ChipRow>
       <T muted style={{ fontSize: 12 }}>{LAYOUT_LIST.find((layout) => layout.id === s.layout)?.line}</T>
       <T v="label">Look</T>
       <ChipRow testID="settings-look-row">
         {LOOK_LIST.map((look) => (
-          <Chip key={look.id} label={look.name} selected={s.look === look.id} onPress={() => setSettings({ look: look.id })} testID={`settings-look-${look.id}`} />
+          <Chip key={look.id} label={look.name} selected={s.look === look.id} onPress={() => setSettings({ look: look.id, appearanceChosen: true })} testID={`settings-look-${look.id}`} />
         ))}
       </ChipRow>
       <T muted style={{ fontSize: 12 }}>{current.line}</T>

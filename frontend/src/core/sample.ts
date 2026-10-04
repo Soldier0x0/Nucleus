@@ -268,10 +268,6 @@ function dropSampleRows(db: DB, drop: Set<string>, restoreBudget: Budget | undef
   };
 }
 
-export function hasSampleData(db: DB): boolean {
-  return (db.settings.sampleIds?.length ?? 0) > 0 || legacySampleIds(db).size > 0;
-}
-
 const SAMPLE_BUDGET: Budget = { monthly: 45000, categories: { Food: 6000, Shopping: 4000 } };
 
 function sameBudget(a: Budget, b: Budget): boolean {
@@ -299,26 +295,90 @@ function budgetAfterDemo(db: DB): Budget | undefined {
 }
 
 function leftoverMirrorIds(db: DB): Set<string> {
-  const names = new Set(db.vehicles.map((vehicle) => vehicle.name));
+  return mirrorIdsAgainst(db, new Set(db.vehicles.map((vehicle) => vehicle.name)));
+}
+
+function mirrorIdsAgainst(db: DB, keptNames: Set<string>): Set<string> {
   const ids = new Set<string>();
   for (const txn of db.txns) {
     if (txn.type !== "expense" || !txn.note) continue;
     const name = mirrorVehicleName(txn.note);
-    if (!name || names.has(name)) continue;
+    if (!name || keptNames.has(name)) continue;
     ids.add(txn.id);
   }
   return ids;
 }
 
+/** Fuel and service rows whose vehicle is already gone, matching the demo odometers. */
+function orphanDemoIds(db: DB): Set<string> {
+  const kept = new Set(db.vehicles.map((vehicle) => vehicle.id));
+  const activaOdo = new Set(sampleFuelOdometers("activa"));
+  const swiftOdo = new Set(sampleFuelOdometers("swift"));
+  const serviceOdo = new Set(SAMPLE_SERVICE_ODOS);
+  const ids = new Set<string>();
+  for (const fuel of db.fuel) {
+    if (kept.has(fuel.vehicleId)) continue;
+    if (activaOdo.has(fuel.odometer) || swiftOdo.has(fuel.odometer)) ids.add(fuel.id);
+  }
+  for (const service of db.services) {
+    if (kept.has(service.vehicleId)) continue;
+    if (serviceOdo.has(service.odometer)) ids.add(service.id);
+  }
+  return ids;
+}
+
+/** Money rows the fuel and service reactors created. Dropping the source id does not run that reactor. */
+function linkedTxnIds(db: DB, sources: Set<string>): Set<string> {
+  const ids = new Set<string>();
+  for (const link of db.links) {
+    if ((link.from.kind === "fuel" || link.from.kind === "service") && sources.has(link.from.id) && link.to.kind === "txn") ids.add(link.to.id);
+  }
+  return ids;
+}
+
+function unnamedPairIds(db: DB, touched: Set<string>): Set<string> {
+  const groups = new Map<string, string[]>();
+  for (const txn of db.txns) {
+    if (txn.type !== "expense" || txn.note?.trim()) continue;
+    if (txn.category !== "Fuel" && txn.category !== "Vehicle") continue;
+    const key = `${txn.date}|${txn.amount}|${txn.category}`;
+    const list = groups.get(key) ?? [];
+    list.push(txn.id);
+    groups.set(key, list);
+  }
+  const ids = new Set<string>();
+  for (const list of groups.values()) {
+    if (list.length < 2 || !list.some((id) => touched.has(id))) continue;
+    for (const id of list) ids.add(id);
+  }
+  return ids;
+}
+
+function demoResidue(db: DB): boolean {
+  return (db.settings.sampleIds?.length ?? 0) > 0
+    || legacySampleIds(db).size > 0
+    || leftoverMirrorIds(db).size > 0
+    || orphanDemoIds(db).size > 0
+    || sameBudget(db.budget, SAMPLE_BUDGET);
+}
+
+export function hasSampleData(db: DB): boolean {
+  return demoResidue(db);
+}
+
 /** Remove demo rows. Rows added by hand stay, including a fill logged on the demo vehicle. */
 export function withoutSampleData(db: DB): DB {
-  const mirrors = leftoverMirrorIds(db);
   const tagged = new Set(db.settings.sampleIds ?? []);
-  if (tagged.size) {
-    for (const id of mirrors) tagged.add(id);
-    return dropSampleRows(db, tagged, budgetAfterDemo(db));
-  }
-  const drop = legacySampleIds(db);
-  for (const id of mirrors) drop.add(id);
+  const base = tagged.size ? tagged : legacySampleIds(db);
+  const droppingVehicles = new Set(db.vehicles.filter((vehicle) => base.has(vehicle.id)).map((vehicle) => vehicle.id));
+  const keptNames = new Set(db.vehicles.filter((vehicle) => !droppingVehicles.has(vehicle.id)).map((vehicle) => vehicle.name));
+  const drop = new Set(base);
+  for (const id of mirrorIdsAgainst(db, keptNames)) drop.add(id);
+  for (const id of orphanDemoIds(db)) drop.add(id);
+  const sources = new Set<string>();
+  for (const fuel of db.fuel) if (drop.has(fuel.id)) sources.add(fuel.id);
+  for (const service of db.services) if (drop.has(service.id)) sources.add(service.id);
+  for (const id of linkedTxnIds(db, sources)) drop.add(id);
+  for (const id of unnamedPairIds(db, drop)) drop.add(id);
   return dropSampleRows(db, drop, budgetAfterDemo(db));
 }

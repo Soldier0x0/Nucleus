@@ -8,6 +8,16 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.7.1
+
+Fixes for leftover sample data, the home cards, and bank texts.
+
+- Remove sample data is next to Add sample data. It clears leftover demo rows, including Activa fuel and service notes, the 45000 demo budget, and unnamed two-expense lines, even when the sample list is empty. Entries you added stay.
+- The default look is Paper. The default layout is bento and cards. A new install and an update both get that, unless a look or layout was already chosen.
+- Home cards use the earlier icons and show the useful figures. Attention shows its count. A saved home city shows the forecast on the Weather card. Each card opens its own place, and Weather opens the weather section.
+- Bank texts save lines from Google Pay, PhonePe, and bank notifications once notification access is on. A file install needs Allow restricted settings first, then notification access. Nucleus reads those notifications, not SMS, and does not turn the permission on.
+- A real icon change may still restart the app. An unlocked phone does not ask for the thumbprint or PIN after that restart.
+
 ## v0.7
 
 Home, travel, money, and the cycle calendar.

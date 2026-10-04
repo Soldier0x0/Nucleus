@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import { useStore } from "@/src/core/store";
 import { classifyMoney } from "@/src/core/moneyWords";
-import { applyInbox, memoryKey, type BankAsk, type BankTxn, type InboxLine } from "@/src/core/smsMoney";
+import { memoryKey, saveBankNotices, type BankAsk, type BankTxn, type InboxLine } from "@/src/core/smsMoney";
 import type { DB } from "@/src/core/types";
 import { readBankNotices, subscribeBankNotices } from "@/src/native/android";
 
@@ -61,8 +61,7 @@ async function postAsks(asks: BankAsk[]) {
 /** Reads bank notifications on this phone, keeps debit, credit, and balance lines, and asks once when a line is unclear. */
 export async function syncBankInbox(db: DB, update: (fn: (db: DB) => DB) => void): Promise<{ kept: number; dropped: number; asks: BankAsk[] }> {
   const inbox: InboxLine[] = readBankNotices();
-  const applied = applyInbox(inbox, {
-    knownSenders: [],
+  const applied = saveBankNotices(inbox, {
     ownAccounts: db.settings.ownAccounts,
     memory: db.settings.smsMemory,
     categoryFor,

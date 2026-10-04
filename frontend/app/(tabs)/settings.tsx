@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accents, radius, THEMES, useTheme, bindLookStyles } from "@/src/theme";
 import { geocode } from "@/src/core/online";
@@ -10,7 +10,7 @@ import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { CURRENCIES } from "@/src/core/format";
 import { aboutTitle } from "@/src/core/about";
-import { hasSampleData, withoutSampleData, withSampleData } from "@/src/core/sample";
+import { withoutSampleData, withSampleData } from "@/src/core/sample";
 import { BackupFile, decryptBackup, exportBackup, mergeDB, mergePreview, pickBackup } from "@/src/core/backup";
 import { passwordStrength, type PasswordEnvelope } from "@/src/core/crypto";
 import { biometricAvailable, clearFailures, clearPin, hasDecoyPin, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
@@ -21,13 +21,13 @@ import { shownInDecoy } from "@/src/core/profiles";
 import { emergencyLockCard } from "@/src/core/featureAccess";
 import { enableFeature } from "@/src/native/enableFeature";
 import { openNotificationListener, requestNotificationAccess } from "@/src/native/android";
-import { bankAccessPrompt } from "@/src/core/bankAccess";
+import { bankAccessPrompt, bankInboxAfterReturn } from "@/src/core/bankAccess";
 import { forgetCloudFile, hideLockCard, installedVersion, showLockCard } from "@/src/native/android";
 import { storeLockedCopy } from "@/src/native/cloudFile";
 import { secureStorage } from "@/src/utils/storage";
 import { accessMode, cloudScope, describeContents, FILE_PASSPHRASE_KEY } from "@/src/core/vaultFile";
 import { dataHealth } from "@/src/core/life";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "@/src/components/ui";
 import { LauncherPicker } from "@/src/components/LauncherPicker";
 import { LookPicker } from "@/src/components/LookPicker";
@@ -37,10 +37,10 @@ import { Sheet } from "@/src/components/Sheet";
 import { PinPad } from "@/src/components/PinPad";
 import { useToast } from "@/src/components/Toast";
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, testID, onLayout }: { title: string; children: React.ReactNode; testID?: string; onLayout?: (y: number) => void }) {
   const { colors } = useTheme();
   return (
-    <View style={{ marginBottom: 20 }}>
+    <View testID={testID} onLayout={(event) => onLayout?.(event.nativeEvent.layout.y)} style={{ marginBottom: 20 }}>
       <Eyebrow style={{ marginBottom: 8 }}>{title}</Eyebrow>
       <View style={[styles.group, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>{children}</View>
     </View>
@@ -108,6 +108,17 @@ export default function Settings() {
   const sizeKb = (JSON.stringify(db).length / 1024).toFixed(1);
   const prompt = bankAccessPrompt();
   const [bankNote, setBankNote] = useState("");
+  useEffect(() => {
+    const apply = () => {
+      if (!bankInboxAfterReturn({ asked: s.bankTextsAsked, accessOn: requestNotificationAccess(), inboxOn: s.smsInbox })) return;
+      if (!s.smsInbox) setSettings({ smsInbox: true });
+    };
+    apply();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") apply();
+    });
+    return () => sub.remove();
+  }, [s.bankTextsAsked, s.smsInbox, setSettings]);
   const [city, setCity] = useState("");
   const [cityMatches, setCityMatches] = useState<Place[]>([]);
   const locationOnce = locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead });
@@ -128,6 +139,16 @@ export default function Settings() {
   const [showExports, setShowExports] = useState(false);
   const [diag, setDiag] = useState<null | { scheduled: number }>(null);
   const router = useRouter();
+  const params = useLocalSearchParams<{ section?: string }>();
+  const scrollRef = useRef<ScrollView>(null);
+  const weatherY = useRef(0);
+  const scrollToWeather = useCallback(() => {
+    if (params.section === "weather") scrollRef.current?.scrollTo({ y: weatherY.current, animated: false });
+  }, [params.section]);
+  useEffect(() => {
+    scrollToWeather();
+  }, [scrollToWeather]);
+  useFocusEffect(scrollToWeather);
 
   async function storeCloud(passphrase: string) {
     const result = await storeLockedCopy(db, passphrase, s.cloud.provider);
@@ -150,7 +171,7 @@ export default function Settings() {
         <Eyebrow>Everything stays on this device</Eyebrow>
         <T v="title" testID="settings-title">Settings</T>
       </View>
-      <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         {session === "real" ? (
           <Section title="You">
             <View style={{ padding: 12 }}>
@@ -165,7 +186,7 @@ export default function Settings() {
             <View style={{ marginHorizontal: -12 }}>
               <ChipRow testID="settings-theme-row">
                 {[["system", "System", undefined], ...Object.entries(THEMES).map(([k, t]) => [k, t.name, t.swatch])].map(([k, n, sw]) => (
-                  <Press key={k} testID={`settings-theme-${k}`} onPress={() => setSettings({ theme: k as any })} accessibilityState={{ selected: s.theme === k }} style={[styles.swatchWrap, { borderColor: s.theme === k ? colors.onSurface : colors.border }]}>
+                  <Press key={k} testID={`settings-theme-${k}`} onPress={() => setSettings({ theme: k as any, appearanceChosen: true })} accessibilityState={{ selected: s.theme === k }} style={[styles.swatchWrap, { borderColor: s.theme === k ? colors.onSurface : colors.border }]}>
                     <View style={[styles.swatch, { backgroundColor: sw ?? colors.surfaceTertiary, borderWidth: 1, borderColor: colors.borderStrong }]}>{s.theme === k ? <Icon name="check" size={14} color={k === "paper" ? "#111418" : "#FFFFFF"} /> : null}</View>
                     <T v="caption">{n}</T>
                   </Press>
@@ -188,7 +209,7 @@ export default function Settings() {
           </View>
         </Section>
 
-        <Section title="Online (optional)">
+        <Section title="Online (optional)" testID="settings-weather" onLayout={(y) => { weatherY.current = y; if (params.section === "weather") scrollRef.current?.scrollTo({ y, animated: false }); }}>
           <Row first icon="web" label="Online features" sub={s.online ? "On · rates, weather, holidays. Only queries leave the device." : "Off · no network requests at all"} right={<Switch testID="settings-online-switch" value={s.online} onValueChange={(v) => setSettings({ online: v })} {...sw} />} />
           <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
             <T v="label" style={{ marginBottom: 6 }}>Home city (weather)</T>
@@ -382,16 +403,18 @@ export default function Settings() {
           <Row icon="message-text-outline" label="Bank texts" sub="Debit, credit, and balance lines come from bank notifications on this phone. Codes are dropped. Opens notification access." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={(v) => {
             if (!v) {
               setBankNote("");
-              return setSettings({ smsInbox: false });
+              return setSettings({ smsInbox: false, bankTextsAsked: false });
             }
-            if (requestNotificationAccess()) {
+            const accessOn = requestNotificationAccess();
+            setSettings({ bankTextsAsked: true, ...(accessOn ? { smsInbox: true } : {}) });
+            if (accessOn) {
               setBankNote(prompt.line);
-              return setSettings({ smsInbox: true });
+              return;
             }
             const opened = openNotificationListener();
             setBankNote(opened === "blocked" ? `${prompt.line} ${prompt.blockedLine}` : prompt.line);
           }} {...sw} />} />
-          {bankNote ? <T testID="settings-sms-note" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>{bankNote}</T> : null}
+          <T testID="settings-sms-note" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>{bankNote || prompt.line}</T>
         </Section>
 
         <Section title="Home screen">
@@ -460,7 +483,7 @@ export default function Settings() {
           <Row icon="star-four-points-outline" label="Year in Review" sub="Your year, counted from your own records" testID="settings-review-button" onPress={() => router.push("/review")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="stethoscope" label="Diagnostics" sub="Storage, reminders and network activity" testID="settings-diagnostics-button" onPress={async () => setDiag({ scheduled: await scheduledCount() })} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="flask-outline" label="Add sample data" sub="Explore insights with a demo workspace" testID="settings-sample-button" onPress={() => (update(withSampleData), toast("Sample data added", "flask-outline"))} right={<Icon name="plus" size={18} color={colors.muted} />} />
-          {hasSampleData(db) ? <Row icon="flask-empty-outline" label="Remove sample data" sub="Takes out the demo rows. Entries you added stay." testID="settings-sample-remove-button" onPress={() => (update(withoutSampleData), toast("Sample data removed", "flask-empty-outline"))} right={<Icon name="minus" size={18} color={colors.muted} />} /> : null}
+          <Row icon="flask-empty-outline" label="Remove sample data" sub="Takes out the demo rows. Entries you added stay." testID="settings-sample-remove-button" onPress={() => (update(withoutSampleData), toast("Sample data removed", "flask-empty-outline"))} right={<Icon name="minus" size={18} color={colors.muted} />} />
           <Row icon="delete-outline" label="Erase all data" sub="Cannot be undone" testID="settings-reset-button" onPress={() => setConfirmReset(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
         </Section>
 
