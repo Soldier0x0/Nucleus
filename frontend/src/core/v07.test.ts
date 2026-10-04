@@ -7,6 +7,7 @@ import { askOnRelaunch } from "./lockPolicy.ts";
 import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
 import { grewMost } from "./moneyDesk.ts";
 import { emptyCycle, forecast, markStart, rememberPeriod, typicalCompare } from "./cycle.ts";
+import { galleryShots, stepGallery } from "./gallery.ts";
 import { receiptMismatchLine } from "./receiptPage.ts";
 import { reuseMarkedStops, weatherReminder } from "./tripMath.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
@@ -264,4 +265,18 @@ test("past period dates are remembered once", () => {
   assert.deepEqual(rememberPeriod(once, "2026-03-05", "2026-03-01"), once);
   const screen = readFileSync(new URL("../../app/cycle/index.tsx", import.meta.url), "utf8");
   assert.match(screen, /cycle-past-save/);
+});
+
+test("bills and photos swipe, including when one image is open", () => {
+  assert.deepEqual(galleryShots([{ id: "a", photo: "data:a" }, { id: "b" }, { id: "c", photo: "data:c" }]), [
+    { id: "a", uri: "data:a" },
+    { id: "c", uri: "data:c" },
+  ]);
+  assert.deepEqual(stepGallery(0, 2, "next"), { index: 1, swiped: true });
+  assert.deepEqual(stepGallery(0, 2, "prev"), { index: 1, swiped: true });
+  assert.deepEqual(stepGallery(0, 1, "next"), { index: 0, swiped: true });
+  const view = readFileSync(new URL("../components/PhotoGallery.tsx", import.meta.url), "utf8");
+  assert.match(view, /pagingEnabled/);
+  assert.match(view, /decelerationRate="fast"/);
+  assert.match(view, /stepGallery/);
 });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Share, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
 import { useStore } from "@/src/core/store";
 import { useTheme } from "@/src/theme";
 import { addMonths, monthKey, todayISO } from "@/src/core/format";
@@ -13,6 +14,7 @@ import { Button, Card, Eyebrow, T } from "./ui";
 /** Charts, bills, bank texts, and links. Visible on Money, not behind another tap. */
 export function MoneyDesk({ month }: { month: string }) {
   const { db, update, setSettings } = useStore();
+  const router = useRouter();
   const { colors } = useTheme();
   const [person, setPerson] = useState("");
   const [account, setAccount] = useState("");
@@ -86,6 +88,7 @@ export function MoneyDesk({ month }: { month: string }) {
       <Card testID="money-grew-card">
         <Eyebrow>Since last month</Eyebrow>
         <T style={{ marginTop: 6 }}>{grew ? grew.line : "No category grew from last month."}</T>
+        <Button small kind="secondary" label="Open gallery" testID="money-open-gallery" onPress={() => router.push("/gallery")} style={{ marginTop: 8 }} />
       </Card>
       <Card testID="money-balance-card">
         <Eyebrow>Balance over time</Eyebrow>
