@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Share, TextInput, View } from "react-native";
 import { useStore } from "@/src/core/store";
 import { useOnline } from "@/src/core/useOnline";
 import { useTheme } from "@/src/theme";
 import { todayISO, uid } from "@/src/core/format";
 import { vehicleStats } from "@/src/core/intelligence";
-import { rangeLeft, remindSaveWeather, reusableStops, serviceLeft, timeline, weatherAlong, type MarkedStop } from "@/src/core/tripMath";
+import { rangeLeft, reuseMarkedStops, serviceLeft, timeline, weatherAlong, weatherReminder, type MarkedStop } from "@/src/core/tripMath";
 import { shareStop } from "@/src/core/shareLine";
 import { suggestShared } from "@/src/core/recordLinks";
 import type { Trip } from "@/src/core/types";
@@ -39,7 +39,13 @@ export function TripDesk({ trip }: { trip: Trip }) {
   const weather = weatherAlong(online, cities);
   const stops = timeline(marked(trip));
   const past = db.trips.filter((item) => item.id !== trip.id).flatMap(marked);
-  const reuse = reusableStops(past, stops);
+  const reuse = reuseMarkedStops(past, stops);
+  const remind = weatherReminder(!!trip.weatherSaved, !!trip.weatherReminded);
+  const [showRemind] = useState(remind);
+  useEffect(() => {
+    if (!remind) return;
+    update((d) => upsertTrip(d, { ...trip, weatherReminded: true }));
+  }, [remind, trip, update]);
   const links = suggestShared({
     debits: db.txns.filter((row) => row.category === "Fuel" && !row.transfer).map((row) => ({ id: row.id, date: row.date, amount: row.amount })),
     receipts: [],
@@ -74,12 +80,12 @@ export function TripDesk({ trip }: { trip: Trip }) {
       </View>
       {range ? <T style={{ marginTop: 10 }} testID="trip-range">{range.warn ? `About ${range.remainingKm} km left. Fill up before the range runs out.` : `About ${range.remainingKm} km left from the last fill.`}</T> : <T muted style={{ marginTop: 10 }}>Log a fill and some mileage to see the range.</T>}
       {service != null ? <T style={{ marginTop: 6 }} testID="trip-service">{service <= 0 ? "Service is due from this vehicle's own kilometers." : `Service in about ${service} km, from this vehicle's own interval.`}</T> : null}
-      {remindSaveWeather(!!trip.weatherSaved) ? (
+      {showRemind ? (
         <View style={{ marginTop: 10 }}>
           <T>Save the weather before you leave. None is saved yet.</T>
-          <Button small label="Save weather" testID="trip-save-weather" onPress={() => update((d) => upsertTrip(d, { ...trip, weatherSaved: true }))} style={{ marginTop: 6 }} />
+          <Button small label="Save weather" testID="trip-save-weather" onPress={() => update((d) => upsertTrip(d, { ...trip, weatherSaved: true, weatherReminded: true }))} style={{ marginTop: 6 }} />
         </View>
-      ) : <T style={{ marginTop: 10 }}>Weather is saved on this phone.</T>}
+      ) : trip.weatherSaved ? <T style={{ marginTop: 10 }}>Weather is saved on this phone.</T> : null}
       {weather.available ? <T style={{ marginTop: 6 }}>Along the way: {weather.cities.join(", ")}</T> : <T muted style={{ marginTop: 6 }}>Weather stays empty until this phone is online.</T>}
       {online && trip.place ? <View style={{ marginTop: 10 }}><WeatherCard place={trip.place} from={trip.start} to={trip.end} testID="trip-route-weather" /></View> : null}
       {reuse.length ? (

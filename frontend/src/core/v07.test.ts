@@ -8,6 +8,7 @@ import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locat
 import { grewMost } from "./moneyDesk.ts";
 import { emptyCycle, forecast, markStart, typicalCompare } from "./cycle.ts";
 import { receiptMismatchLine } from "./receiptPage.ts";
+import { reuseMarkedStops, weatherReminder } from "./tripMath.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
 import { homePresetTiles } from "./presets.ts";
 import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
@@ -238,4 +239,17 @@ test("a receipt that does not match the bank debit is named", () => {
   assert.equal(receiptMismatchLine(120, 100), "This receipt does not match the bank debit.");
   assert.equal(receiptMismatchLine(100, 100), null);
   assert.equal(receiptMismatchLine(10.004, 10), null);
+});
+
+test("a trip reminds you once to save weather, and offers stops from an earlier trip", () => {
+  assert.equal(weatherReminder(false, false), true);
+  assert.equal(weatherReminder(false, true), false);
+  assert.equal(weatherReminder(true, false), false);
+  const past = [{ id: "s1", kind: "fuel" as const, name: "Pump", at: "2026-08-01T09:00" }];
+  const current = [{ id: "s2", kind: "snack" as const, name: "Tea", at: "2026-09-01T09:00" }];
+  assert.deepEqual(reuseMarkedStops(past, current).map((stop) => stop.name), ["Pump"]);
+  assert.deepEqual(reuseMarkedStops(past, [...current, { id: "s3", kind: "fuel", name: "Pump", at: "2026-09-02T09:00" }]), []);
+  const desk = readFileSync(new URL("../components/TripDesk.tsx", import.meta.url), "utf8");
+  assert.match(desk, /weatherReminder/);
+  assert.match(desk, /reuseMarkedStops/);
 });

@@ -25,6 +25,7 @@ export type Trip = {
   createdAt: string;
   /** Weather was saved on this phone before leaving. */
   weatherSaved?: boolean;
+  weatherReminded?: boolean;
   mode?: TripMode;
   transit?: TransitKind;
 };
