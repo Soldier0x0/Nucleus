@@ -24,7 +24,7 @@ import { AdhdPanel, HeadsUpCard, PresetGrid, SwipeHome } from "@/src/components/
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
 import type { Board } from "@/src/core/types";
-import { homeSchedule, readiness, tripStatus } from "@/src/core/domains";
+import { homeSchedule, namedGap, readiness, tripStatus } from "@/src/core/domains";
 import { homeLine, oneDueToday } from "@/src/core/dueGreeting";
 import { repeatingBills } from "@/src/core/moneyDesk";
 import { choreDueDate } from "@/src/core/domains";
@@ -83,7 +83,7 @@ export default function Today() {
                 {needs}
               </T>
               <T v="h2" color={needs ? colors.onSurfaceInverse : colors.onSurface} style={{ marginBottom: 8, flex: 1 }}>
-                {needs === 1 ? "thing needs attention" : needs ? "things need attention" : "All caught up"}
+                {needs ? namedGap(items.map((item) => item.title), "item") : "All caught up"}
               </T>
             </View>
             <View style={{ flexDirection: "row", gap: 6, marginTop: 10 }}>
@@ -135,7 +135,7 @@ export default function Today() {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <T v="h2" numberOfLines={1}>{t.name}</T>
                 <T v="mono" style={{ fontSize: 13 }}>{r.daysToStart > 0 ? `starts in ${r.daysToStart} days` : "happening now"}</T>
-                <T muted style={{ fontSize: 12 }} numberOfLines={1}>{r.missing.length ? `${r.missing.length} need attention · ${r.missing[0]}` : "All set"}</T>
+                <T muted style={{ fontSize: 12 }} numberOfLines={1}>{r.missing.length ? r.missing.join(" · ") : "All set"}</T>
               </View>
             </View>
           </Card>

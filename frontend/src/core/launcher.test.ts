@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { LAUNCHER_ALIASES, defaultLauncher, launcherIconChange, markPalette, resolveLauncher } from "./launcher.ts";
-import { askAfterIconTap } from "./lockPolicy.ts";
+import { askAfterIconTap, askOnRelaunch } from "./lockPolicy.ts";
 
 test("paper press on paper is the default alias", () => {
   const resolved = resolveLauncher(defaultLauncher(), "midnight");
@@ -50,6 +50,20 @@ test("the activity alias stays put when that picture is already showing", () => 
   assert.deepEqual(next.disable, ["IconMetalDune"]);
 });
 
+test("changing the icon on an unlocked phone does not ask, and a lock or a full close still does", () => {
+  const showing = Object.fromEntries(LAUNCHER_ALIASES.map((alias) => [alias, alias === "IconPaperPaper" ? "enabled" as const : "disabled" as const]));
+  const changed = { lockEnabled: true, states: showing, nextAlias: "IconMetalDune" };
+  assert.equal(askAfterIconTap({ ...changed, phoneLocked: false, fullyClosed: false }), false);
+  assert.equal(askAfterIconTap({ ...changed, phoneLocked: true, fullyClosed: false }), true);
+  assert.equal(askAfterIconTap({ ...changed, phoneLocked: false, fullyClosed: true }), true);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), false);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: true, fullyClosed: false }), true);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: true }), true);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: false, phoneLocked: false, fullyClosed: true }), true);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: false, phoneLocked: false, fullyClosed: false }), true);
+  assert.equal(askOnRelaunch({ lockEnabled: false, marked: true, phoneLocked: false, fullyClosed: false }), false);
+});
+
 test("tapping the icon on an unlocked phone does not ask, and a lock or a full close still does", () => {
   const showing = Object.fromEntries(LAUNCHER_ALIASES.map((alias) => [alias, alias === "IconPaperPaper" ? "enabled" as const : "disabled" as const]));
   const tap = { lockEnabled: true, states: showing, nextAlias: "IconPaperPaper" };
@@ -68,6 +82,11 @@ test("setLauncherIcon returns before any alias write when the picture is unchang
   const write = body.indexOf("setComponentEnabledSetting");
   assert.ok(guard >= 0);
   assert.ok(write > guard);
-  assert.match(body.slice(guard, write), /return@Function/);
+  const between = body.slice(guard, write);
+  assert.match(between, /return@Function/);
+  const remembered = between.indexOf("rememberIconRestart");
+  const returned = between.indexOf("return@Function");
+  assert.ok(remembered > returned, "the unlock mark is written only after the unchanged icon has already returned");
   assert.match(body, /getComponentEnabledSetting/);
+  assert.match(kt, /Function\("consumeIconRestart"\)/);
 });

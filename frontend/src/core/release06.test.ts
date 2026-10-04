@@ -45,7 +45,7 @@ test("turning a feature on asks for the permission it needs", () => {
   assert.equal(emergency.lockScreen, true);
   assert.equal(alerts.lockScreen, true);
   assert.equal(alerts.permission, "android.permission.POST_NOTIFICATIONS");
-  assert.equal(sms.permission, "android.permission.READ_SMS");
+  assert.equal(sms.permission, "notification-listener");
   assert.equal(sms.lockScreen, false);
   assert.equal(look.permission, null);
   assert.equal(staysEnabled(emergency, false), false);

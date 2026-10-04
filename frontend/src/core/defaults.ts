@@ -84,6 +84,7 @@ export const defaultSettings: Settings = {
   adhd: emptyAdhd(),
   presetLast: {},
   headsUp: emptyHeadsUp(),
+  sampleIds: [],
 };
 
 export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
@@ -102,6 +103,7 @@ export function emptyDB(): DB {
     adhd: emptyAdhd(),
     presetLast: {},
     headsUp: emptyHeadsUp(),
+    sampleIds: [],
     modules: defaultSettings.modules.map((m) => ({ ...m })),
     tiles: defaultSettings.tiles.map((t) => ({ ...t })),
   },
@@ -158,6 +160,15 @@ export function normalizeDB(raw: any): DB {
   s.adhd = parseAdhd(raw?.settings?.adhd);
   s.presetLast = parsePresetLast(raw?.settings?.presetLast);
   s.headsUp = parseHeadsUp(raw?.settings?.headsUp);
+  s.sampleIds = Array.isArray(raw?.settings?.sampleIds) ? raw.settings.sampleIds.filter((id: unknown) => typeof id === "string").map((id: string) => id.slice(0, 40)).slice(0, 800) : [];
+  const priorBudget = raw?.settings?.sampleBudget;
+  if (priorBudget && typeof priorBudget.monthly === "number" && priorBudget.categories && typeof priorBudget.categories === "object") {
+    const categories: Record<string, number> = {};
+    for (const [key, value] of Object.entries(priorBudget.categories)) {
+      if (typeof value === "number") categories[key.slice(0, 40)] = value;
+    }
+    s.sampleBudget = { monthly: priorBudget.monthly, categories };
+  }
   s.moneyNames = Array.isArray(raw?.settings?.moneyNames) ? raw.settings.moneyNames.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 40)) : [];
   s.smsMemory = parseSmsMemory(raw?.settings?.smsMemory);
   s.ownAccounts = Array.isArray(raw?.settings?.ownAccounts) ? raw.settings.ownAccounts.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 12)) : [];

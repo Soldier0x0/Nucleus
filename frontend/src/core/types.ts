@@ -267,6 +267,10 @@ export type Settings = {
   presetLast: Partial<Record<HomePresetId, string>>;
   /** Heads-ups already dismissed or answered. Dismissal is not a miss. */
   headsUp: HeadsUpState;
+  /** Rows added by sample data. Removal uses this list and leaves everything else. */
+  sampleIds: string[];
+  /** Budget from before sample data replaced it. */
+  sampleBudget?: Budget;
 };
 
 export type HomeShortcut = { id: string; label: string; url: string };

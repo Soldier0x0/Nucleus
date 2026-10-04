@@ -9,8 +9,9 @@ import { PinPad } from "./PinPad";
 import { Mark } from "./Mark";
 import { NameAsk } from "./NameAsk";
 import { resolveLauncher } from "@/src/core/launcher";
+import { emergencyLockCard } from "@/src/core/featureAccess";
 import { shouldAskBiometric } from "@/src/core/lockPolicy";
-import { consumePhoneLock } from "@/src/native/android";
+import { consumeIconRestart, consumePhoneLock, hideLockCard, showLockCard } from "@/src/native/android";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
@@ -25,7 +26,10 @@ export function LockGate() {
   const mark = resolveLauncher(s.launcher, s.theme, scheme);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [locked, setLocked] = useState(s.onboarded && s.lockEnabled);
+  const [locked, setLocked] = useState(() => {
+    if (!(s.onboarded && s.lockEnabled)) return false;
+    return !consumeIconRestart();
+  });
   const [covered, setCovered] = useState(false);
   const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
@@ -33,6 +37,18 @@ export function LockGate() {
   const [waitSec, setWaitSec] = useState(0);
   const bgAt = useRef<number | null>(null);
   const bioAllowed = s.unlockMethod !== "pin" && s.biometricEnabled && Platform.OS !== "web";
+
+  useEffect(() => {
+    const plate = (db.vehicles.find((v) => v.id === s.defaultVehicleId) ?? db.vehicles[0])?.plate ?? "";
+    const card = emergencyLockCard({
+      showOnLock: s.emergency?.showOnLock === true,
+      bloodGroup: s.emergency?.bloodGroup ?? "",
+      phone: s.emergency?.contactPhone ?? "",
+      plate,
+    });
+    if (card) showLockCard(card.title, card.body);
+    else hideLockCard();
+  }, [s.emergency, s.defaultVehicleId, db.vehicles]);
 
   // Screenshot / recents protection (Android FLAG_SECURE; iOS screen-record blur).
   useEffect(() => {
@@ -169,15 +185,18 @@ function EmergencyStrip() {
   const { db } = useStore();
   const { colors } = useTheme();
   const card = db.settings.emergency;
-  if (!card?.showOnLock) return null;
-  const plate = (db.vehicles.find((v) => v.id === db.settings.defaultVehicleId) ?? db.vehicles[0])?.plate;
-  const bits = [card.bloodGroup.trim(), card.contactName.trim(), card.contactPhone.trim(), plate].filter(Boolean);
-  if (!bits.length) return null;
+  const plate = (db.vehicles.find((v) => v.id === db.settings.defaultVehicleId) ?? db.vehicles[0])?.plate ?? "";
+  const shown = emergencyLockCard({
+    showOnLock: card?.showOnLock === true,
+    bloodGroup: card?.bloodGroup ?? "",
+    phone: card?.contactPhone ?? "",
+    plate,
+  });
+  if (!shown) return null;
   return (
     <View testID="lock-emergency" style={{ marginTop: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, alignItems: "center" }}>
-      <Eyebrow>Emergency</Eyebrow>
-      <T v="label" style={{ marginTop: 4, textAlign: "center" }}>{bits.join(" · ")}</T>
-      {card.note.trim() ? <T muted style={{ fontSize: 12, textAlign: "center", marginTop: 2 }}>{card.note.trim()}</T> : null}
+      <Eyebrow>{shown.title}</Eyebrow>
+      <T v="label" style={{ marginTop: 4, textAlign: "center" }}>{shown.body}</T>
     </View>
   );
 }

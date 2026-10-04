@@ -117,7 +117,7 @@ export function evaluateRule(db: DB, r: Rule, today = todayISO()): RuleHit[] {
       hits.push({
         key: `rule:${r.id}:maint:${x.p.id}:${x.p.lastDone}`,
         rule: r,
-        title: `${x.a.name}: ${x.p.name} ${x.days < 0 ? `overdue by ${-x.days} days` : x.days === 0 ? "due today" : `due in ${x.days} days`}`,
+        title: `${x.a.name}: ${x.p.name} ${x.days < 0 ? `was due ${-x.days} days ago` : x.days === 0 ? "due today" : `due in ${x.days} days`}`,
         subtitle: `Every ${x.p.everyMonths} months`,
         date: x.due,
         severity: sev(x.days),

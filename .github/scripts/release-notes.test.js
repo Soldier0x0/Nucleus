@@ -72,19 +72,30 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2"]) {
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3"]) {
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
   assert.match(readReleaseNotes("v0.6", changelogPath), /Empty modules stay hidden/);
   assert.match(readReleaseNotes("v0.6.1", changelogPath), /placeholder/);
   assert.match(readReleaseNotes("v0.6.2", changelogPath), /only money tiles/);
   assert.match(readReleaseNotes("v0.6.2", changelogPath), /only driving tiles/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /thumbprint is not asked/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /blood group/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /Drive or OneDrive/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /notification access/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /paid, sent, and spent/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /received and added/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /Sample data can be removed/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /does not open the app/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /short swipe/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /stamped into that APK/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /Travel insurance/);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.7" }), { publish: false, reason: "missing" });
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.6.2",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1"],
+      tag: "v0.6.3",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2"],
     }),
   );
 });

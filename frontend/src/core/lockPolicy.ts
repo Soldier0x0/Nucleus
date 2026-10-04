@@ -1,9 +1,12 @@
-import { launcherIconChange, type AliasComponentState } from "./launcher";
+import type { AliasComponentState } from "./launcher";
 
 /** Why the app is coming to the front. A long stay in the background is not a reason by itself. */
 export type LockSignal = "cold-start" | "phone-locked" | "still-unlocked";
 
-/** An alias rewrite restarts the activity, so the lock treats it as a cold start. */
+/**
+ * An icon change restarts the process. The phone is still unlocked across that restart,
+ * so the thumbprint waits for a real lock or a full close.
+ */
 export function askAfterIconTap(input: {
   lockEnabled: boolean;
   states: Readonly<Record<string, AliasComponentState | undefined>>;
@@ -11,11 +14,19 @@ export function askAfterIconTap(input: {
   phoneLocked: boolean;
   fullyClosed: boolean;
 }): boolean {
-  if (input.fullyClosed) return shouldAskBiometric(input.lockEnabled, "cold-start", 0);
-  const plan = launcherIconChange(input.states, input.nextAlias);
-  if (plan.changed) return shouldAskBiometric(input.lockEnabled, "cold-start", 0);
-  if (input.phoneLocked) return shouldAskBiometric(input.lockEnabled, "phone-locked", 0);
-  return shouldAskBiometric(input.lockEnabled, "still-unlocked", 0);
+  if (!input.lockEnabled) return false;
+  if (input.fullyClosed) return true;
+  if (input.phoneLocked) return true;
+  return false;
+}
+
+/** The new process asks unless the dying process marked an unlocked icon change. */
+export function askOnRelaunch(input: { lockEnabled: boolean; marked: boolean; phoneLocked: boolean; fullyClosed: boolean }): boolean {
+  if (!input.lockEnabled) return false;
+  if (input.phoneLocked) return true;
+  if (input.fullyClosed) return true;
+  if (input.marked) return false;
+  return true;
 }
 
 export function shouldAskBiometric(lockEnabled: boolean, signal: LockSignal, _backgroundMs: number): boolean {

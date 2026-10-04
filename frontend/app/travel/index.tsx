@@ -95,7 +95,7 @@ export default function Travel() {
                     </View>
                   </View>
                 </View>
-                {st !== "past" && r.missing.length ? <T style={{ fontSize: 12, marginTop: 10, color: colors.warning }} numberOfLines={2}>{r.missing.length} need attention · {r.missing.join(" · ")}</T> : null}
+                {st !== "past" && r.missing.length ? <T style={{ fontSize: 12, marginTop: 10, color: colors.warning }} numberOfLines={2}>{r.missing.join(" · ")}</T> : null}
               </Card>
             );
           })

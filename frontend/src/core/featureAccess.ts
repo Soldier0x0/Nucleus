@@ -11,7 +11,7 @@ export function askToEnable(feature: GatedFeature): FeatureAsk {
     case "reminders":
       return { permission: "android.permission.POST_NOTIFICATIONS", lockScreen: false };
     case "sms-inbox":
-      return { permission: "android.permission.READ_SMS", lockScreen: false };
+      return { permission: "notification-listener", lockScreen: false };
     case "cloud-file":
     case "look":
       return { permission: null, lockScreen: false };
@@ -30,4 +30,14 @@ export function staysEnabled(ask: FeatureAsk, granted: boolean): boolean {
 /** Lock-screen cards use a public notification, so the shade and the lock screen can show them. */
 export function lockScreenVisibility(): "public" {
   return "public";
+}
+
+export type EmergencyLockCard = { title: "Emergency"; body: string; visibility: "public" | "private"; importance: "default" | "high" };
+
+/** Blood group, phone, and the default vehicle plate. Hidden until the switch is on. */
+export function emergencyLockCard(input: { showOnLock: boolean; bloodGroup: string; phone: string; plate: string }): EmergencyLockCard | null {
+  if (!input.showOnLock) return null;
+  const body = [input.bloodGroup, input.phone, input.plate].map((part) => part.trim()).filter(Boolean).join(" · ");
+  if (!body) return null;
+  return { title: "Emergency", body, visibility: "public", importance: "high" };
 }

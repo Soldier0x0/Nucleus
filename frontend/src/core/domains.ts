@@ -27,6 +27,23 @@ export function tripTxns(db: DB, tripId: string): Txn[] {
   return db.txns.filter((t) => ids.has(t.id));
 }
 
+/** A short gap is named in full. A longer one names the first few and does not use a count. */
+export const NAMED_GAP = 4;
+
+function joinNamed(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
+/** Names the things that are still open. A blank name is not replaced with a count. */
+export function namedGap(raw: string[], thing: string): string {
+  const clean = raw.map((name) => name.trim()).filter(Boolean);
+  if (!clean.length) return `Could not tell which ${thing}`;
+  if (clean.length <= NAMED_GAP) return joinNamed(clean);
+  return `${joinNamed(clean.slice(0, NAMED_GAP))}, and more`;
+}
+
 /** Readiness = packing 50% + documents 30% + budget set 20%. Deterministic and explainable. */
 export function readiness(db: DB, t: Trip) {
   const packPct = t.packing.length ? t.packing.filter((p) => p.done).length / t.packing.length : 0;
@@ -34,9 +51,11 @@ export function readiness(db: DB, t: Trip) {
   const budgetOk = t.budget > 0 ? 1 : 0;
   const score = packPct * 0.5 + docPct * 0.3 + budgetOk * 0.2;
   const missing: string[] = [];
-  if (packPct < 1) missing.push(`Packing ${Math.round(packPct * 100)}%`);
-  const docsMissing = t.docs.filter((d) => !d.have).length;
-  if (docsMissing) missing.push(`${docsMissing} document${docsMissing > 1 ? "s" : ""} missing`);
+  const unpacked = t.packing.filter((item) => !item.done);
+  if (!t.packing.length) missing.push("Could not tell what is still unpacked");
+  else if (unpacked.length) missing.push(namedGap(unpacked.map((item) => item.name), "item"));
+  const docsMissing = t.docs.filter((doc) => !doc.have);
+  if (docsMissing.length) missing.push(namedGap(docsMissing.map((doc) => doc.name), "document"));
   if (!budgetOk) missing.push("No budget set");
   const spent = tripTxns(db, t.id).reduce((s, x) => s + x.amount, 0);
   return { score, packPct, docPct, budgetOk, missing, spent, daysToStart: daysBetween(todayISO(), t.start), days: daysBetween(t.start, t.end) + 1 };
@@ -131,6 +150,20 @@ export function roomSummaries(db: DB, today = todayISO()) {
     });
     const warrantySoon = appliances.some((a) => a.warrantyUntil && daysBetween(today, a.warrantyUntil) <= 30 && daysBetween(today, a.warrantyUntil) >= 0);
     const status: RoomStatus = maintLate || choreLate ? "urgent" : maintSoon || choreSoon || warrantySoon ? "upcoming" : "ok";
-    return { room, appliances: appliances.length, chores: chores.length, status };
-  }).filter((x): x is { room: string; appliances: number; chores: number; status: RoomStatus } => !!x);
+    const due: string[] = [];
+    for (const appliance of appliances) {
+      for (const plan of appliance.plans) {
+        if (daysBetween(today, nextDue(plan)) <= 7) due.push(plan.name.trim() || appliance.name);
+      }
+      if (appliance.warrantyUntil) {
+        const left = daysBetween(today, appliance.warrantyUntil);
+        if (left >= 0 && left <= 30) due.push(appliance.name.trim() ? `${appliance.name.trim()} warranty` : "");
+      }
+    }
+    for (const chore of chores) {
+      if (choreDueDate(chore, today) <= 1) due.push(chore.name);
+    }
+    const line = status === "ok" ? "" : namedGap(due, "job");
+    return { room, appliances: appliances.length, chores: chores.length, status, line };
+  }).filter((x): x is { room: string; appliances: number; chores: number; status: RoomStatus; line: string } => !!x);
 }

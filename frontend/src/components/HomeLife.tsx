@@ -66,8 +66,8 @@ export function HomeLife({ showEmpty, onAddAppliance }: { showEmpty: boolean; on
                   <T v="label" numberOfLines={1} style={{ flex: 1 }}>{r.room}</T>
                   <StatusBadge severity={r.status === "ok" ? "ok" : r.status} />
                 </View>
-                <T muted style={{ fontSize: 12 }} numberOfLines={1}>
-                  {r.appliances} appliance{r.appliances === 1 ? "" : "s"} · {r.chores} chore{r.chores === 1 ? "" : "s"}
+                <T muted style={{ fontSize: 12 }} numberOfLines={2}>
+                  {r.status === "ok" ? `${r.appliances} appliance${r.appliances === 1 ? "" : "s"} · ${r.chores} chore${r.chores === 1 ? "" : "s"}` : r.line}
                 </T>
               </View>
             ))}

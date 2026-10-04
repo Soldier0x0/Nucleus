@@ -106,7 +106,7 @@ export default function TripDetail() {
           {r.missing.length ? (
             <Press testID="trip-why-button" onPress={() => setSheet("why")} style={[styles.miss, { backgroundColor: colors.brandTertiary }]}>
               <Icon name="alert-circle-outline" size={16} color={colors.onBrandTertiary} />
-              <T color={colors.onBrandTertiary} style={{ flex: 1, fontSize: 13 }} numberOfLines={2}>{r.missing.length} need attention · {r.missing.join(" · ")}</T>
+              <T color={colors.onBrandTertiary} style={{ flex: 1, fontSize: 13 }} numberOfLines={2}>{r.missing.join(" · ")}</T>
               <T v="caption" color={colors.onBrandTertiary}>Why?</T>
             </Press>
           ) : null}
