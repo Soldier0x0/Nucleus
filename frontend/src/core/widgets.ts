@@ -4,7 +4,7 @@
  */
 import type { DB } from "./types";
 import { addMonths, daysBetween, money, todayISO } from "./format";
-import { calendarEvents } from "./life";
+import { calendarEvents, dueDayLabel } from "./life";
 
 export type WidgetSnapshot = {
   countdown: { title: string; days: number; date: string } | null;
@@ -37,7 +37,7 @@ export function widgetSnapshot(db: DB, today = todayISO(), updated = ""): Widget
     countdown: soon ? { title: soon.title, days: soon.days, date: soon.date } : null,
     budget,
     trip: trip ? { title: trip.name, days: tripDays, when: tripDays > 0 ? `Starts in ${tripDays} days` : tripDays === 0 ? "Starts today" : "On the trip" } : null,
-    maintenance: maint ? { title: maint.title, subtitle: maint.days < 0 ? `${-maint.days} days overdue` : maint.days === 0 ? "Due today" : `Due in ${maint.days} days` } : null,
+    maintenance: maint ? { title: maint.title, subtitle: maint.days < 0 ? dueDayLabel(maint.days) : maint.days === 0 ? "Due today" : `Due in ${maint.days} days` } : null,
     privacy: hide,
     updated,
   };

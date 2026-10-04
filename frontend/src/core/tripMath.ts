@@ -35,6 +35,14 @@ export function remindSaveWeather(saved: boolean): boolean {
   return !saved;
 }
 
+export function weatherReminder(saved: boolean, alreadySent: boolean): boolean {
+  return !saved && !alreadySent;
+}
+
+export function reuseMarkedStops(past: MarkedStop[], current: MarkedStop[]): MarkedStop[] {
+  return reusableStops(past, current);
+}
+
 export function weatherAlong(online: boolean, cities: string[]): { available: boolean; cities: string[] } {
   if (!online) return { available: false, cities: [] };
   return { available: true, cities };

@@ -1,4 +1,4 @@
-import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, TileId } from "./types";
+import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, ModuleId, TileId } from "./types";
 import { uid } from "./format";
 import { repeatingBills } from "./moneyDesk";
 
@@ -178,8 +178,14 @@ export function rowsFor(items: PresetItem[]): HomeRow[] {
 }
 
 export function columnsFor(preset: HomePresetId, count: number): number {
-  if (preset === "adhd" || count < 2) return 1;
+  void preset;
+  void count;
   return 2;
+}
+
+export function rowFlex(row: HomeRow): { id: string; span: 1 | 2 }[] {
+  if (row.items.length === 1 && row.items[0].size === "large") return [{ id: row.items[0].id, span: 2 }];
+  return row.items.map((item) => ({ id: item.id, span: 1 }));
 }
 
 function fillsFor(db: DB, vehicleId: string) {
@@ -289,13 +295,70 @@ const DECOY_HIDDEN_TILES = new Set([
   "networth",
 ]);
 
+const ITEM_MODULE: Record<string, ModuleId> = {
+  balance: "money",
+  spending: "money",
+  charts: "money",
+  receipts: "money",
+  bills: "money",
+  budget: "money",
+  subscriptions: "money",
+  funds: "money",
+  debts: "money",
+  categories: "money",
+  networth: "money",
+  route: "travel",
+  packing: "travel",
+  stops: "travel",
+  weather: "travel",
+  mileage: "vehicles",
+  fuel: "vehicles",
+  vehicle: "vehicles",
+  service: "vehicles",
+  range: "vehicles",
+  papers: "papers",
+  maintenance: "home",
+  chores: "home",
+  appliances: "home",
+  utilities: "home",
+  warranties: "home",
+  cycle: "cycle",
+  notes: "notes",
+  kanban: "kanban",
+  wiki: "wiki",
+  media: "media",
+  rules: "rules",
+  tools: "tools",
+  history: "tools",
+  builder: "builder",
+  dev: "dev",
+  lab: "lab",
+  net: "net",
+  trip: "travel",
+  home: "home",
+};
+
+export function tileModule(id: string): ModuleId | null {
+  return ITEM_MODULE[id] ?? null;
+}
+
+export function withModulesOn(db: DB, items: PresetItem[]): PresetItem[] {
+  return items.filter((item) => {
+    const moduleId = tileModule(item.id);
+    if (!moduleId) return true;
+    return db.settings.modules.find((row) => row.id === moduleId)?.enabled !== false;
+  });
+}
+
 /** Every built-in board lists its own tiles. Empty records stay on the board as placeholders. */
 export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
+  let items: PresetItem[];
   switch (preset) {
     case "custom": {
       const board = db.settings.boards.find((row) => row.id === db.settings.activeBoardId);
       const ids = board ? board.tiles : db.settings.tiles.filter((tile) => tile.enabled).map((tile) => tile.id);
-      return customItems(ids);
+      items = customItems(ids);
+      break;
     }
     case "money":
     case "travel":
@@ -303,12 +366,14 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
     case "desk":
     case "workshop":
     case "adhd":
-      return presetItems(preset);
+      items = presetItems(preset);
+      break;
     default: {
       const never: never = preset;
       return never;
     }
   }
+  return withModulesOn(db, items);
 }
 
 /** The tiles painted for one preset tap. Money does not include Travel, and Travel does not include Money. */
@@ -509,18 +574,18 @@ export function tileHasData(db: DB, id: string): boolean {
   }
 }
 
-/** Money and Travel share a pager. The opened preset is the page that shows first. */
+export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"];
+
 export function swipeScreens(preset: HomePresetId): HomePresetId[] {
   switch (preset) {
+    case "custom":
     case "money":
     case "travel":
-      return ["money", "travel"];
-    case "custom":
     case "home":
     case "desk":
     case "workshop":
     case "adhd":
-      return [preset];
+      return BOARD_CIRCLE;
     default: {
       const never: never = preset;
       return never;
@@ -531,6 +596,18 @@ export function swipeScreens(preset: HomePresetId): HomePresetId[] {
 export function swipeStartIndex(preset: HomePresetId): number {
   const index = swipeScreens(preset).indexOf(preset);
   return index < 0 ? 0 : index;
+}
+
+export function swipeWrap(index: number, count: number): number {
+  if (count <= 0) return 0;
+  return ((index % count) + count) % count;
+}
+
+export function swipePages(preset: HomePresetId): HomePresetId[] {
+  const circle = swipeScreens(preset);
+  const first = circle[0];
+  if (!first) return circle;
+  return [...circle, first];
 }
 
 /** Money, Travel, and Home are fixed boards. The dashed customize box stays on the boards the user arranges. */

@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accents, radius, THEMES, useTheme, bindLookStyles } from "@/src/theme";
 import { geocode } from "@/src/core/online";
+import { locationPhase, placeFromFix } from "@/src/core/locationAsk";
+import * as Location from "expo-location";
 import type { ModuleId, Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
@@ -18,6 +20,8 @@ import { allowLockScreenChannel, notifyOnce, scheduledCount } from "@/src/core/n
 import { shownInDecoy } from "@/src/core/profiles";
 import { emergencyLockCard } from "@/src/core/featureAccess";
 import { enableFeature } from "@/src/native/enableFeature";
+import { openNotificationListener, requestNotificationAccess } from "@/src/native/android";
+import { bankAccessPrompt } from "@/src/core/bankAccess";
 import { forgetCloudFile, hideLockCard, installedVersion, showLockCard } from "@/src/native/android";
 import { storeLockedCopy } from "@/src/native/cloudFile";
 import { secureStorage } from "@/src/utils/storage";
@@ -102,8 +106,24 @@ export default function Settings() {
   const [exportEncrypt, setExportEncrypt] = useState(true);
   const pwStrength = passwordStrength(exportPw);
   const sizeKb = (JSON.stringify(db).length / 1024).toFixed(1);
+  const prompt = bankAccessPrompt();
+  const [bankNote, setBankNote] = useState("");
   const [city, setCity] = useState("");
   const [cityMatches, setCityMatches] = useState<Place[]>([]);
+  const locationOnce = locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead });
+  useEffect(() => {
+    if (locationOnce !== "read") return;
+    let cancelled = false;
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }).then((pos) => {
+      if (cancelled) return;
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      setSettings({ locationRead: { lat, lon }, homeCity: placeFromFix({ lat, lon }, "This phone"), locationAsked: true, locationGranted: true });
+    }).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [locationOnce, setSettings]);
   const [showLog, setShowLog] = useState(false);
   const [showExports, setShowExports] = useState(false);
   const [diag, setDiag] = useState<null | { scheduled: number }>(null);
@@ -182,6 +202,16 @@ export default function Settings() {
               </Press>
             ))}
             {s.homeCity ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Current: {s.homeCity.name}. The forecast uses about 1 km, not your street, and prefers a land reading.</T> : null}
+            {locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead }) === "ask" ? (
+              <Button small label="Use this phone's location once" testID="settings-location-once" onPress={async () => {
+                const result = await Location.requestForegroundPermissionsAsync();
+                if (!result.granted) setSettings({ locationAsked: true, locationGranted: false });
+                else setSettings({ locationAsked: true, locationGranted: true });
+              }} style={{ marginTop: 8 }} />
+            ) : null}
+            {locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead }) === "stop" && s.locationAsked && !s.locationGranted ? (
+              <T muted style={{ fontSize: 12, marginTop: 6 }}>Location stays off. Nucleus cannot turn the phone's location switch on or off.</T>
+            ) : null}
             {!s.online ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Turn Online on to search for a city.</T> : null}
           </View>
           <Row icon="format-list-bulleted" label="Network log" sub={`${db.netlog.length} request${db.netlog.length === 1 ? "" : "s"} ever made`} testID="settings-netlog-button" onPress={() => setShowLog(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
@@ -317,6 +347,7 @@ export default function Settings() {
           ) : null}
           <Row icon="content-copy" label="Clear clipboard after copying" sub="Wipes copied amounts after a minute" right={<Switch testID="settings-clipboard-switch" value={s.clipboardAutoClear} onValueChange={(v) => setSettings({ clipboardAutoClear: v })} {...sw} />} />
           <Row icon="eye-off-outline" label="Privacy mode" sub="Mask every amount until tapped" right={<Switch testID="settings-privacy-switch" value={s.privacyMode} onValueChange={(v) => setSettings({ privacyMode: v })} {...sw} />} />
+          <Row icon="shield-account-outline" label="Privacy and usage" sub="What stays on this phone" testID="settings-privacy-usage" onPress={() => router.push("/privacy")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="cellphone-screenshot" label="Block screenshots & hide in recents" sub="Installed app only" right={<Switch testID="settings-screenshot-switch" value={s.blockScreenshots} onValueChange={(v) => setSettings({ blockScreenshots: v })} {...sw} />} />
         </Section>
 
@@ -348,11 +379,19 @@ export default function Settings() {
             await allowLockScreenChannel();
             setSettings({ lockAlerts: true });
           }} {...sw} />} />
-          <Row icon="message-text-outline" label="Bank texts" sub="Debit, credit, and balance lines come from bank notifications on this phone. Codes are dropped." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={async (v) => {
-            if (!v) return setSettings({ smsInbox: false });
-            if (!(await enableFeature("sms-inbox"))) return toast("Notification access is off, so bank lines stay off.", "alert-circle-outline");
-            setSettings({ smsInbox: true });
+          <Row icon="message-text-outline" label="Bank texts" sub="Debit, credit, and balance lines come from bank notifications on this phone. Codes are dropped. Opens notification access." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={(v) => {
+            if (!v) {
+              setBankNote("");
+              return setSettings({ smsInbox: false });
+            }
+            if (requestNotificationAccess()) {
+              setBankNote(prompt.line);
+              return setSettings({ smsInbox: true });
+            }
+            const opened = openNotificationListener();
+            setBankNote(opened === "blocked" ? `${prompt.line} ${prompt.blockedLine}` : prompt.line);
           }} {...sw} />} />
+          {bankNote ? <T testID="settings-sms-note" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>{bankNote}</T> : null}
         </Section>
 
         <Section title="Home screen">

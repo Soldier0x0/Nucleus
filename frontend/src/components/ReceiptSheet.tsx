@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import { useStore } from "@/src/core/store";
 import { EXPENSE_CATEGORIES } from "@/src/core/defaults";
 import { parseReceipt } from "@/src/core/receipt";
-import { cropToPage, flagMismatch, readReceiptWords, receiptCounts } from "@/src/core/receiptPage";
+import { cropToPage, readReceiptWords, receiptCounts, receiptMismatchLine } from "@/src/core/receiptPage";
 import { todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
 import { Button, ChipRow, Chip, T } from "./ui";
@@ -28,7 +28,7 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
   const parsed = parseReceipt(body);
   const words = readReceiptWords(body);
   const debit = db.txns.find((row) => row.type === "expense" && !row.transfer && row.date === (words.date ?? date));
-  const mismatch = words.amount != null && debit ? flagMismatch(words.amount, debit.amount) : false;
+  const mismatch = words.amount != null && debit ? receiptMismatchLine(words.amount, debit.amount) : null;
   const page = cropToPage({ w: 1000, h: 1400 }, { x: 0, y: 0, w: 1000, h: 1400 });
   const value = Number(amount);
   const ready = value > 0;
@@ -98,7 +98,7 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
       </ChipRow>
       {parsed.amount == null ? <T muted style={{ fontSize: 12, marginTop: 8 }}>No total found yet. You can still type the amount.</T> : <T style={{ fontSize: 12, marginTop: 8 }} testID="receipt-words">{words.shop || "Shop"} · {words.amount} · {words.date}</T>}
       <T muted style={{ fontSize: 12, marginTop: 8 }} testID="receipt-crop">The photo is cropped to the page ({page.w}×{page.h}), not a small inset.</T>
-      {mismatch ? <T style={{ fontSize: 12, marginTop: 8 }} testID="receipt-mismatch">This receipt does not match the debit on the same day.</T> : null}
+      {mismatch ? <T style={{ fontSize: 12, marginTop: 8 }} testID="receipt-mismatch">{mismatch}</T> : null}
       <View />
     </Sheet>
   );

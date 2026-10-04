@@ -6,6 +6,7 @@ import { vehicleOwnership } from "@/src/core/life";
 import type { Vehicle, WearPart } from "@/src/core/types";
 import { fmtDate, money, num, parseNum, uid } from "@/src/core/format";
 import { currentOdometer } from "@/src/core/intelligence";
+import { costPerKmLine, fuelAgainstTank } from "@/src/core/vehicleMath";
 import { Button, Card, Chip, Eyebrow, T } from "./ui";
 import { Sheet } from "./Sheet";
 import { DateField, Field } from "./inputs";
@@ -29,6 +30,9 @@ export function VehicleCare({ vehicle }: { vehicle: Vehicle }) {
   const odo = currentOdometer(db, vehicle);
   const unit = db.settings.distanceUnit;
   const cur = db.settings.currency;
+  const perKmLine = own ? costPerKmLine(own.perKm, unit) : null;
+  const lastFill = db.fuel.filter((row) => row.vehicleId === vehicle.id).sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer)[0];
+  const tankLine = vehicle.tankLitres && lastFill ? fuelAgainstTank(lastFill.litres, vehicle.tankLitres).line : "";
 
   return (
     <>
@@ -39,7 +43,8 @@ export function VehicleCare({ vehicle }: { vehicle: Vehicle }) {
           <T muted style={{ fontSize: 12, marginTop: 4 }}>
             Fuel {money(own.fuel, cur)} · service {money(own.service, cur)}
             {own.other > 0 ? ` · other ${money(own.other, cur)}` : ""}
-            {own.distance > 0 ? ` · ${money(own.perKm, cur, { decimals: true })} / ${unit}` : ""}
+            {perKmLine ? ` · ${perKmLine}` : ""}
+            {tankLine ? ` · ${tankLine}` : ""}
           </T>
         </Card>
       ) : null}

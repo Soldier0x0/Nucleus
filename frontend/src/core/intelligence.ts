@@ -6,6 +6,7 @@ import type { DB, Vehicle } from "./types";
 import { homeSchedule, readiness, tripStatus } from "./domains";
 import { lifeAlerts } from "./life";
 import { addDays, addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
+import { serviceLeftLine } from "./vehicleMath";
 
 export type Fact = { label: string; value: string };
 export type Why = { summary: string; facts: Fact[]; rule: string; ranking: string };
@@ -203,7 +204,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
           module: "vehicles",
           severity: sev,
           icon: "wrench-clock",
-          title: s.remaining <= 0 ? `${v.name} service overdue by ${num(-s.remaining, 0)} km` : `${v.name} service due in ~${num(s.remaining, 0)} km`,
+          title: `${v.name}: ${serviceLeftLine(s.remaining)}`,
           subtitle: `${num(s.since, 0)} km since last service`,
           score: SEV_WEIGHT[sev] + Math.min(99, Math.max(0, -s.remaining / 10 + 50)),
           route: `/vehicles/${v.id}`,
@@ -380,7 +381,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         subtitle: `Every ${x.p.everyMonths} months · last ${fmtDate(x.p.lastDone)}`,
         score: SEV_WEIGHT[sev] + Math.min(60, Math.max(0, -x.days + 20)),
         route: "/home",
-        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, and still listed after that date.", ranking: rankText(sev, "due date") },
+        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, urgent once that day has passed.", ranking: rankText(sev, "due date") },
       });
     }
     for (const c of db.chores) {
@@ -393,7 +394,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         module: "home",
         severity: sev,
         icon: "broom",
-        title: d < 0 ? `${c.name} overdue by ${-d} days` : d === 0 ? `${c.name} is due today` : `${c.name} is due tomorrow`,
+        title: d < 0 ? `${c.name} was due ${-d} days ago` : d === 0 ? `${c.name} is due today` : `${c.name} is due tomorrow`,
         subtitle: [c.room, c.assignee, `every ${c.everyDays} days`].filter(Boolean).join(" · "),
         score: SEV_WEIGHT[sev] + Math.min(40, Math.max(0, -d + 10)),
         route: "/home",

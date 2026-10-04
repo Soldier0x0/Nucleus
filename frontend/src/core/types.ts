@@ -8,6 +8,8 @@ export type PackItem = { id: string; name: string; category: string; done: boole
 export type ItineraryItem = { id: string; date: string; time: string; title: string; place?: string; note?: string; stop?: "fuel" | "snack" };
 export type TripDoc = { id: string; name: string; have: boolean; expiry?: string };
 export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string; elevation?: number };
+export type TripMode = "personal" | "public";
+export type TransitKind = "metro" | "train" | "cab" | "bus";
 export type Trip = {
   id: string;
   name: string;
@@ -23,6 +25,9 @@ export type Trip = {
   createdAt: string;
   /** Weather was saved on this phone before leaving. */
   weatherSaved?: boolean;
+  weatherReminded?: boolean;
+  mode?: TripMode;
+  transit?: TransitKind;
 };
 export type MaintPlan = { id: string; name: string; everyMonths: number; lastDone: string; cost?: number };
 export type Appliance = {
@@ -72,6 +77,7 @@ export type Vehicle = {
   body?: VehicleBody;
   initialOdometer: number;
   serviceIntervalKm: number;
+  tankLitres?: number;
   insuranceExpiry?: string; // YYYY-MM-DD
   pucExpiry?: string;
   createdAt: string;
@@ -208,6 +214,9 @@ export type Settings = {
   dualTone: boolean;
   online: boolean;
   homeCity?: Place;
+  locationAsked: boolean;
+  locationGranted: boolean;
+  locationRead?: { lat: number; lon: number };
   accent: string;
   density: "comfortable" | "dense";
   privacyMode: boolean;

@@ -104,6 +104,12 @@ export function applianceOwnership(db: DB, applianceId: string) {
   return { price, repairs, total: price + repairs };
 }
 
+export function dueDayLabel(days: number): string {
+  if (days < 0) return `was due ${-days} days ago`;
+  if (days === 0) return "today";
+  return `${days} days`;
+}
+
 export type HealthIssue = { id: string; title: string; detail: string };
 
 export function dataHealth(db: DB): HealthIssue[] {
@@ -126,8 +132,17 @@ export function dataHealth(db: DB): HealthIssue[] {
   for (const t of db.txns) {
     if (t.type !== "expense") continue;
     const key = `${t.date}|${t.amount}|${t.category}`;
-    if (seen.has(key)) out.push({ id: `dup:${t.id}`, title: `Two ${t.category} expenses on ${t.date}`, detail: `Both are ${t.amount}. One of them may have been entered twice.` });
-    else seen.set(key, t.id);
+    const priorId = seen.get(key);
+    if (priorId) {
+      const prior = db.txns.find((row) => row.id === priorId)?.note ?? "";
+      const notes = [prior, t.note ?? ""].filter(Boolean);
+      const named = notes.length ? notes.join(" · ") : "Could not tell the note";
+      out.push({
+        id: `dup:${t.id}`,
+        title: `Two ${t.category} expenses on ${t.date} · ${named}`,
+        detail: `Both are ${t.amount}. ${named}.`,
+      });
+    } else seen.set(key, t.id);
   }
   return out;
 }

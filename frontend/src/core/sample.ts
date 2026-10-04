@@ -282,12 +282,43 @@ function sameBudget(a: Budget, b: Budget): boolean {
   return left.every((key, index) => key === right[index] && a.categories[key] === b.categories[key]);
 }
 
+const FUEL_MIRROR = /^(.+) · (\d+(?:\.\d+)?) L$/;
+const SERVICE_MIRROR = /^(.+) · (General service|Engine oil|Tyres|Battery|Brakes|Repair|Maintenance)$/;
+
+function mirrorVehicleName(note: string): string | null {
+  const fuel = FUEL_MIRROR.exec(note);
+  if (fuel) return fuel[1];
+  const service = SERVICE_MIRROR.exec(note);
+  if (service) return service[1];
+  return null;
+}
+
+function budgetAfterDemo(db: DB): Budget | undefined {
+  if (!sameBudget(db.budget, SAMPLE_BUDGET)) return undefined;
+  return db.settings.sampleBudget ?? { monthly: 0, categories: {} };
+}
+
+function leftoverMirrorIds(db: DB): Set<string> {
+  const names = new Set(db.vehicles.map((vehicle) => vehicle.name));
+  const ids = new Set<string>();
+  for (const txn of db.txns) {
+    if (txn.type !== "expense" || !txn.note) continue;
+    const name = mirrorVehicleName(txn.note);
+    if (!name || names.has(name)) continue;
+    ids.add(txn.id);
+  }
+  return ids;
+}
+
 /** Remove demo rows. Rows added by hand stay, including a fill logged on the demo vehicle. */
 export function withoutSampleData(db: DB): DB {
+  const mirrors = leftoverMirrorIds(db);
   const tagged = new Set(db.settings.sampleIds ?? []);
   if (tagged.size) {
-    const restore = db.settings.sampleBudget && sameBudget(db.budget, SAMPLE_BUDGET) ? db.settings.sampleBudget : undefined;
-    return dropSampleRows(db, tagged, restore);
+    for (const id of mirrors) tagged.add(id);
+    return dropSampleRows(db, tagged, budgetAfterDemo(db));
   }
-  return dropSampleRows(db, legacySampleIds(db), undefined);
+  const drop = legacySampleIds(db);
+  for (const id of mirrors) drop.add(id);
+  return dropSampleRows(db, drop, budgetAfterDemo(db));
 }

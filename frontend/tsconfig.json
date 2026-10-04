@@ -28,6 +28,7 @@
     "src/core/presets.test.ts",
     "src/core/proactive.test.ts",
     "src/core/layouts.test.ts",
-    "src/core/v063.test.ts"
+    "src/core/v063.test.ts",
+    "src/core/v07.test.ts"
   ]
 }

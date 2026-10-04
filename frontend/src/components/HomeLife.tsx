@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { UTILITY_KINDS, choreDueDate, completeChore, roomSummaries, utilityEstimate } from "@/src/core/domains";
+import { dueDayLabel } from "@/src/core/life";
 import type { Chore, HomeSpec, UtilityBill, UtilityKind } from "@/src/core/types";
 import { fmtDate, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Segmented, StatusBadge, T } from "@/src/components/ui";
@@ -128,7 +129,7 @@ export function HomeLife({ showEmpty, onAddAppliance }: { showEmpty: boolean; on
         {db.chores.length === 0 ? <T muted>Recurring jobs, with an optional room and person.</T> : null}
         {db.chores.map((c) => {
           const d = choreDueDate(c, today);
-          const dueLabel = d < 0 ? `${-d}d late` : d === 0 ? "today" : `${d}d`;
+          const dueLabel = dueDayLabel(d);
           return (
             <View key={c.id} testID={`chore-${c.id}`} style={{ flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, marginTop: 8 }}>
               <StatusBadge severity={d < 0 ? "urgent" : d <= 1 ? "upcoming" : "ok"} />

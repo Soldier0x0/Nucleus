@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipeScreens, swipeStartIndex, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tileModule, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -139,9 +139,14 @@ test("two small items share a row and a large item stays full width", () => {
   assert.equal(travelRows[1]?.items.every((item) => item.size === "small"), true);
 });
 
-test("custom uses more than one column when the board is small", () => {
-  assert.ok(columnsFor("custom", 3) >= 2);
-  assert.equal(columnsFor("custom", 1), 1);
+test("every board has two columns and a large card keeps a full row", () => {
+  assert.equal(columnsFor("custom", 1), 2);
+  assert.equal(columnsFor("adhd", 1), 2);
+  assert.equal(columnsFor("home", 4), 2);
+  const money = rowsFor(presetItems("money"));
+  assert.deepEqual(rowFlex(money[0]), [{ id: "balance", span: 2 }]);
+  assert.deepEqual(rowFlex(money[1]).map((item) => item.span), [1, 1]);
+  assert.deepEqual(rowFlex({ items: [{ id: "notes", size: "small" }] }), [{ id: "notes", span: 1 }]);
 });
 
 test("ADHD mode renders a single next action and does not wipe stored data", () => {
@@ -217,7 +222,12 @@ test("every preset shows its tiles when there is no data", () => {
     const shown = visiblePresetItems(db, preset);
     const catalog = presetItems(preset);
     assert.ok(catalog.length > 4, preset);
-    assert.deepEqual(shown.map((item) => item.id), catalog.map((item) => item.id));
+    const on = catalog.filter((item) => {
+      const moduleId = tileModule(item.id);
+      if (!moduleId) return true;
+      return db.settings.modules.find((row) => row.id === moduleId)?.enabled !== false;
+    });
+    assert.deepEqual(shown.map((item) => item.id), on.map((item) => item.id));
     assert.equal(shown[0]?.size, "large");
   }
   const custom = visiblePresetItems(db, "custom").map((item) => item.id);
@@ -318,7 +328,7 @@ test("money and travel show different tiles, and each title names that tile", ()
   }
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
   const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
-  assert.match(home, /<SwipeHome preset=\{preset\} \/>/);
+  assert.match(home, /<SwipeHome[\s\S]*preset=\{preset\}/);
   assert.match(modes, /homePresetTiles\(/);
   assert.match(modes, /presetTileTitle\(/);
   const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function AdhdPanel"));
@@ -328,16 +338,17 @@ test("money and travel show different tiles, and each title names that tile", ()
   assert.equal(/contentOffset=\{\{\s*x:\s*0/.test(swipe), false);
 });
 
-test("money and travel swipe as two different boards", () => {
-  assert.deepEqual(swipeScreens("money"), ["money", "travel"]);
-  assert.deepEqual(swipeScreens("travel"), ["money", "travel"]);
-  assert.equal(swipeStartIndex("money"), 0);
-  assert.equal(swipeStartIndex("travel"), 1);
-  assert.deepEqual(swipeScreens("home"), ["home"]);
-  assert.deepEqual(swipeScreens("adhd"), ["adhd"]);
-  assert.deepEqual(swipeScreens("desk"), ["desk"]);
-  assert.deepEqual(swipeScreens("workshop"), ["workshop"]);
-  assert.deepEqual(swipeScreens("custom"), ["custom"]);
+test("every board is one circle and the last wraps to the first", () => {
+  const circle = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"] as const;
+  for (const preset of circle) assert.deepEqual(swipeScreens(preset), [...circle]);
+  assert.equal(swipeStartIndex("custom"), 0);
+  assert.equal(swipeStartIndex("money"), 1);
+  assert.equal(swipeStartIndex("travel"), 2);
+  assert.equal(swipeStartIndex("adhd"), 6);
+  assert.equal(swipeWrap(circle.length, circle.length), 0);
+  assert.equal(swipeScreens("adhd")[swipeWrap(swipeScreens("adhd").length, swipeScreens("adhd").length)], "custom");
+  assert.equal(swipePages("home").at(-1), "custom");
+  assert.equal(swipePages("home").length, circle.length + 1);
 });
 
 test("travel opens on the travel tiles and money opens on the money tiles", () => {

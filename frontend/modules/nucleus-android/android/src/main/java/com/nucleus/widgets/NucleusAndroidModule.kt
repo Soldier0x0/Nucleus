@@ -203,12 +203,17 @@ class NucleusAndroidModule : Module() {
 
     Function("notificationAccess") {
       val ctx = appContext.reactContext ?: return@Function false
-      if (bankListenerEnabled(ctx)) return@Function true
+      bankListenerEnabled(ctx)
+    }
+
+    Function("openNotificationListener") {
+      val ctx = appContext.reactContext ?: return@Function "blocked"
       try {
         ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        "opened"
       } catch (_: Exception) {
+        "blocked"
       }
-      false
     }
 
     AsyncFunction("readSms") {

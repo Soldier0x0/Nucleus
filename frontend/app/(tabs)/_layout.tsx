@@ -1,5 +1,6 @@
-import React from "react";
-import { Platform } from "react-native";
+import React, { useRef } from "react";
+import { Animated, Platform, Pressable, type GestureResponderEvent } from "react-native";
+import { tabRipple } from "@/src/core/tabRipple";
 import { Tabs } from "expo-router/js-tabs";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { fonts, useTheme } from "@/src/theme";
@@ -7,6 +8,25 @@ import { usesNativeTabs } from "@/src/navigation";
 import { Icon } from "@/src/components/ui";
 import { useStore } from "@/src/core/store";
 import { visibleAttention } from "@/src/core/attention";
+
+function TabButton({ onPressIn, children, ...rest }: { onPressIn?: ((event: GestureResponderEvent) => void) | null; children?: React.ReactNode } & Record<string, unknown>) {
+  const ripple = tabRipple();
+  const splash = useRef(new Animated.Value(0)).current;
+  return (
+    <Pressable
+      {...rest}
+      android_ripple={{ radius: ripple.radius, borderless: false }}
+      onPressIn={(event) => {
+        splash.setValue(1);
+        Animated.timing(splash, { toValue: 0, duration: ripple.durationMs, useNativeDriver: true }).start();
+        onPressIn?.(event);
+      }}
+    >
+      <Animated.View pointerEvents="none" style={{ position: "absolute", alignSelf: "center", width: ripple.radius * 2, height: ripple.radius * 2, borderRadius: ripple.radius, opacity: splash, backgroundColor: "rgba(0,0,0,0.16)" }} />
+      {children}
+    </Pressable>
+  );
+}
 
 export default function TabsLayout() {
   const { colors, look } = useTheme();
@@ -45,6 +65,7 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: colors.surfaceSecondary, borderTopColor: colors.border, ...(Platform.OS === "web" ? { height: 64 } : {}) },
         tabBarItemStyle: { alignSelf: "center" },
         tabBarLabelStyle: { fontFamily: look.plain ? fonts.text : fonts.textSemi, fontSize: look.typeScale === 1 ? 11 : Math.round(11 * look.typeScale) },
+        tabBarButton: (props) => <TabButton {...props} />,
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />

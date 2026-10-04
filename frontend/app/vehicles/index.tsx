@@ -7,6 +7,7 @@ import { useStore } from "@/src/core/store";
 import { vehicleStats } from "@/src/core/intelligence";
 import { fuelLabel, vehicleBody } from "@/src/core/life";
 import { num } from "@/src/core/format";
+import { serviceLeftLine } from "@/src/core/vehicleMath";
 import { Header } from "@/src/components/Header";
 import { VehicleArt } from "@/src/components/VehicleArt";
 import { Button, Card, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
@@ -56,7 +57,7 @@ export default function Vehicles() {
                 <View style={{ marginTop: 12 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                     <T v="caption" muted>Service cycle</T>
-                    <T v="caption">{st.service.remaining > 0 ? `${num(st.service.remaining, 0)} left` : "overdue"}</T>
+                    <T v="caption">{serviceLeftLine(st.service.remaining)}</T>
                   </View>
                   <Bar value={st.service.since} max={st.service.interval} />
                 </View>

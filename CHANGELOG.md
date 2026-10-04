@@ -8,6 +8,21 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.7
+
+Home, travel, money, and the cycle calendar.
+
+- Leftover Activa fuel and service money copies are removed even when the sample list is empty and the Activa is already gone. Notes such as "Activa · 5.6 L" and "Activa · Engine oil" go. Income, other expenses, and your own bike stay. The 45000 demo budget is put back to the budget from before the demo. A repeated expense names its note.
+- Every home board swipes in a circle, and the last board wraps to the first. Every board has two columns. A card with more information keeps a full row. A module turned off in Modules is hidden on the home screen. The records stay.
+- Public transport is its own trip, with metro, train, cab or taxi, and bus. Weather can ask once for location, read it, then stop. The app cannot turn the phone's location switch on or off.
+- Money shows the category that grew the most, this month versus last month. A personal vehicle shows cost per kilometer, fuel against the tank, and the km left before service.
+- After two of your own cycles, the calendar shows your typical length and how this one compares. The forecast stays labeled a guess. A receipt that does not match the bank debit is flagged. Before a trip, if no weather is saved, one reminder asks you to save it. Stops you marked on a previous trip can be used again.
+- The cycle calendar lets you enter past period dates and remembers them. Images and bills swipe, with a gallery, including when one image is open.
+- Privacy and usage says what stays on the phone, what each permission is for, and what never leaves.
+- A real icon change still restarts the app. An unlocked phone does not ask for the thumbprint.
+- A tap on the bottom bar uses a smaller, shorter splash, so it does not leave a large slow circle.
+- The bank-texts switch opens notification access and says to turn Nucleus on. If Android blocks that screen, allow restricted settings from the Nucleus app info menu first. The app does not turn the permission on by itself.
+
 ## v0.6.3
 
 The lock, the emergency card, the locked file, and bank texts.
