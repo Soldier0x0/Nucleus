@@ -27,6 +27,7 @@ import {
   recallAdhdTask,
   rowFlex,
   rememberPreset,
+  resizeHomeTile,
   reviewAdhdDay,
   setAdhdBuddy,
   setAdhdMotion,
@@ -110,6 +111,25 @@ export function PresetGrid({
   };
   const settle = () => {
     onDraggingRef.current?.(false);
+  };
+  const changeWidth = (id: string, shown: "large" | "small", request: "large" | "small" | "flip") => {
+    let size: "large" | "small";
+    switch (request) {
+      case "large":
+      case "small":
+        size = request;
+        break;
+      case "flip":
+        size = shown === "large" ? "small" : "large";
+        break;
+      default: {
+        const unreachable: never = request;
+        return unreachable;
+      }
+    }
+    if (size === shown) return;
+    if (!reduced) LayoutAnimation.configureNext({ duration: 280, update: { type: LayoutAnimation.Types.easeInEaseOut } });
+    update((current) => resizeHomeTile(current, id, size));
   };
   const commitMove = (from: number, to: number) => {
     const id = idsRef.current[from];
@@ -197,6 +217,7 @@ export function PresetGrid({
                   onCommit={commitMove}
                   onLift={() => onDraggingRef.current?.(true)}
                   onSettle={settle}
+                  onResize={(request) => changeWidth(item.id, item.size, request)}
                 >
                   {body}
                 </HeldTile>
@@ -233,6 +254,7 @@ function HeldTile({
   onCommit,
   onLift,
   onSettle,
+  onResize,
   children,
 }: {
   index: number;
@@ -246,6 +268,7 @@ function HeldTile({
   onCommit: (from: number, to: number) => void;
   onLift: () => void;
   onSettle: () => void;
+  onResize: (request: "large" | "small" | "flip") => void;
   children: React.ReactNode;
 }) {
   const tx = useSharedValue(0);
@@ -385,7 +408,47 @@ function HeldTile({
       <GestureDetector gesture={gesture}>
         <Animated.View style={[{ flex: 1 }, style]}>{children}</Animated.View>
       </GestureDetector>
+      <TileWidth onResize={onResize} />
     </View>
+  );
+}
+
+function TileWidth({ onResize }: { onResize: (request: "large" | "small" | "flip") => void }) {
+  const { colors } = useTheme();
+  const api = useRef({
+    end: (_dx: number) => {},
+    flip: () => {},
+  });
+  const callEnd = useRef((dx: number) => api.current.end(dx)).current;
+  const callFlip = useRef(() => api.current.flip()).current;
+  api.current.end = (dx) => {
+    if (dx >= 16) onResize("large");
+    else if (dx <= -16) onResize("small");
+  };
+  api.current.flip = () => onResize("flip");
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .activeOffsetX([-12, 12])
+      .failOffsetY([-18, 18])
+      .onEnd((event) => {
+        runOnJS(callEnd)(event.translationX);
+      });
+    const tap = Gesture.Tap().onEnd((_event, success) => {
+      if (success) runOnJS(callFlip)();
+    });
+    return Gesture.Exclusive(pan, tap);
+  }, [callEnd, callFlip]);
+  return (
+    <GestureDetector gesture={gesture}>
+      <View
+        testID="today-tile-resize"
+        accessibilityRole="button"
+        accessibilityLabel="Make this tile small or wide"
+        style={{ position: "absolute", right: 0, bottom: 0, width: 44, height: 44, alignItems: "flex-end", justifyContent: "flex-end", padding: 6, zIndex: 6 }}
+      >
+        <Icon name="resize-bottom-right" size={16} color={colors.muted} />
+      </View>
+    </GestureDetector>
   );
 }
 

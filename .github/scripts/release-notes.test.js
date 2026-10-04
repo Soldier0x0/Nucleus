@@ -72,7 +72,7 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3"]) {
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4"]) {
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
   assert.match(readReleaseNotes("v0.6", changelogPath), /Empty modules stay hidden/);
@@ -94,7 +94,8 @@ test("the repository changelog records published versions and the cycle calendar
   assert.equal(prepareRelease({ changelog, tag: "v0.7.1" }).publish, true);
   assert.equal(prepareRelease({ changelog, tag: "v0.7.2" }).publish, true);
   assert.equal(prepareRelease({ changelog, tag: "v0.7.3" }).publish, true);
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.4" }), { publish: false, reason: "missing" });
+  assert.equal(prepareRelease({ changelog, tag: "v0.7.4" }).publish, true);
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.5" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8" }), { publish: false, reason: "missing" });
   assert.match(readReleaseNotes("v0.7", changelogPath), /Activa · 5\.6 L/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /last board wraps to the first/);
@@ -126,11 +127,16 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.7.3", changelogPath), /Hold a tile/);
   assert.match(readReleaseNotes("v0.7.3", changelogPath), /rearrange/);
   assert.match(readReleaseNotes("v0.7.3", changelogPath), /motion stays smooth/);
+  assert.match(readReleaseNotes("v0.7.4", changelogPath), /Hold a tile/);
+  assert.match(readReleaseNotes("v0.7.4", changelogPath), /rearrange/);
+  assert.match(readReleaseNotes("v0.7.4", changelogPath), /small or wide/);
+  assert.match(readReleaseNotes("v0.7.4", changelogPath), /sit together/);
+  assert.match(readReleaseNotes("v0.7.4", changelogPath), /short tap/);
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.7.3",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2"],
+      tag: "v0.7.4",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3"],
     }),
   );
 });

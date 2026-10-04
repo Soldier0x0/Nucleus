@@ -676,6 +676,22 @@ export function withTileSizes(db: DB, items: PresetItem[]): PresetItem[] {
   });
 }
 
+/** Saves one tile as small or wide. Order on the board stays as it was. */
+export function resizeHomeTile(db: DB, id: string, size: "large" | "small"): DB {
+  switch (size) {
+    case "large":
+    case "small":
+      break;
+    default: {
+      const unreachable: never = size;
+      return unreachable;
+    }
+  }
+  if (!/^[a-z0-9-]{1,40}$/.test(id)) return db;
+  if (db.settings.tileSizes?.[id] === size) return db;
+  return { ...db, settings: { ...db.settings, tileSizes: { ...(db.settings.tileSizes ?? {}), [id]: size } } };
+}
+
 /** Flips one tile. A second argument is the size on screen when nothing is saved yet. */
 export function toggleTileSize(db: DB, id: string, shown?: "large" | "small"): DB {
   const saved = db.settings.tileSizes?.[id];
