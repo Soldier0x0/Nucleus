@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Switch, TextInput, View } from "react-native";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { ScrollView, Switch, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { presentHome } from "@/src/core/layouts";
 import { useTheme } from "@/src/theme";
@@ -24,6 +24,8 @@ import {
   setAdhdBuddy,
   setAdhdMotion,
   startAdhdTask,
+  swipeScreens,
+  swipeStartIndex,
   typeAdhdDraft,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
@@ -171,6 +173,49 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
         </View>
       ))}
     </View>
+  );
+}
+
+export function SwipeHome({ preset }: { preset: "money" | "travel" }) {
+  const { width } = useWindowDimensions();
+  const { sp } = useTheme();
+  const { setSettings } = useStore();
+  const pages = swipeScreens(preset);
+  const pageW = Math.max(280, Math.min(width, 720) - sp.lg * 2);
+  const scrollRef = useRef<ScrollView>(null);
+  const fromSwipe = useRef(false);
+  const start = swipeStartIndex(preset);
+
+  useLayoutEffect(() => {
+    if (fromSwipe.current) {
+      fromSwipe.current = false;
+      return;
+    }
+    scrollRef.current?.scrollTo({ x: start * pageW, animated: false });
+  }, [start, pageW]);
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      testID="today-swipe-home"
+      contentOffset={{ x: swipeStartIndex(preset) * pageW, y: 0 }}
+      onMomentumScrollEnd={(event) => {
+        const index = Math.round(event.nativeEvent.contentOffset.x / pageW);
+        const next = pages[index];
+        if (!next || next === preset) return;
+        fromSwipe.current = true;
+        setSettings({ homePreset: next });
+      }}
+    >
+      {pages.map((page) => (
+        <View key={page} style={{ width: pageW }}>
+          <PresetGrid preset={page} />
+        </View>
+      ))}
+    </ScrollView>
   );
 }
 

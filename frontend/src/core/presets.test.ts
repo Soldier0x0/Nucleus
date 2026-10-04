@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, snoozeAdhdReminder, startAdhdTask, swipeScreens, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipeScreens, swipeStartIndex, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -318,17 +318,26 @@ test("money and travel show different tiles, and each title names that tile", ()
   }
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
   const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
-  assert.equal(home.includes("SwipeHome"), false);
-  assert.equal(modes.includes("swipeScreens("), false);
+  assert.match(home, /<SwipeHome preset=\{preset\} \/>/);
   assert.match(modes, /homePresetTiles\(/);
   assert.match(modes, /presetTileTitle\(/);
+  const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function AdhdPanel"));
+  assert.match(swipe, /swipeScreens\(/);
+  assert.match(swipe, /swipeStartIndex\(preset\)/);
+  assert.match(swipe, /contentOffset/);
+  assert.equal(/contentOffset=\{\{\s*x:\s*0/.test(swipe), false);
 });
 
-test("money and travel each stay on their own board", () => {
-  assert.deepEqual(swipeScreens("money"), ["money"]);
-  assert.deepEqual(swipeScreens("travel"), ["travel"]);
+test("money and travel swipe as two different boards", () => {
+  assert.deepEqual(swipeScreens("money"), ["money", "travel"]);
+  assert.deepEqual(swipeScreens("travel"), ["money", "travel"]);
+  assert.equal(swipeStartIndex("money"), 0);
+  assert.equal(swipeStartIndex("travel"), 1);
   assert.deepEqual(swipeScreens("home"), ["home"]);
   assert.deepEqual(swipeScreens("adhd"), ["adhd"]);
+  assert.deepEqual(swipeScreens("desk"), ["desk"]);
+  assert.deepEqual(swipeScreens("workshop"), ["workshop"]);
+  assert.deepEqual(swipeScreens("custom"), ["custom"]);
 });
 
 test("travel opens on the travel tiles and money opens on the money tiles", () => {
@@ -337,12 +346,21 @@ test("travel opens on the travel tiles and money opens on the money tiles", () =
   const money = homePresetTiles(db, "money", "real").map((item) => item.id);
   assert.deepEqual(travel.slice(0, 5), ["route", "mileage", "fuel", "papers", "vehicle"]);
   assert.deepEqual(money.slice(0, 5), ["balance", "spending", "charts", "receipts", "bills"]);
-  assert.deepEqual(swipeScreens("travel"), ["travel"]);
-  assert.notEqual(swipeScreens("travel")[0], "money");
-  assert.deepEqual(swipeScreens("money"), ["money"]);
+  assert.equal(swipeScreens("travel")[swipeStartIndex("travel")], "travel");
+  assert.equal(swipeScreens("money")[swipeStartIndex("money")], "money");
+  assert.notEqual(swipeScreens("travel")[swipeStartIndex("travel")], "money");
+});
+
+test("money, travel, and home do not show the dashed customize box", () => {
+  assert.equal(showsCustomizeHome("money"), false);
+  assert.equal(showsCustomizeHome("travel"), false);
+  assert.equal(showsCustomizeHome("home"), false);
+  assert.equal(showsCustomizeHome("custom"), true);
+  assert.equal(showsCustomizeHome("desk"), true);
+  assert.equal(showsCustomizeHome("workshop"), true);
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
-  assert.match(home, /<PresetGrid preset=\{preset\} \/>/);
-  assert.equal(home.includes("SwipeHome"), false);
+  assert.match(home, /showsCustomizeHome\(preset\)/);
+  assert.match(home, /borderStyle: "dashed"/);
 });
 
 test("the timer shows time already spent and does not count down", () => {

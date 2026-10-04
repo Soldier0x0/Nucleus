@@ -509,8 +509,47 @@ export function tileHasData(db: DB, id: string): boolean {
   }
 }
 
+/** Money and Travel share a pager. The opened preset is the page that shows first. */
 export function swipeScreens(preset: HomePresetId): HomePresetId[] {
-  return [preset];
+  switch (preset) {
+    case "money":
+    case "travel":
+      return ["money", "travel"];
+    case "custom":
+    case "home":
+    case "desk":
+    case "workshop":
+    case "adhd":
+      return [preset];
+    default: {
+      const never: never = preset;
+      return never;
+    }
+  }
+}
+
+export function swipeStartIndex(preset: HomePresetId): number {
+  const index = swipeScreens(preset).indexOf(preset);
+  return index < 0 ? 0 : index;
+}
+
+/** Money, Travel, and Home are fixed boards. The dashed customize box stays on the boards the user arranges. */
+export function showsCustomizeHome(preset: HomePresetId): boolean {
+  switch (preset) {
+    case "money":
+    case "travel":
+    case "home":
+      return false;
+    case "custom":
+    case "desk":
+    case "workshop":
+    case "adhd":
+      return true;
+    default: {
+      const never: never = preset;
+      return never;
+    }
+  }
 }
 
 const LARGE_TILES = new Set(["attention", "trip", "budget", "vehicle"]);
