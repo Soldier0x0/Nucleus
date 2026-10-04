@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, Switch, TextInput, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
+import { presentHome } from "@/src/core/layouts";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { balanceOverTime, monthFlow, repeatingBills } from "@/src/core/moneyDesk";
@@ -14,17 +15,16 @@ import {
   finishAdhdTask,
   lastPresetThing,
   parkAdhdTask,
+  presetBoard,
   presetThingLabel,
   recallAdhdTask,
   rememberPreset,
   reviewAdhdDay,
-  rowsFor,
   setAdhdBuddy,
   setAdhdMotion,
   startAdhdTask,
   swipeScreens,
   typeAdhdDraft,
-  visiblePresetItems,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
 import type { HomePresetId } from "@/src/core/types";
@@ -129,11 +129,10 @@ function slotCopy(db: ReturnType<typeof useStore>["db"], id: string): { title: s
 }
 
 export function PresetGrid({ preset }: { preset: HomePresetId }) {
-  const { db, update } = useStore();
+  const { db, update, session } = useStore();
   const router = useRouter();
-  const { sp } = useTheme();
-  const items = visiblePresetItems(db, preset);
-  const rows = rowsFor(items);
+  const { sp, layout } = useTheme();
+  const presented = presentHome(layout.layout, presetBoard(db, preset, session));
   const lastId = lastPresetThing(db, preset);
   const lastLabel = presetThingLabel(db, lastId);
   const routeForRemembered = (id: string) => {
@@ -154,13 +153,13 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
           <T>{lastLabel}</T>
         </Card>
       ) : null}
-      {rows.map((row, index) => (
+      {presented.rows.map((row, index) => (
         <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
           {row.items.map((item) => {
             const copy = slotCopy(db, item.id);
             return (
-              <View key={item.id} style={{ flex: 1 }}>
-                <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, copy.route)}>
+              <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
+                <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, copy.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
                   <T muted>{copy.title}</T>
                   <T v={item.size === "large" ? "h2" : "label"} numberOfLines={2}>{copy.line}</T>
                 </Card>

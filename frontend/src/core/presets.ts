@@ -1,4 +1,4 @@
-import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId } from "./types";
+import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, TileId } from "./types";
 import { uid } from "./format";
 import { repeatingBills } from "./moneyDesk";
 
@@ -274,8 +274,85 @@ export function presetItemHasData(db: DB, id: string): boolean {
   }
 }
 
+const DECOY_HIDDEN_TILES = new Set([
+  "cycle",
+  "balance",
+  "spending",
+  "charts",
+  "receipts",
+  "bills",
+  "budget",
+  "subscriptions",
+  "funds",
+  "debts",
+  "categories",
+  "networth",
+]);
+
+/** Every built-in board lists its own tiles. Empty records stay on the board as placeholders. */
 export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
-  return presetItems(preset).filter((item) => presetItemHasData(db, item.id));
+  switch (preset) {
+    case "custom": {
+      const board = db.settings.boards.find((row) => row.id === db.settings.activeBoardId);
+      const ids = board ? board.tiles : db.settings.tiles.filter((tile) => tile.enabled).map((tile) => tile.id);
+      return customItems(ids);
+    }
+    case "money":
+    case "travel":
+    case "home":
+    case "desk":
+    case "workshop":
+    case "adhd":
+      return presetItems(preset);
+    default: {
+      const never: never = preset;
+      return never;
+    }
+  }
+}
+
+/** The decoy keeps the same boards, without cycle or money tiles. */
+export function presetBoard(db: DB, preset: HomePresetId, session: "real" | "decoy"): PresetItem[] {
+  const items = visiblePresetItems(db, preset);
+  switch (session) {
+    case "real":
+      return items;
+    case "decoy":
+      return items.filter((item) => !DECOY_HIDDEN_TILES.has(item.id));
+    default: {
+      const never: never = session;
+      return never;
+    }
+  }
+}
+
+export function tilePlaceholder(id: string): { title: string; line: string; route: string } {
+  const tile = id as TileId;
+  switch (tile) {
+    case "attention":
+      return { title: "Attention", line: "Nothing open", route: "/(tabs)/attention" };
+    case "weather":
+      return { title: "Weather", line: "Home city", route: "/(tabs)/settings" };
+    case "trip":
+      return { title: "Trip", line: "No trip yet", route: "/travel" };
+    case "budget":
+      return { title: "Money", line: "This month", route: "/money" };
+    case "vehicle":
+      return { title: "Vehicle", line: "No vehicle yet", route: "/vehicles" };
+    case "home":
+      return { title: "Home", line: "Maintenance", route: "/home" };
+    case "subscriptions":
+      return { title: "Subscriptions", line: "None yet", route: "/money?tab=subscriptions" };
+    case "notes":
+      return { title: "Notes", line: "Nothing pinned", route: "/notes" };
+    case "tools":
+      return { title: "Tools", line: "Units, GST, split", route: "/tools" };
+    default: {
+      const unknown: never = tile;
+      void unknown;
+      return { title: id, line: "Open", route: "/" };
+    }
+  }
 }
 
 export function homeBlocks(preset: HomePresetId, db: DB): { id: string }[] {

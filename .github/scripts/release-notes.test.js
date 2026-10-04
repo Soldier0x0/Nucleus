@@ -72,15 +72,17 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5"]) {
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1"]) {
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.6" }), { publish: false, reason: "missing" });
+  assert.match(readReleaseNotes("v0.6", changelogPath), /Empty modules stay hidden/);
+  assert.match(readReleaseNotes("v0.6.1", changelogPath), /placeholder/);
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.7" }), { publish: false, reason: "missing" });
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.5",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4"],
+      tag: "v0.6.1",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6"],
     }),
   );
 });

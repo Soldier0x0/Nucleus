@@ -7,8 +7,8 @@ if (!Number.isInteger(versionCode) || versionCode < 1) {
 }
 
 const versionName = process.env.ANDROID_VERSION_NAME;
-if (versionName !== undefined && versionName !== "" && !/^0\.[1-9]\d*$/.test(versionName)) {
-  console.error("ANDROID_VERSION_NAME must look like 0.1 or 0.6. It stays below 1.");
+if (versionName !== undefined && versionName !== "" && !/^0\.[1-9]\d*(?:\.\d+)?$/.test(versionName)) {
+  console.error("ANDROID_VERSION_NAME must look like 0.1, 0.6, or 0.6.1. It stays below 1.");
   process.exit(1);
 }
 

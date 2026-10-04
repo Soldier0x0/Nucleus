@@ -8,6 +8,14 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.6.1
+
+Presets, the home-screen mark, and looks show up on the phone.
+
+- Money, Travel, Home, Custom, and the other boards show their tiles even when there is no data yet. An empty tile is the placeholder. Switching still does not delete anything.
+- The home-screen mark fills the circle Android masks. The ground stays opaque.
+- A look changes type, corners, and spacing on the home screen. Glass frosts the cards. Bento makes each tile full width.
+
 ## v0.6
 
 A private desk on this phone for money, trips, and the next cycle window, in one locked file.

@@ -1,6 +1,7 @@
 const { withAndroidManifest, withDangerousMod, AndroidConfig } = require("@expo/config-plugins");
 const fs = require("fs");
 const path = require("path");
+const { adaptiveIconXml, iconPlan } = require("./launcherIconPlan");
 
 /**
  * Android cannot swap a launcher bitmap at runtime. Each picture is an
@@ -26,14 +27,27 @@ function withLauncherIcons(config) {
   config = withDangerousMod(config, [
     "android",
     (cfg) => {
-      const dest = path.join(cfg.modRequest.platformProjectRoot, "app/src/main/res/mipmap-xxxhdpi");
-      fs.mkdirSync(dest, { recursive: true });
+      const res = path.join(cfg.modRequest.platformProjectRoot, "app/src/main/res");
+      const mipmap = path.join(res, "mipmap-xxxhdpi");
+      const anydpi = path.join(res, "mipmap-anydpi-v26");
+      const values = path.join(res, "values");
+      fs.mkdirSync(mipmap, { recursive: true });
+      fs.mkdirSync(anydpi, { recursive: true });
+      fs.mkdirSync(values, { recursive: true });
       const srcDir = path.join(cfg.modRequest.projectRoot, "assets/launcher");
+      const colors = ['<?xml version="1.0" encoding="utf-8"?>', "<resources>"];
       for (const family of FAMILIES) {
         for (const variant of VARIANTS) {
-          fs.copyFileSync(path.join(srcDir, `${family}-${variant}.png`), path.join(dest, `ic_${family}_${variant}.png`));
+          const plan = iconPlan(family, variant);
+          const png = path.join(srcDir, `${family}-${variant}.png`);
+          fs.copyFileSync(png, path.join(mipmap, `${plan.resource}.png`));
+          fs.copyFileSync(png, path.join(mipmap, `${plan.foreground}.png`));
+          fs.writeFileSync(path.join(anydpi, `${plan.resource}.xml`), adaptiveIconXml(plan));
+          colors.push(`  <color name="${plan.resource}">${plan.background}</color>`);
         }
       }
+      colors.push("</resources>", "");
+      fs.writeFileSync(path.join(values, "nucleus_launcher_colors.xml"), colors.join("\n"));
       return cfg;
     },
   ]);

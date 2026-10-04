@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetItems, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, snoozeAdhdReminder, startAdhdTask, swipeScreens, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, snoozeAdhdReminder, startAdhdTask, swipeScreens, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
 const RECORD_KEYS = [
@@ -110,8 +111,6 @@ test("a preset lists more than four relevant items in a stable priority order", 
   }
   for (const id of ["route", "mileage", "fuel", "papers", "vehicle", "service"]) assert.ok(travel.includes(id));
   for (const id of ["balance", "spending", "charts", "receipts", "bills"]) assert.ok(money.includes(id));
-  assert.equal(visiblePresetItems(emptyDB(), "travel").length, 0);
-  assert.equal(visiblePresetItems(emptyDB(), "money").length, 0);
   assert.ok(PRESET_CHOICES.length < 10);
   assert.ok(PRESET_CHOICES.some((choice) => choice.id === "custom"));
   assert.equal(PRESET_CHOICES.find((choice) => choice.id === "adhd")?.name, "ADHD mode");
@@ -211,7 +210,47 @@ test("a day with no finished task does not decrease any score and is not labeled
 
 const PRESSURE = /overdue|\bmissed\b|behind|\blate\b|\bfail|streak|\bscore\b|points|quota|congrat|good job|welcome back|hurry/i;
 
-test("a preset hides modules with no data and still shows more than four when they have data", () => {
+test("every preset shows its tiles when there is no data", () => {
+  const db = emptyDB();
+  for (const preset of ["money", "travel", "home", "desk", "workshop"] as const) {
+    const shown = visiblePresetItems(db, preset);
+    const catalog = presetItems(preset);
+    assert.ok(catalog.length > 4, preset);
+    assert.deepEqual(shown.map((item) => item.id), catalog.map((item) => item.id));
+    assert.equal(shown[0]?.size, "large");
+  }
+  const custom = visiblePresetItems(db, "custom").map((item) => item.id);
+  assert.deepEqual(custom, db.settings.tiles.filter((tile) => tile.enabled).map((tile) => tile.id));
+  assert.ok(custom.includes("weather"));
+  assert.ok(custom.includes("trip"));
+  assert.ok(custom.includes("budget"));
+  const money = applyPreset(db, "money");
+  assert.equal(money.settings.homePreset, "money");
+  assert.deepEqual(money.txns, db.txns);
+  assert.deepEqual(money.trips, db.trips);
+  assert.deepEqual(money.notes, db.notes);
+  for (const id of ["attention", "weather", "trip", "budget", "vehicle", "home", "subscriptions", "notes", "tools"]) {
+    const copy = tilePlaceholder(id);
+    assert.ok(copy.title.trim().length > 0, id);
+    assert.ok(copy.line.trim().length > 0, id);
+    assert.equal(PRESSURE.test(`${copy.title} ${copy.line}`), false, id);
+  }
+});
+
+test("the decoy board hides cycle and money tiles", () => {
+  const decoy = buildDecoyDB(emptyDB());
+  const home = presetBoard(decoy, "home", "decoy").map((item) => item.id);
+  assert.equal(home.includes("cycle"), false);
+  assert.equal(home.includes("chores"), true);
+  assert.equal(presetBoard(decoy, "money", "decoy").length, 0);
+  const custom = presetBoard(decoy, "custom", "decoy").map((item) => item.id);
+  assert.equal(custom.includes("budget"), false);
+  assert.equal(custom.includes("subscriptions"), false);
+  assert.equal(custom.includes("weather"), true);
+  assert.ok(presetBoard(emptyDB(), "money", "real").length > 4);
+});
+
+test("a preset still lists every tile when only some records exist", () => {
   const bare = emptyDB();
   bare.trips.push({
     id: "trip-1",
@@ -226,10 +265,11 @@ test("a preset hides modules with no data and still shows more than four when th
     docs: [],
     createdAt: "2026-10-01",
   });
-  const hidden = visiblePresetItems(bare, "travel").map((item) => item.id);
-  assert.equal(hidden.includes("fuel"), false);
-  assert.equal(hidden.includes("mileage"), false);
-  assert.equal(hidden[0], "route");
+  const shown = visiblePresetItems(bare, "travel").map((item) => item.id);
+  assert.equal(shown.includes("fuel"), true);
+  assert.equal(shown.includes("mileage"), true);
+  assert.equal(shown[0], "route");
+  assert.deepEqual(shown, presetItems("travel").map((item) => item.id));
 
   const rich = filled();
   rich.fuel.push({ id: "fuel-2", vehicleId: "v1", date: "2026-10-02", odometer: 1200, litres: 8, price: 100, total: 800 });
@@ -247,7 +287,7 @@ test("a preset hides modules with no data and still shows more than four when th
   assert.equal(travel[0], "route");
   assert.ok(travel.indexOf("mileage") < travel.indexOf("fuel"));
   assert.ok(money.includes("receipts"));
-  assert.equal(visiblePresetItems(filled(), "money").some((item) => item.id === "receipts"), false);
+  assert.equal(visiblePresetItems(filled(), "money").some((item) => item.id === "receipts"), true);
 });
 
 test("a preset remembers the last thing done in it", () => {
