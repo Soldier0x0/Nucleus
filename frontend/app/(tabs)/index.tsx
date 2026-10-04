@@ -103,6 +103,7 @@ export default function Today() {
                     <T muted v="label">Customize home</T>
                   </Press>
                   <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to rearrange it.</T>
+                  <T muted style={{ fontSize: 12, textAlign: "center" }}>Drag a corner to make a tile small or wide.</T>
                 </>
               ) : null}
               <View style={{ height: bottomChrome }} />

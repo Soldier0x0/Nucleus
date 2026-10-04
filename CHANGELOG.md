@@ -8,6 +8,13 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.7.4
+
+A tile can be small or wide, and holding it still rearranges the board.
+
+- Hold a tile and drag it up, down, or side to side. The home board rearranges, a short tap still opens the tile, and the motion stays smooth.
+- Drag a corner to make that tile small or wide. Small tiles sit together on a row. A wide tile keeps the full row.
+
 ## v0.7.3
 
 Hold a tile to rearrange the home board.
