@@ -8,6 +8,13 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.7.3
+
+Hold a tile to rearrange the home board.
+
+- Hold a tile, then move it. The tile under your finger is where it lands, and the home board rearranges.
+- The tile follows your finger, and the motion stays smooth.
+
 ## v0.7.2
 
 The earlier home cards, circle swipe, and a screenshot that stays unlocked.

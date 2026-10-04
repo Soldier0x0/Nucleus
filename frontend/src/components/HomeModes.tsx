@@ -1,8 +1,12 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LayoutAnimation, Platform, ScrollView, Switch, TextInput, UIManager, useWindowDimensions, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { homeCard } from "@/src/core/homeCards";
 import { homeFace, type HomeWeather } from "@/src/core/homeFace";
+import { homeBoardCanMove, homeDropIndex, reorderHomeTiles, type TileBox } from "@/src/core/homeOrder";
 import { presentHome, type HomePresentation } from "@/src/core/layouts";
 import { weather, wmo } from "@/src/core/online";
 import { useTheme } from "@/src/theme";
@@ -31,7 +35,6 @@ import {
   swipeScreens,
   swipeStartIndex,
   swipeWrap,
-  toggleTileSize,
   typeAdhdDraft,
   withTileSizes,
 } from "@/src/core/presets";
@@ -50,10 +53,12 @@ export function PresetGrid({
   preset,
   layoutFor,
   emptyCopy,
+  onDragging,
 }: {
   preset: HomePresetId;
   layoutFor?: (page: HomePresetId) => HomePresentation;
   emptyCopy?: (id: string) => { title: string; line: string; route: string };
+  onDragging?: (active: boolean) => void;
 }) {
   const { db, update, session } = useStore();
   const router = useRouter();
@@ -92,37 +97,55 @@ export function PresetGrid({
     update((current) => rememberPreset(current, preset, id));
     router.push(route as never);
   };
-  const resize = (id: string, size: "large" | "small") => {
-    if (!db.settings.reducedMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    update((current) => toggleTileSize(current, id, size));
+  const canMove = homeBoardCanMove(preset);
+  const frames = useRef<TileBox[]>([]);
+  const idsRef = useRef<string[]>([]);
+  const onDraggingRef = useRef(onDragging);
+  onDraggingRef.current = onDragging;
+  const reduced = db.settings.reducedMotion;
+  idsRef.current = presented.rows.flatMap((row) => row.items.map((item) => item.id));
+  frames.current.length = idsRef.current.length;
+  const remember = (index: number, box: TileBox) => {
+    frames.current[index] = box;
   };
+  const settle = () => {
+    onDraggingRef.current?.(false);
+  };
+  const commitMove = (from: number, to: number) => {
+    const id = idsRef.current[from];
+    if (!id || from === to) {
+      settle();
+      return;
+    }
+    if (!reduced) {
+      LayoutAnimation.configureNext({ duration: 280, update: { type: LayoutAnimation.Types.easeInEaseOut } });
+    }
+    update((current) => reorderHomeTiles(current, preset, id, to));
+  };
+  useEffect(() => () => onDraggingRef.current?.(false), []);
+  let cursor = 0;
+  const half = sp.md / 2;
   return (
-    <View style={{ gap: sp.md }} testID={`today-preset-${preset}-grid`}>
+    <View style={{ overflow: "visible" }} testID={`today-preset-${preset}-grid`}>
       {lastLabel ? (
         <Card testID={`today-preset-last-${preset}`} onPress={() => open(lastId, routeForRemembered(lastId))}>
           <T>{lastLabel}</T>
         </Card>
       ) : null}
-      {presented.rows.map((row, index) => {
+      <View style={{ marginHorizontal: -half, marginBottom: -sp.md, marginTop: lastLabel ? sp.md : 0, flexDirection: "row", flexWrap: "wrap", overflow: "visible" }}>
+      {presented.rows.flatMap((row) => {
         const flexes = rowFlex(row);
-        const loneSmall = flexes.length === 1 && flexes[0].span === 1;
-        return (
-          <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md, alignItems: "stretch" }}>
-            {row.items.map((item) => {
+        return row.items.map((item, itemIndex) => {
               const shown = homeCard(db, item.id, item.id === "weather" ? forecast : null);
               const face = homeFace(db, item.id, item.id === "weather" ? forecast : null);
               const title = presetTileTitle(item.id);
-              const hold = () => resize(item.id, item.size);
-              if (item.id === "weather" && city) {
-                return (
-                  <View key={item.id} style={{ flex: 1 }}>
-                    <WeatherCard place={city} testID={`today-slot-${item.id}`} onPress={() => open(item.id, shown.route)} onLongPress={hold} />
-                  </View>
-                );
-              }
-              return (
-                <View key={item.id} style={{ flex: 1 }}>
-                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, face.route || shown.route)} onLongPress={hold}>
+              const slot = cursor;
+              cursor += 1;
+              const full = flexes[itemIndex]?.span === 2;
+              const body = item.id === "weather" && city ? (
+                <WeatherCard place={city} testID={`today-slot-${item.id}`} />
+              ) : (
+                <Card testID={`today-slot-${item.id}`}>
                     <Eyebrow>{face.eyebrow || title}</Eyebrow>
                     {item.id === "attention" && face.counts ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
@@ -159,13 +182,28 @@ export function PresetGrid({
                       </View>
                     ))}
                   </Card>
-                </View>
               );
-            })}
-            {loneSmall ? <View style={{ flex: 1 }} /> : null}
-          </View>
-        );
+              return (
+                <HeldTile
+                  key={item.id}
+                  index={slot}
+                  full={full}
+                  gap={half}
+                  enabled={canMove}
+                  reduced={reduced}
+                  frames={frames}
+                  onOpen={() => open(item.id, face.route || shown.route)}
+                  onMeasure={remember}
+                  onCommit={commitMove}
+                  onLift={() => onDraggingRef.current?.(true)}
+                  onSettle={settle}
+                >
+                  {body}
+                </HeldTile>
+              );
+        });
       })}
+      </View>
     </View>
   );
 }
@@ -175,6 +213,178 @@ function CountPill({ icon, label, color }: { icon: string; label: string; color:
     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
       <Icon name={icon} size={14} color={color} />
       <T v="caption" color={color}>{label}</T>
+    </View>
+  );
+}
+
+function onLongPress() {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+}
+
+function HeldTile({
+  index,
+  full,
+  gap,
+  enabled,
+  reduced,
+  frames,
+  onOpen,
+  onMeasure,
+  onCommit,
+  onLift,
+  onSettle,
+  children,
+}: {
+  index: number;
+  full: boolean;
+  gap: number;
+  enabled: boolean;
+  reduced: boolean;
+  frames: { current: TileBox[] };
+  onOpen: () => void;
+  onMeasure: (index: number, box: TileBox) => void;
+  onCommit: (from: number, to: number) => void;
+  onLift: () => void;
+  onSettle: () => void;
+  children: React.ReactNode;
+}) {
+  const tx = useSharedValue(0);
+  const ty = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const lifted = useSharedValue(0);
+  const reducedSv = useSharedValue(reduced ? 1 : 0);
+  reducedSv.value = reduced ? 1 : 0;
+  const host = useRef<View>(null);
+  const alive = useRef(true);
+  const [hot, setHot] = useState(false);
+  const api = useRef({
+    lift: () => {},
+    release: (_x: number, _y: number) => {},
+    cancel: () => {},
+    open: () => {},
+    settle: () => {},
+  });
+  const callLift = useRef(() => api.current.lift()).current;
+  const callRelease = useRef((x: number, y: number) => api.current.release(x, y)).current;
+  const callCancel = useRef(() => api.current.cancel()).current;
+  const callOpen = useRef(() => api.current.open()).current;
+  const callSettle = useRef(() => api.current.settle()).current;
+  useEffect(() => () => {
+    alive.current = false;
+  }, []);
+  useLayoutEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      host.current?.measureInWindow((x, y, w, h) => {
+        if (w <= 0 || h <= 0) return;
+        onMeasure(index, { x, y, w, h });
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [index, onMeasure]);
+  api.current.lift = () => {
+    setHot(true);
+    onLongPress();
+    onLift();
+  };
+  api.current.open = () => onOpen();
+  api.current.cancel = () => {
+    setHot(false);
+    onSettle();
+  };
+  api.current.settle = () => {
+    if (!alive.current) return;
+    setHot(false);
+    onSettle();
+  };
+  api.current.release = (x, y) => {
+    const from = index;
+    const to = homeDropIndex(from, { x, y }, frames.current);
+    const own = frames.current[from];
+    const target = frames.current[to];
+    const stay = to === from || !own || !target;
+    if (stay) {
+      tx.value = reduced ? 0 : withSpring(0);
+      ty.value = reduced ? 0 : withSpring(0);
+      scale.value = reduced ? 1 : withSpring(1);
+      lifted.value = 0;
+      setHot(false);
+      onSettle();
+      return;
+    }
+    if (reduced) {
+      tx.value = 0;
+      ty.value = 0;
+      scale.value = 1;
+      lifted.value = 0;
+      setHot(false);
+      onCommit(from, to);
+      onSettle();
+      return;
+    }
+    const ease = { duration: 280, easing: Easing.inOut(Easing.ease) };
+    scale.value = withSpring(1);
+    ty.value = withTiming(0, ease);
+    tx.value = withTiming(0, ease, (finished) => {
+      "worklet";
+      if (finished === false) return;
+      lifted.value = 0;
+      runOnJS(callSettle)();
+    });
+    onCommit(from, to);
+  };
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
+    zIndex: lifted.value > 0 ? 20 : 0,
+    elevation: lifted.value > 0 ? 12 : 0,
+  }));
+  const gesture = useMemo(() => {
+    if (!enabled) {
+      return Gesture.Tap().onEnd((_event, success) => {
+        if (success) runOnJS(callOpen)();
+      });
+    }
+    const pan = Gesture.Pan()
+      .activateAfterLongPress(320)
+      .onStart(() => {
+        lifted.value = 1;
+        scale.value = reducedSv.value ? 1.04 : withSpring(1.04);
+        runOnJS(callLift)();
+      })
+      .onUpdate((event) => {
+        tx.value = event.translationX;
+        ty.value = event.translationY;
+      })
+      .onEnd((event) => {
+        runOnJS(callRelease)(event.absoluteX, event.absoluteY);
+      })
+      .onFinalize((_event, success) => {
+        if (success) return;
+        tx.value = reducedSv.value ? 0 : withSpring(0);
+        ty.value = reducedSv.value ? 0 : withSpring(0);
+        scale.value = reducedSv.value ? 1 : withSpring(1);
+        lifted.value = 0;
+        runOnJS(callCancel)();
+      });
+    const tap = Gesture.Tap().maxDuration(320).onEnd((_event, success) => {
+      if (success) runOnJS(callOpen)();
+    });
+    return Gesture.Exclusive(pan, tap);
+  }, [callCancel, callLift, callOpen, callRelease, enabled, lifted, reducedSv, scale, tx, ty]);
+  return (
+    <View
+      ref={host}
+      collapsable={false}
+      style={{ width: full ? "100%" : "50%", paddingHorizontal: gap, marginBottom: gap * 2, overflow: "visible", zIndex: hot ? 4 : 0, elevation: hot ? 12 : 0 }}
+      onLayout={() => {
+        host.current?.measureInWindow((x, y, w, h) => {
+          if (w <= 0 || h <= 0) return;
+          onMeasure(index, { x, y, w, h });
+        });
+      }}
+    >
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={[{ flex: 1 }, style]}>{children}</Animated.View>
+      </GestureDetector>
     </View>
   );
 }
@@ -198,8 +408,13 @@ export function SwipeHome({
   const pageW = Math.min(width, 720);
   const [frameH, setFrameH] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  const pageRefs = useRef<Array<ScrollView | null>>([]);
   const fromSwipe = useRef(false);
   const start = swipeStartIndex(preset);
+  const lockScroll = (locked: boolean) => {
+    scrollRef.current?.setNativeProps({ scrollEnabled: !locked });
+    for (const row of pageRefs.current) row?.setNativeProps({ scrollEnabled: !locked });
+  };
 
   useLayoutEffect(() => {
     if (fromSwipe.current) {
@@ -233,8 +448,8 @@ export function SwipeHome({
     >
       {pages.map((page, index) => (
         <View key={`${page}-${index}`} style={{ width: pageW, height: frameH || undefined }}>
-          <ScrollView nestedScrollEnabled style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 24, gap: sp.md }}>
-            {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} />}
+          <ScrollView ref={(node) => { pageRefs.current[index] = node; }} nestedScrollEnabled style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 24, gap: sp.md, overflow: "visible" }}>
+            {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} onDragging={lockScroll} />}
             {below ? below(page) : null}
           </ScrollView>
         </View>
