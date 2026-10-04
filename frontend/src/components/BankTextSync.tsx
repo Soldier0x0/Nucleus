@@ -4,7 +4,7 @@ import { useStore } from "@/src/core/store";
 import { classifyMoney } from "@/src/core/moneyWords";
 import { applyInbox, memoryKey, type BankAsk, type BankTxn, type InboxLine } from "@/src/core/smsMoney";
 import type { DB } from "@/src/core/types";
-import { readSmsInbox } from "@/src/native/android";
+import { readBankNotices, subscribeBankNotices } from "@/src/native/android";
 
 const notified = new Set<string>();
 
@@ -58,9 +58,9 @@ async function postAsks(asks: BankAsk[]) {
   }
 }
 
-/** Reads the inbox, keeps bank lines, and asks once when a line is unclear. */
+/** Reads bank notifications on this phone, keeps debit, credit, and balance lines, and asks once when a line is unclear. */
 export async function syncBankInbox(db: DB, update: (fn: (db: DB) => DB) => void): Promise<{ kept: number; dropped: number; asks: BankAsk[] }> {
-  const inbox: InboxLine[] = await readSmsInbox();
+  const inbox: InboxLine[] = readBankNotices();
   const applied = applyInbox(inbox, {
     knownSenders: [],
     ownAccounts: db.settings.ownAccounts,
@@ -120,7 +120,16 @@ export function BankTextSync() {
 
   useEffect(() => {
     if (!ready || session !== "real" || !db.settings.smsInbox) return;
-    syncBankInbox(dbRef.current, update).catch(() => {});
+    let alive = true;
+    const run = () => {
+      if (alive) syncBankInbox(dbRef.current, update).catch(() => {});
+    };
+    run();
+    const unsub = subscribeBankNotices(run);
+    return () => {
+      alive = false;
+      unsub();
+    };
   }, [ready, session, db.settings.smsInbox, db.settings.smsMemory, db.settings.ownAccounts, update]);
 
   return null;

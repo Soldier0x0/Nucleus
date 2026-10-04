@@ -27,6 +27,8 @@ test("one unpublished patch heading is the next release", () => {
   assert.equal(nextAndroidVersion(tags, changelog), "0.6.1");
   const again = "## v0.6.2\n\n- Next.\n\n## v0.6.1\n\n- Done.\n\n## v0.6\n\n- Shipped.\n";
   assert.equal(nextAndroidVersion(["v0.6", "v0.6.1"], again), "0.6.2");
+  const patch = "## v0.6.3\n\n- Card.\n\n## v0.6.2\n\n- Boards.\n\n## v0.6\n\n- Shipped.\n";
+  assert.equal(nextAndroidVersion(["v0.6", "v0.6.1", "v0.6.2"], patch), "0.6.3");
 });
 
 test("two unpublished headings stay on the next minor", () => {

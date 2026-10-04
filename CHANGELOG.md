@@ -8,6 +8,20 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.6.3
+
+The lock, the emergency card, the locked file, and bank texts.
+
+- Changing the home-screen icon restarts the app. The phone stays unlocked across that restart, so the thumbprint is not asked. A locked phone, or a full close of the app, still asks. Tapping the same icon still leaves it alone.
+- The emergency card shows on the lock screen before the PIN: blood group, phone number, and the plate of the default vehicle. It shows only while Show on the lock screen is on. Turning that on asks for notification permission.
+- Sign in and store this file signs in to Drive or OneDrive, whichever is already chosen, and uploads the locked file. If sign-in or the upload does not finish, the screen says so.
+- Bank texts are read from the bank app's own notifications on this phone. Turning the switch on asks for notification access. If that access is denied, the switch stays off and the screen says why. Codes are dropped. An unclear text asks once and is remembered. A transfer between your own accounts is not spending.
+- Bank and UPI notices treat paid, sent, and spent the same as debited, and received and added the same as credited. A balance line stays a balance. Codes are still dropped. An unclear text still asks once and is remembered.
+- Sample data can be removed on its own. Expenses and other entries you added stay.
+- Dismissing a reminder clears it and does not open the app. A service interval, a bill that is due, fuel that is short, and a backup that has not synced are ordinary reminders. The emergency card stays only while its switch is on.
+- A short swipe on Attention snaps back. A long pull snoozes or marks done. Done, Paid, snooze, and Why stay. The Bedroom AC line no longer says overdue.
+- About shows the version installed on this phone. This release is 0.6.3. A later release shows the version stamped into that APK.
+
 ## v0.6.2
 
 Money and Travel each show their own board.

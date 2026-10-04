@@ -1,5 +1,8 @@
 package com.nucleus.widgets
 
+import android.accounts.Account
+import android.accounts.AccountManager
+import android.accounts.OperationCanceledException
 import android.app.Activity
 import android.app.KeyguardManager
 import android.app.Notification
@@ -16,11 +19,14 @@ import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
 import expo.modules.kotlin.activityresult.AppContextActivityResultContract
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
 import expo.modules.kotlin.functions.Coroutine
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import java.net.Inet4Address
 import java.net.InetAddress
@@ -41,22 +47,39 @@ class NucleusAndroidModule : Module() {
   private val scanning = AtomicBoolean(false)
   private val phoneLocked = AtomicBoolean(false)
   private var saveLauncher: AppContextActivityResultLauncher<String, Boolean>? = null
+  private var accountLauncher: AppContextActivityResultLauncher<String, PickedAccount?>? = null
+  private var consentLauncher: AppContextActivityResultLauncher<String, Boolean>? = null
+  private var pendingConsent: Intent? = null
   private val main = android.os.Handler(android.os.Looper.getMainLooper())
   private val screenOff = object : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
       if (intent?.action == Intent.ACTION_SCREEN_OFF) phoneLocked.set(true)
     }
   }
+  private val bankReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      try {
+        sendEvent("onBank", mapOf("type" to "line"))
+      } catch (_: Throwable) {
+      }
+    }
+  }
 
   override fun definition() = ModuleDefinition {
     Name("NucleusAndroid")
-    Events("onLan")
+    Events("onLan", "onBank")
 
     OnCreate {
       val ctx = appContext.reactContext ?: return@OnCreate
       val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-      if (Build.VERSION.SDK_INT >= 33) ctx.registerReceiver(screenOff, filter, Context.RECEIVER_NOT_EXPORTED)
-      else ctx.registerReceiver(screenOff, filter)
+      val bank = IntentFilter(BANK_ACTION)
+      if (Build.VERSION.SDK_INT >= 33) {
+        ctx.registerReceiver(screenOff, filter, Context.RECEIVER_NOT_EXPORTED)
+        ctx.registerReceiver(bankReceiver, bank, Context.RECEIVER_NOT_EXPORTED)
+      } else {
+        ctx.registerReceiver(screenOff, filter)
+        ctx.registerReceiver(bankReceiver, bank)
+      }
     }
 
     OnDestroy {
@@ -64,10 +87,16 @@ class NucleusAndroidModule : Module() {
         appContext.reactContext?.unregisterReceiver(screenOff)
       } catch (_: Exception) {
       }
+      try {
+        appContext.reactContext?.unregisterReceiver(bankReceiver)
+      } catch (_: Exception) {
+      }
     }
 
     RegisterActivityContracts {
       saveLauncher = registerForActivityResult(SaveLockedFileContract())
+      accountLauncher = registerForActivityResult(ChooseAccountContract())
+      consentLauncher = registerForActivityResult(ConsentContract())
     }
 
     Function("publishSnapshot") { json: String ->
@@ -150,6 +179,38 @@ class NucleusAndroidModule : Module() {
       phoneLocked.getAndSet(false) || lockedNow
     }
 
+    Function("clearIconRestart") {
+      val ctx = appContext.reactContext ?: return@Function Unit
+      ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(ICON_RESTART).commit()
+      Unit
+    }
+
+    Function("consumeIconRestart") {
+      val ctx = appContext.reactContext ?: return@Function false
+      val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      val marked = prefs.getBoolean(ICON_RESTART, false)
+      if (!marked) return@Function false
+      prefs.edit().remove(ICON_RESTART).commit()
+      val keyguard = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+      val locked = keyguard.isKeyguardLocked || phoneLocked.getAndSet(false)
+      !locked
+    }
+
+    Function("readBankNotices") {
+      val ctx = appContext.reactContext ?: return@Function "[]"
+      BankNotices.drain(ctx)
+    }
+
+    Function("notificationAccess") {
+      val ctx = appContext.reactContext ?: return@Function false
+      if (bankListenerEnabled(ctx)) return@Function true
+      try {
+        ctx.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+      } catch (_: Exception) {
+      }
+      false
+    }
+
     AsyncFunction("readSms") {
       val ctx = appContext.reactContext ?: return@AsyncFunction "[]"
       if (ctx.checkSelfPermission(android.Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) return@AsyncFunction "[]"
@@ -170,21 +231,39 @@ class NucleusAndroidModule : Module() {
       arr.toString()
     }
 
+    Function("installedVersion") {
+      val ctx = appContext.reactContext ?: return@Function ""
+      try {
+        val info = if (Build.VERSION.SDK_INT >= 33) {
+          ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+          @Suppress("DEPRECATION")
+          ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+        }
+        info.versionName ?: ""
+      } catch (_: Exception) {
+        ""
+      }
+    }
+
     Function("showLockCard") { title: String, body: String ->
       val ctx = appContext.reactContext ?: return@Function
       val manager = ctx.getSystemService(NotificationManager::class.java) ?: return@Function
       if (Build.VERSION.SDK_INT >= 26) {
-        val channel = NotificationChannel(LOCK_CHANNEL, "Lock screen", NotificationManager.IMPORTANCE_DEFAULT)
+        val channel = NotificationChannel(LOCK_CARD_CHANNEL, "Emergency card", NotificationManager.IMPORTANCE_HIGH)
         channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        channel.setSound(null, null)
+        channel.enableVibration(false)
         manager.createNotificationChannel(channel)
       }
       val notification = if (Build.VERSION.SDK_INT >= 26) {
-        Notification.Builder(ctx, LOCK_CHANNEL)
+        Notification.Builder(ctx, LOCK_CARD_CHANNEL)
           .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
           .setContentTitle(title.take(40))
           .setContentText(body.take(120))
           .setVisibility(Notification.VISIBILITY_PUBLIC)
           .setOngoing(true)
+          .setOnlyAlertOnce(true)
           .build()
       } else {
         @Suppress("DEPRECATION")
@@ -192,6 +271,8 @@ class NucleusAndroidModule : Module() {
           .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
           .setContentTitle(title.take(40))
           .setContentText(body.take(120))
+          .setVisibility(Notification.VISIBILITY_PUBLIC)
+          .setPriority(Notification.PRIORITY_HIGH)
           .setOngoing(true)
           .build()
       }
@@ -211,9 +292,13 @@ class NucleusAndroidModule : Module() {
       launcher.launch(path)
     }
 
+    AsyncFunction("storeLockedFile") Coroutine { provider: String, path: String ->
+      storeChosenFile(provider, path)
+    }
+
     Function("forgetCloudFile") {
       val ctx = appContext.reactContext ?: return@Function Unit
-      ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(CLOUD_FILE).apply()
+      ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(CLOUD_FILE).remove(DRIVE_FILE_ID).apply()
     }
 
     Function("publishCycle") { json: String ->
@@ -229,6 +314,7 @@ class NucleusAndroidModule : Module() {
       val pkg = ctx.packageName
       // Rewriting an alias restarts this activity. Leave it alone when the picture is already the one showing.
       if (launcherAliasUnchanged(pm, pkg, name)) return@Function
+      rememberIconRestart(ctx)
       if (!componentEnabled(pm, pkg, name)) {
         pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$name"), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
       }
@@ -237,6 +323,101 @@ class NucleusAndroidModule : Module() {
         if (!componentEnabled(pm, pkg, alias)) continue
         pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
       }
+    }
+  }
+
+  private fun rememberIconRestart(ctx: Context) {
+    ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(ICON_RESTART, true).commit()
+  }
+
+  private suspend fun storeChosenFile(provider: String, path: String): Map<String, Any> {
+    val label = when (provider) {
+      "drive" -> "Drive"
+      "onedrive" -> "OneDrive"
+      else -> return stopped("Drive", "choose Drive or OneDrive first")
+    }
+    val ctx = appContext.reactContext ?: return stopped(label, "sign-in runs in the installed Android app")
+    val launcher = accountLauncher ?: return stopped(label, "sign-in could not open")
+    val type = if (provider == "onedrive") "com.microsoft.msa" else "com.google"
+    val picked = try {
+      withTimeoutOrNull(180_000) { launcher.launch(type) }
+    } catch (_: Exception) {
+      null
+    }
+    if (picked == null) return stopped(label, "cancelled")
+    val bytes = readLocal(ctx, path)
+    if (bytes.isEmpty()) return stopped(label, "the locked file is empty")
+    val scope = if (provider == "onedrive") {
+      "https://graph.microsoft.com/Files.ReadWrite.AppFolder"
+    } else {
+      "https://www.googleapis.com/auth/drive.file"
+    }
+    val account = Account(picked.name, picked.type)
+    val token = try {
+      tokenFor(account, scope)
+    } catch (_: OperationCanceledException) {
+      return stopped(label, "cancelled")
+    } catch (e: Exception) {
+      return stopped(label, clipReason(e.message))
+    }
+    if (token.isNullOrBlank()) return stopped(label, "sign-in could not open")
+    var uploaded = uploadLockedBytes(ctx, provider, token, bytes)
+    if (uploaded.code == 401) {
+      AccountManager.get(ctx).invalidateAuthToken(account.type, token)
+      val again = try {
+        tokenFor(account, scope)
+      } catch (_: Exception) {
+        null
+      }
+      if (again.isNullOrBlank()) return stopped(label, "sign-in could not open")
+      uploaded = uploadLockedBytes(ctx, provider, again, bytes)
+    }
+    if (uploaded.ok) return mapOf("ok" to true, "message" to "")
+    val detail = if (uploaded.code == 0) "network" else uploaded.code.toString()
+    return stopped(label, detail)
+  }
+
+  private suspend fun tokenFor(account: Account, scope: String): String? {
+    val ctx = appContext.reactContext ?: return null
+    val am = AccountManager.get(ctx)
+    val activity = appContext.currentActivity
+    val tokenType = "oauth2:$scope"
+    try {
+      val future = if (activity != null) {
+        @Suppress("DEPRECATION")
+        am.getAuthToken(account, tokenType, null, activity, null, null)
+      } else {
+        am.getAuthToken(account, tokenType, null, false, null, null)
+      }
+      val bundle = future.getResult(3, TimeUnit.MINUTES)
+      val token = bundle.getString(AccountManager.KEY_AUTHTOKEN)
+      if (!token.isNullOrBlank()) return token
+      val intent = consentIntent(bundle) ?: return null
+      return consentThenToken(am, account, tokenType, intent)
+    } catch (e: android.accounts.UserRecoverableAuthException) {
+      val intent = e.intent ?: return null
+      return consentThenToken(am, account, tokenType, intent)
+    }
+  }
+
+  private suspend fun consentThenToken(am: AccountManager, account: Account, tokenType: String, intent: Intent): String? {
+    val launcher = consentLauncher ?: return null
+    pendingConsent = intent
+    val ok = try {
+      withTimeoutOrNull(180_000) { launcher.launch("consent") } == true
+    } catch (_: Exception) {
+      false
+    }
+    if (!ok) return null
+    val bundle = am.getAuthToken(account, tokenType, null, false, null, null).getResult(30, TimeUnit.SECONDS)
+    return bundle.getString(AccountManager.KEY_AUTHTOKEN)
+  }
+
+  private fun consentIntent(bundle: Bundle): Intent? {
+    return if (Build.VERSION.SDK_INT >= 33) bundle.getParcelable(AccountManager.KEY_INTENT, Intent::class.java)
+    else {
+      @Suppress("DEPRECATION")
+      bundle.getParcelable<Intent>(AccountManager.KEY_INTENT)
     }
   }
 
@@ -257,6 +438,17 @@ class NucleusAndroidModule : Module() {
       PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
       PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> false
       else -> alias == "IconPaperPaper"
+    }
+  }
+
+  private inner class ConsentContract : AppContextActivityResultContract<String, Boolean> {
+    override fun createIntent(context: Context, input: String): Intent {
+      return pendingConsent ?: Intent(Settings.ACTION_SETTINGS)
+    }
+
+    override fun parseResult(input: String, resultCode: Int, intent: Intent?): Boolean {
+      pendingConsent = null
+      return resultCode == Activity.RESULT_OK
     }
   }
 
@@ -352,9 +544,37 @@ class NucleusAndroidModule : Module() {
   }
 }
 
-private const val LOCK_CHANNEL = "nucleus-lock"
+private const val LOCK_CARD_CHANNEL = "nucleus-lock-card"
 private const val LOCK_CARD_ID = 704
 private const val CLOUD_FILE = "cloud_file_uri"
+private const val ICON_RESTART = "icon_restart_unlocked"
+
+private fun stopped(label: String, reason: String): Map<String, Any> {
+  return mapOf("ok" to false, "message" to "$label did not store the file ($reason).")
+}
+
+private fun clipReason(raw: String?): String {
+  val text = raw?.replace(Regex("\\s+"), " ")?.trim().orEmpty()
+  if (text.isEmpty()) return "did not finish"
+  return text.take(80)
+}
+
+private data class PickedAccount(val name: String, val type: String)
+
+private class ChooseAccountContract : AppContextActivityResultContract<String, PickedAccount?> {
+  override fun createIntent(context: Context, input: String): Intent {
+    @Suppress("DEPRECATION")
+    return AccountManager.newChooseAccountIntent(null, null, arrayOf(input), "Sign in to store the locked file", null, null, null)
+  }
+
+  override fun parseResult(input: String, resultCode: Int, intent: Intent?): PickedAccount? {
+    if (resultCode != Activity.RESULT_OK || intent == null) return null
+    val name = intent.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)?.trim().orEmpty()
+    if (name.isEmpty()) return null
+    val type = intent.getStringExtra(AccountManager.KEY_ACCOUNT_TYPE)?.trim().orEmpty().ifBlank { input }
+    return PickedAccount(name, type)
+  }
+}
 
 private fun writeToUri(ctx: Context, uri: Uri, path: String): Boolean {
   return try {

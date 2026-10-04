@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { requireNativeModule } from "expo-modules-core";
+import { cloudStoreMessage } from "@/src/core/vaultFile";
 import type { HomeShortcut } from "@/src/core/types";
 import type { WidgetSnapshot } from "@/src/core/widgets";
 import type { InboxLine } from "@/src/core/smsMoney";
@@ -14,14 +16,21 @@ type Native = {
   startScan(): boolean;
   stopScan(): void;
   setLauncherIcon(name: string): void;
+  clearIconRestart(): void;
   consumePhoneLock(): boolean;
+  consumeIconRestart(): boolean;
   readSms(): Promise<string>;
+  readBankNotices(): string;
+  notificationAccess(): boolean;
   showLockCard(title: string, body: string): void;
   hideLockCard(): void;
+  installedVersion(): string;
   publishCycle(json: string): void;
   writeLockedFile(path: string): Promise<boolean>;
+  storeLockedFile(provider: string, path: string): Promise<{ ok: boolean; message: string }>;
   forgetCloudFile(): void;
   addListener(event: "onLan", listener: (event: LanEvent) => void): { remove: () => void };
+  addListener(event: "onBank", listener: () => void): { remove: () => void };
 };
 
 function bridge(): Native | null {
@@ -65,7 +74,10 @@ export function stopLanScan() {
 
 export function applyLauncherIcon(alias: string) {
   try {
-    bridge()?.setLauncherIcon(alias);
+    const mod = bridge();
+    mod?.setLauncherIcon(alias);
+    // Returning here means this process was not killed. Drop the unlock mark so a later full close still asks.
+    mod?.clearIconRestart();
   } catch {
     /* Expo Go has no activity-alias switch. */
   }
@@ -75,6 +87,35 @@ export function applyLauncherIcon(alias: string) {
 export function consumePhoneLock(): boolean {
   try {
     return bridge()?.consumePhoneLock() ?? false;
+  } catch {
+    return false;
+  }
+}
+
+/** True when this process was restarted by an icon change and the phone is still unlocked. */
+export function consumeIconRestart(): boolean {
+  try {
+    return bridge()?.consumeIconRestart() === true;
+  } catch {
+    return false;
+  }
+}
+
+export function readBankNotices(): InboxLine[] {
+  const mod = bridge();
+  if (!mod) return [];
+  try {
+    const parsed = JSON.parse(mod.readBankNotices()) as InboxLine[];
+    return Array.isArray(parsed) ? parsed.filter((line) => line && typeof line.sender === "string" && typeof line.body === "string" && typeof line.at === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Opens notification access when it is off. True only when this app is already allowed. */
+export function requestNotificationAccess(): boolean {
+  try {
+    return bridge()?.notificationAccess() === true;
   } catch {
     return false;
   }
@@ -92,6 +133,17 @@ export async function readSmsInbox(): Promise<InboxLine[]> {
   }
 }
 
+/** Version name stamped into this APK. A later release follows that stamp. */
+export function installedVersion(): string {
+  try {
+    const stamped = bridge()?.installedVersion() ?? "";
+    if (stamped.trim()) return stamped.trim();
+  } catch {
+    /* Expo Go has no package version. */
+  }
+  return Constants.expoConfig?.version?.trim() ?? "";
+}
+
 export function showLockCard(title: string, body: string) {
   try {
     bridge()?.showLockCard(title, body);
@@ -105,6 +157,21 @@ export function hideLockCard() {
     bridge()?.hideLockCard();
   } catch {
     /* ignore */
+  }
+}
+
+/** Signs in to the chosen account and uploads the locked file. A failure carries a message. */
+export async function storeLockedFile(provider: "drive" | "onedrive", path: string): Promise<{ ok: boolean; message: string }> {
+  const mod = bridge();
+  if (!mod) return { ok: false, message: "Sign-in runs in the installed Android app." };
+  try {
+    const result = await mod.storeLockedFile(provider, path);
+    const message = typeof result?.message === "string" ? result.message.trim() : "";
+    if (result?.ok === true) return { ok: true, message };
+    return { ok: false, message: message || cloudStoreMessage(provider, "did not finish") };
+  } catch (error) {
+    const reason = error instanceof Error && error.message.trim() ? error.message.trim() : "did not finish";
+    return { ok: false, message: cloudStoreMessage(provider, reason) };
   }
 }
 
@@ -132,6 +199,17 @@ export function publishCycleWidget(payload: { window: string; shade: string }) {
     bridge()?.publishCycle(JSON.stringify(payload));
   } catch {
     /* Expo Go has no widget. */
+  }
+}
+
+export function subscribeBankNotices(fn: () => void) {
+  const mod = bridge();
+  if (!mod) return () => {};
+  try {
+    const sub = mod.addListener("onBank", fn);
+    return () => sub.remove();
+  } catch {
+    return () => {};
   }
 }
 

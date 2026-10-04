@@ -24,8 +24,8 @@ function amounts(body: string): number[] {
 function parseBank(line: InboxLine): KeptLine | null {
   const nums = amounts(line.body);
   if (!nums.length) return null;
-  const debit = /\b(debited|debit|spent|withdrawn|purchase of)\b/i.test(line.body);
-  const credit = /\b(credited|credit|received)\b/i.test(line.body);
+  const debit = /\b(debited|debit|paid|sent|spent|withdrawn|purchase of)\b/i.test(line.body);
+  const credit = /\b(credited|credit|received|added)\b/i.test(line.body);
   const balance = /\b(avl\.?\s*bal|available balance|a\/c bal|balance)\b/i.test(line.body);
   if (debit) return { kind: "debit", amount: nums[0], sender: line.sender, at: line.at };
   if (credit) return { kind: "credit", amount: nums[0], sender: line.sender, at: line.at };

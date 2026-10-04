@@ -7,7 +7,7 @@ import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { AttentionItem } from "@/src/core/intelligence";
-import { allAttention, visibleAttention } from "@/src/core/attention";
+import { allAttention, attentionSwipeThreshold, visibleAttention } from "@/src/core/attention";
 import { paySubscription } from "@/src/core/actions";
 import { addDays, todayISO } from "@/src/core/format";
 import { Button, EmptyState, Eyebrow, Icon, Press, StatusBadge, T } from "@/src/components/ui";
@@ -29,6 +29,8 @@ export default function Attention() {
   const items = visibleAttention(db);
   const hiddenCount = allAttention(db).length - items.length;
   const [open, setOpen] = useState<AttentionItem | null>(null);
+  const [rowWidth, setRowWidth] = useState(0);
+  const swipeThreshold = rowWidth > 0 ? attentionSwipeThreshold(rowWidth) : 100000;
 
   const mark = (it: AttentionItem, status: "done" | "dismissed" | "snoozed") => {
     update((d) => {
@@ -45,7 +47,7 @@ export default function Attention() {
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: sp.lg, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
         <Eyebrow>Across all modules</Eyebrow>
         <T v="title" testID="attention-title">Attention</T>
-        {items.length ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Swipe right to snooze, left to mark done. The buttons under each item do the same.</T> : null}
+        {items.length ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Pull most of the way across to snooze or mark done. A short drag snaps back. The buttons under each item do the same.</T> : null}
         <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
           {GROUPS.map((g) => (
             <View key={g.sev} style={[styles.count, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]} testID={`attention-count-${g.sev}`}>
@@ -73,6 +75,8 @@ export default function Attention() {
                     <Swipeable
                       overshootLeft={false}
                       overshootRight={false}
+                      leftThreshold={swipeThreshold}
+                      rightThreshold={swipeThreshold}
                       renderLeftActions={() => (
                         <View style={[styles.swipe, { backgroundColor: colors.warning }]}>
                           <T v="label">Snooze</T>
@@ -85,7 +89,7 @@ export default function Attention() {
                       )}
                       onSwipeableOpen={(direction) => mark(it, direction === "right" ? "done" : "snoozed")}
                     >
-                    <Press testID={`attention-item-${it.key}`} onPress={() => setOpen(it)} style={[styles.item, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderLeftColor: g.sev === "urgent" ? colors.error : g.sev === "upcoming" ? colors.warning : colors.info }]}>
+                    <Press testID={`attention-item-${it.key}`} onPress={() => setOpen(it)} onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)} style={[styles.item, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderLeftColor: g.sev === "urgent" ? colors.error : g.sev === "upcoming" ? colors.warning : colors.info }]}>
                       <View style={{ flexDirection: "row", gap: 12 }}>
                         <View style={[styles.ic, { backgroundColor: colors.surfaceTertiary }]}>
                           <Icon name={it.icon} size={20} />

@@ -376,11 +376,11 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         module: "home",
         severity: sev,
         icon: "wrench-clock",
-        title: x.days < 0 ? `${x.a.name}: ${x.p.name} overdue by ${-x.days} days` : `${x.a.name}: ${x.p.name} due ${x.days === 0 ? "today" : `in ${x.days} days`}`,
+        title: x.days < 0 ? `${x.a.name}: ${x.p.name} was due ${-x.days} days ago` : `${x.a.name}: ${x.p.name} due ${x.days === 0 ? "today" : `in ${x.days} days`}`,
         subtitle: `Every ${x.p.everyMonths} months · last ${fmtDate(x.p.lastDone)}`,
         score: SEV_WEIGHT[sev] + Math.min(60, Math.max(0, -x.days + 20)),
         route: "/home",
-        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, urgent once overdue.", ranking: rankText(sev, "due date") },
+        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, and still listed after that date.", ranking: rankText(sev, "due date") },
       });
     }
     for (const c of db.chores) {

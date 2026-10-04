@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import { useStore } from "@/src/core/store";
 import { adhdReminder, snoozeAdhdReminder } from "@/src/core/presets";
+import { dismissNoticeAction, noticeKindFromId, noticePresentation } from "@/src/core/notices";
 import { nextHeadsUp, dismissHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
 import { addDays, todayISO } from "@/src/core/format";
 
@@ -25,7 +26,12 @@ export function QuietSync() {
       const id = String((data as { id?: unknown }).id ?? "");
       if (!id) return;
       if (action === "Yes" || action === "No") update((current) => rememberHeadsUp(current, id, action));
-      else if (action === "dismiss" || action === Notifications.DEFAULT_ACTION_IDENTIFIER) update((current) => dismissHeadsUp(current, id));
+      else if (action === "dismiss") {
+        const identifier = response.notification.request.identifier;
+        Notifications.dismissNotificationAsync(identifier).catch(() => {});
+        Notifications.cancelScheduledNotificationAsync(identifier).catch(() => {});
+        update((current) => dismissHeadsUp(current, id));
+      }
     });
     return () => sub.remove();
   }, [update]);
@@ -40,7 +46,7 @@ export function QuietSync() {
       Notifications.cancelScheduledNotificationAsync("adhd:next").catch(() => {});
     } else {
       const reminder = adhdReminder(line);
-      Notifications.setNotificationCategoryAsync("adhd-remind", [{ identifier: "snooze", buttonTitle: "Snooze" }]).catch(() => {});
+      Notifications.setNotificationCategoryAsync("adhd-remind", [{ identifier: "snooze", buttonTitle: "Snooze", options: { opensAppToForeground: false } }]).catch(() => {});
       Notifications.scheduleNotificationAsync({
         identifier: "adhd:next",
         content: {
@@ -56,12 +62,14 @@ export function QuietSync() {
 
     const heads = nextHeadsUp(current, todayISO());
     if (!heads) {
+      Notifications.dismissNotificationAsync("heads-up").catch(() => {});
       Notifications.cancelScheduledNotificationAsync("heads-up").catch(() => {});
       return;
     }
+    const presentation = noticePresentation(noticeKindFromId(heads.id) ?? "service");
     const buttons = [
-      ...heads.actions.map((action) => ({ identifier: action, buttonTitle: action })),
-      { identifier: "dismiss", buttonTitle: "Dismiss" },
+      ...heads.actions.map((action) => ({ identifier: action, buttonTitle: action, options: { opensAppToForeground: false } })),
+      dismissNoticeAction(),
     ];
     Notifications.setNotificationCategoryAsync("heads-up", buttons).catch(() => {});
     Notifications.scheduleNotificationAsync({
@@ -70,6 +78,8 @@ export function QuietSync() {
         title: "Next",
         body: heads.line,
         sound: false,
+        sticky: presentation.sticky,
+        autoDismiss: presentation.dismissClears,
         categoryIdentifier: "heads-up",
         data: { kind: "heads-up", key: "heads-up", id: heads.id },
       },

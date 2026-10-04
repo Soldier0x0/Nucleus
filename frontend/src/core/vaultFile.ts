@@ -65,6 +65,39 @@ export function uploadNotices(ok: boolean): { title: string }[] {
   return [{ title: "Backup did not upload" }];
 }
 
+export type CloudSignIn =
+  | { ok: true; signsIn: boolean; saver: "document" | "account"; scope: string }
+  | { ok: false; message: string };
+
+/** Sign in to the provider already chosen, then upload that one locked file. */
+export function cloudSignIn(provider: CloudProvider): CloudSignIn {
+  switch (provider) {
+    case "off":
+      return { ok: false, message: "Choose Drive or OneDrive first." };
+    case "drive":
+    case "onedrive":
+      return { ok: true, signsIn: true, saver: "account", scope: cloudScope(provider) };
+    default: {
+      const unreachable: never = provider;
+      return unreachable;
+    }
+  }
+}
+
+export function cloudStoreMessage(provider: "drive" | "onedrive", reason: string): string {
+  const why = reason.trim() || "did not finish";
+  switch (provider) {
+    case "drive":
+      return `Drive did not store the file (${why}).`;
+    case "onedrive":
+      return `OneDrive did not store the file (${why}).`;
+    default: {
+      const unreachable: never = provider;
+      return unreachable;
+    }
+  }
+}
+
 export function askUnsynced(input: { provider: CloudProvider; lastSyncAt: string | null; unlockedAt: string; asked: boolean }): boolean {
   if (input.provider === "off" || input.asked) return false;
   if (!input.lastSyncAt) return true;
