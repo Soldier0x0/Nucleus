@@ -6,6 +6,7 @@ import type { DB, Vehicle } from "./types";
 import { homeSchedule, readiness, tripStatus } from "./domains";
 import { lifeAlerts } from "./life";
 import { addDays, addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
+import { serviceLeftLine } from "./vehicleMath";
 
 export type Fact = { label: string; value: string };
 export type Why = { summary: string; facts: Fact[]; rule: string; ranking: string };
@@ -203,7 +204,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
           module: "vehicles",
           severity: sev,
           icon: "wrench-clock",
-          title: s.remaining <= 0 ? `${v.name} service overdue by ${num(-s.remaining, 0)} km` : `${v.name} service due in ~${num(s.remaining, 0)} km`,
+          title: `${v.name}: ${serviceLeftLine(s.remaining)}`,
           subtitle: `${num(s.since, 0)} km since last service`,
           score: SEV_WEIGHT[sev] + Math.min(99, Math.max(0, -s.remaining / 10 + 50)),
           route: `/vehicles/${v.id}`,

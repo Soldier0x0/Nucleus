@@ -11,6 +11,7 @@ import { monthTotals, serviceEstimate } from "./intelligence";
 import { homeSchedule, tripStatus } from "./domains";
 import type { DB, Rule, RuleTriggerKind } from "./types";
 import { addDays, daysBetween, fmtDate, money, monthKey, monthLabel, num, todayISO } from "./format";
+import { serviceLeftLine } from "./vehicleMath";
 
 export type TriggerMeta = {
   kind: RuleTriggerKind;
@@ -133,7 +134,7 @@ export function evaluateRule(db: DB, r: Rule, today = todayISO()): RuleHit[] {
       hits.push({
         key: `rule:${r.id}:svc:${veh.id}:${s.lastOdo}`,
         rule: r,
-        title: s.remaining <= 0 ? `${veh.name} service overdue by ${num(-s.remaining, 0)} km` : `${veh.name} service due in ~${num(s.remaining, 0)} km`,
+        title: `${veh.name}: ${serviceLeftLine(s.remaining)}`,
         subtitle: `${num(s.since, 0)} km since the last service`,
         severity: s.remaining <= 0 ? "urgent" : "upcoming",
         facts: [{ label: "Interval", value: `${num(s.interval, 0)} km` }, { label: "Since service", value: `${num(s.since, 0)} km` }],

@@ -76,6 +76,7 @@ export type Vehicle = {
   body?: VehicleBody;
   initialOdometer: number;
   serviceIntervalKm: number;
+  tankLitres?: number;
   insuranceExpiry?: string; // YYYY-MM-DD
   pucExpiry?: string;
   createdAt: string;

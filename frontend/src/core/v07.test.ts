@@ -6,6 +6,7 @@ import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
 import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
 import { grewMost } from "./moneyDesk.ts";
+import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
 import { homePresetTiles } from "./presets.ts";
 import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
 import { dataHealth, dueDayLabel } from "./life.ts";
@@ -195,4 +196,20 @@ test("money names the category that grew most, this month versus last month", ()
   const desk = readFileSync(new URL("../components/MoneyDesk.tsx", import.meta.url), "utf8");
   assert.match(desk, /money-grew-card/);
   assert.doesNotMatch(desk, /grewMost\([^)]*score/);
+});
+
+test("a personal vehicle shows cost per kilometer, fuel against the tank, and distance left before service", () => {
+  assert.equal(costPerKmLine(1.5, "km"), "1.5 per km");
+  assert.equal(costPerKmLine(Number.NaN, "km"), null);
+  assert.deepEqual(fuelAgainstTank(5.6, 6), { litres: 5.6, tank: 6, line: "5.6 L of a 6 L tank" });
+  assert.equal(serviceLeftLine(120), "120 km left before service");
+  assert.equal(serviceLeftLine(-40), "40 km past this vehicle's service interval");
+  assert.doesNotMatch(serviceLeftLine(-40), /overdue|late|fail/i);
+  const sources = ["intelligence.ts", "rules.ts", "search.ts"].map((name) => readFileSync(new URL(`./${name}`, import.meta.url), "utf8"));
+  const vehicles = readFileSync(new URL("../../app/vehicles/index.tsx", import.meta.url), "utf8");
+  for (const source of sources) assert.equal(source.includes("service overdue"), false);
+  assert.equal(vehicles.includes('"overdue"'), false);
+  const care = readFileSync(new URL("../components/VehicleCare.tsx", import.meta.url), "utf8");
+  assert.match(care, /costPerKmLine/);
+  assert.match(care, /fuelAgainstTank/);
 });
