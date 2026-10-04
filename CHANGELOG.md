@@ -21,6 +21,7 @@ The lock, the emergency card, the locked file, and bank texts.
 - Dismissing a reminder clears it and does not open the app. A service interval, a bill that is due, fuel that is short, and a backup that has not synced are ordinary reminders. The emergency card stays only while its switch is on.
 - A short swipe on Attention snaps back. A long pull snoozes or marks done. Done, Paid, snooze, and Why stay. The Bedroom AC line no longer says overdue.
 - About shows the version installed on this phone. This release is 0.6.3. A later release shows the version stamped into that APK.
+- A missing trip document is named, such as Travel insurance. Several missing documents are named. A short packing list names the items still unpacked. If the app cannot tell what is missing, it says so.
 
 ## v0.6.2
 

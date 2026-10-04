@@ -89,6 +89,7 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.6.3", changelogPath), /does not open the app/);
   assert.match(readReleaseNotes("v0.6.3", changelogPath), /short swipe/);
   assert.match(readReleaseNotes("v0.6.3", changelogPath), /stamped into that APK/);
+  assert.match(readReleaseNotes("v0.6.3", changelogPath), /Travel insurance/);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.7" }), { publish: false, reason: "missing" });
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({

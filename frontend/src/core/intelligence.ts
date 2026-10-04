@@ -71,13 +71,13 @@ export function serviceEstimate(db: DB, v: Vehicle) {
         { label: "Since last service", value: `${num(since, 0)} km` },
       ]
     : [
-        { label: "Services logged", value: `${svc.length} of 3 needed` },
+        { label: "Services logged", value: svc.length ? svc.map((row) => row.kind).join(", ") : "Could not tell" },
         { label: "Configured interval", value: `${num(interval, 0)} km` },
         { label: "Since last service", value: `${num(since, 0)} km` },
       ];
   const explanation = fromHistory
     ? `Your last ${intervals.length} service intervals averaged about ${num(interval, 0)} km. You are ${num(since, 0)} km past the last service.`
-    : `Using your configured interval of ${num(interval, 0)} km. Log ${3 - svc.length} more general/oil service${3 - svc.length === 1 ? "" : "s"} and Nucleus will learn your real interval.`;
+    : `Could not tell your own interval yet. The configured interval of ${num(interval, 0)} km is in use.`;
   return { interval, fromHistory, intervals, since, remaining, lastOdo, count: svc.length, facts, explanation, lastDate: svc[svc.length - 1]?.date };
 }
 
@@ -320,12 +320,12 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
           module: "travel",
           severity: sev,
           icon: "bag-suitcase-outline",
-          title: `${t.name} starts ${r.daysToStart === 0 ? "today" : r.daysToStart === 1 ? "tomorrow" : `in ${r.daysToStart} days`} · ${r.missing.length} thing${r.missing.length > 1 ? "s" : ""} need attention`,
+          title: `${t.name} starts ${r.daysToStart === 0 ? "today" : r.daysToStart === 1 ? "tomorrow" : `in ${r.daysToStart} days`} · ${r.missing.join(" · ")}`,
           subtitle: r.missing.join(" · "),
           score: SEV_WEIGHT[sev] + Math.max(0, 30 - r.daysToStart),
           route: `/travel/${t.id}`,
           why: {
-            summary: `Readiness is ${num(r.score * 100, 0)}% with ${r.daysToStart} days to go.`,
+            summary: r.missing.join(". "),
             facts: [
               { label: "Packing done", value: `${num(r.packPct * 100, 0)}% (weight 50%)` },
               { label: "Documents present", value: `${num(r.docPct * 100, 0)}% (weight 30%)` },

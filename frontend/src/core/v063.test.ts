@@ -3,9 +3,10 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { aboutTitle } from "./about.ts";
 import { attentionSwipeOutcome } from "./attention.ts";
+import { readiness, roomSummaries } from "./domains.ts";
 import { emptyDB } from "./defaults.ts";
 import { askToEnable, emergencyLockCard, staysEnabled } from "./featureAccess.ts";
-import { attentionItems } from "./intelligence.ts";
+import { attentionItems, serviceEstimate } from "./intelligence.ts";
 import { dismissNoticeAction, noticePresentation } from "./notices.ts";
 import { hasSampleData, withoutSampleData, withSampleData } from "./sample.ts";
 import { applyInbox, filterInbox, memoryKey } from "./smsMoney.ts";
@@ -222,6 +223,67 @@ test("a short attention swipe snaps back and the bedroom AC line does not say ov
   assert.doesNotMatch(ac.title, /overdue/i);
   assert.doesNotMatch(ac.why.rule, /overdue/i);
   assert.match(ac.title, /was due/);
+});
+
+test("a gap names the missing document or unpacked item", () => {
+  const db = withSampleData(emptyDB());
+  const goa = db.trips.find((trip) => trip.name === "Goa 2026");
+  assert.ok(goa);
+  const unpacked = goa.packing.filter((item) => !item.done).map((item) => item.name);
+  assert.ok(unpacked.length > 0 && unpacked.length <= 4);
+  const ready = readiness(db, goa);
+  const line = ready.missing.join(" · ");
+  assert.match(line, /Travel insurance/);
+  for (const name of unpacked) assert.match(line, new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(line, /document missing/i);
+  assert.doesNotMatch(line, /Packing \d+%/);
+  const several = readiness(emptyDB(), {
+    ...goa,
+    packing: [{ id: "socks", name: "Socks", category: "Clothing", done: true }],
+    docs: [
+      { id: "pass", name: "Passport / ID", have: false },
+      { id: "tickets", name: "Tickets", have: false },
+      { id: "hotel", name: "Hotel booking", have: true },
+    ],
+  });
+  const severalLine = several.missing.join(" · ");
+  assert.match(severalLine, /Passport \/ ID/);
+  assert.match(severalLine, /Tickets/);
+  assert.doesNotMatch(severalLine, /Hotel booking/);
+  assert.doesNotMatch(severalLine, /\d+ document/);
+  const blank = readiness(emptyDB(), {
+    ...goa,
+    budget: 10,
+    packing: [],
+    docs: [{ id: "blank", name: "  ", have: false }],
+  });
+  const blankLine = blank.missing.join(" · ");
+  assert.match(blankLine, /Could not tell/);
+  assert.doesNotMatch(blankLine, /\d/);
+  const tripLine = attentionItems(db).find((item) => item.title.includes("Goa 2026"));
+  assert.ok(tripLine);
+  assert.match(tripLine.title, /Travel insurance/);
+  assert.doesNotMatch(tripLine.title, /thing/);
+  const home = emptyDB();
+  home.appliances = [{ id: "b", name: "Fridge", room: "Kitchen", plans: [{ id: "p", name: "Filter", everyMonths: 3, lastDone: "2020-01-01" }], createdAt: "2026-01-01" }];
+  home.chores = [{ id: "c", name: "Bins", everyDays: 7, lastDone: "2020-01-01", room: "Kitchen" }];
+  const kitchen = roomSummaries(home, "2026-06-01").find((room) => room.room === "Kitchen");
+  assert.match(kitchen?.line ?? "", /Filter/);
+  assert.match(kitchen?.line ?? "", /Bins/);
+  assert.doesNotMatch(kitchen?.line ?? "", /\d/);
+  const vehicle = { id: "v", name: "City", type: "car" as const, fuelType: "petrol" as const, initialOdometer: 1000, serviceIntervalKm: 10000, createdAt: "2026-01-01" };
+  const estimate = serviceEstimate({ ...emptyDB(), vehicles: [vehicle], services: [{ id: "s", vehicleId: "v", date: "2026-01-01", odometer: 1000, kind: "oil", cost: 1, details: {} }] }, vehicle);
+  const serviceCopy = `${estimate.explanation} ${estimate.facts.map((fact) => fact.value).join(" ")}`;
+  assert.match(serviceCopy, /Could not tell/);
+  assert.doesNotMatch(serviceCopy, /of 3 needed/);
+  assert.doesNotMatch(serviceCopy, /\d+ more/);
+  const today = read("../../app/(tabs)/index.tsx");
+  const travelList = read("../../app/travel/index.tsx");
+  const travel = read("../../app/travel/[id].tsx");
+  assert.doesNotMatch(today, /missing\.length\} need attention/);
+  assert.doesNotMatch(travelList, /missing\.length\} need attention/);
+  assert.doesNotMatch(travel, /missing\.length\} need attention/);
+  assert.doesNotMatch(today, /things need attention/);
 });
 
 test("about shows the installed version and follows a later stamp", () => {

@@ -394,10 +394,26 @@ class NucleusAndroidModule : Module() {
       if (!token.isNullOrBlank()) return token
       val intent = consentIntent(bundle) ?: return null
       return consentThenToken(am, account, tokenType, intent)
-    } catch (e: android.accounts.UserRecoverableAuthException) {
-      val intent = e.intent ?: return null
+    } catch (e: Exception) {
+      val intent = recoverableIntent(e) ?: throw e
       return consentThenToken(am, account, tokenType, intent)
     }
+  }
+
+  /** The compile SDK omits this accounts type. The device still throws it, with a consent intent. */
+  private fun recoverableIntent(error: Throwable): Intent? {
+    var type: Class<*>? = error.javaClass
+    while (type != null) {
+      if (type.name == "android.accounts.UserRecoverableAuthException") {
+        return try {
+          type.getMethod("getIntent").invoke(error) as? Intent
+        } catch (_: Exception) {
+          null
+        }
+      }
+      type = type.superclass
+    }
+    return null
   }
 
   private suspend fun consentThenToken(am: AccountManager, account: Account, tokenType: String, intent: Intent): String? {
