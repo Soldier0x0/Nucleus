@@ -4,6 +4,7 @@ import test from "node:test";
 import { normalizeDB } from "./defaults.ts";
 import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
+import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
 import { homePresetTiles } from "./presets.ts";
 import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
 import { dataHealth, dueDayLabel } from "./life.ts";
@@ -155,4 +156,19 @@ test("public transport is metro, train, cab or taxi, or bus", () => {
   assert.match(travel, /trip-mode-public/);
   assert.match(travel, /trip-transit-cab/);
   assert.match(travel, /Cab or taxi/);
+});
+
+test("location is asked once, read once, then stopped", () => {
+  assert.equal(CAN_TOGGLE_SYSTEM_LOCATION, false);
+  assert.equal(locationPhase({ asked: false, granted: false, read: false }), "ask");
+  assert.equal(locationPhase({ asked: true, granted: true, read: false }), "read");
+  assert.equal(locationPhase({ asked: true, granted: true, read: true }), "stop");
+  assert.equal(locationPhase({ asked: true, granted: false, read: false }), "stop");
+  assert.deepEqual(placeFromFix({ lat: 12.97, lon: 77.59 }, "This phone"), { name: "This phone", lat: 12.97, lon: 77.59 });
+  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const appJson = readFileSync(new URL("../../app.json", import.meta.url), "utf8");
+  assert.match(settings, /Nucleus cannot turn the phone's location switch on or off/);
+  assert.equal(settings.includes("ACTION_LOCATION_SOURCE_SETTINGS"), false);
+  assert.equal(appJson.includes("android.permission.ACCESS_FINE_LOCATION"), true);
+  assert.equal(appJson.includes("android.permission.ACCESS_COARSE_LOCATION"), false);
 });

@@ -212,6 +212,9 @@ export type Settings = {
   dualTone: boolean;
   online: boolean;
   homeCity?: Place;
+  locationAsked: boolean;
+  locationGranted: boolean;
+  locationRead?: { lat: number; lon: number };
   accent: string;
   density: "comfortable" | "dense";
   privacyMode: boolean;

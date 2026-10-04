@@ -3,6 +3,8 @@ import { ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { accents, radius, THEMES, useTheme, bindLookStyles } from "@/src/theme";
 import { geocode } from "@/src/core/online";
+import { locationPhase, placeFromFix } from "@/src/core/locationAsk";
+import * as Location from "expo-location";
 import type { ModuleId, Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
@@ -104,6 +106,20 @@ export default function Settings() {
   const sizeKb = (JSON.stringify(db).length / 1024).toFixed(1);
   const [city, setCity] = useState("");
   const [cityMatches, setCityMatches] = useState<Place[]>([]);
+  const locationOnce = locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead });
+  useEffect(() => {
+    if (locationOnce !== "read") return;
+    let cancelled = false;
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }).then((pos) => {
+      if (cancelled) return;
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      setSettings({ locationRead: { lat, lon }, homeCity: placeFromFix({ lat, lon }, "This phone"), locationAsked: true, locationGranted: true });
+    }).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [locationOnce, setSettings]);
   const [showLog, setShowLog] = useState(false);
   const [showExports, setShowExports] = useState(false);
   const [diag, setDiag] = useState<null | { scheduled: number }>(null);
@@ -182,6 +198,16 @@ export default function Settings() {
               </Press>
             ))}
             {s.homeCity ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Current: {s.homeCity.name}. The forecast uses about 1 km, not your street, and prefers a land reading.</T> : null}
+            {locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead }) === "ask" ? (
+              <Button small label="Use this phone's location once" testID="settings-location-once" onPress={async () => {
+                const result = await Location.requestForegroundPermissionsAsync();
+                if (!result.granted) setSettings({ locationAsked: true, locationGranted: false });
+                else setSettings({ locationAsked: true, locationGranted: true });
+              }} style={{ marginTop: 8 }} />
+            ) : null}
+            {locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead }) === "stop" && s.locationAsked && !s.locationGranted ? (
+              <T muted style={{ fontSize: 12, marginTop: 6 }}>Location stays off. Nucleus cannot turn the phone's location switch on or off.</T>
+            ) : null}
             {!s.online ? <T muted style={{ fontSize: 12, marginTop: 6 }}>Turn Online on to search for a city.</T> : null}
           </View>
           <Row icon="format-list-bulleted" label="Network log" sub={`${db.netlog.length} request${db.netlog.length === 1 ? "" : "s"} ever made`} testID="settings-netlog-button" onPress={() => setShowLog(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />

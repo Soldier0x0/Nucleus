@@ -22,6 +22,8 @@ export const defaultSettings: Settings = {
   layout: "stack",
   dualTone: false,
   online: false,
+  locationAsked: false,
+  locationGranted: false,
   accent: "ochre",
   density: "comfortable",
   privacyMode: false,
@@ -177,6 +179,11 @@ export function normalizeDB(raw: any): DB {
   if (callName) s.givenName = callName;
   else delete s.givenName;
   s.nameAsked = raw?.settings?.nameAsked === true;
+  s.locationAsked = raw?.settings?.locationAsked === true;
+  s.locationGranted = raw?.settings?.locationGranted === true;
+  const fix = raw?.settings?.locationRead;
+  if (fix && typeof fix.lat === "number" && typeof fix.lon === "number") s.locationRead = { lat: fix.lat, lon: fix.lon };
+  else delete s.locationRead;
   s.launcher = parseLauncher(raw?.settings?.launcher);
   s.shortcuts = Array.isArray(raw?.settings?.shortcuts)
     ? raw.settings.shortcuts
