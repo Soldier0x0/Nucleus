@@ -8,6 +8,7 @@ import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locat
 import { grewMost } from "./moneyDesk.ts";
 import { emptyCycle, forecast, markStart, rememberPeriod, typicalCompare } from "./cycle.ts";
 import { galleryShots, stepGallery } from "./gallery.ts";
+import { PRIVACY_NEVER, PRIVACY_PERMISSIONS, PRIVACY_STAYS } from "./privacyCopy.ts";
 import { receiptMismatchLine } from "./receiptPage.ts";
 import { reuseMarkedStops, weatherReminder } from "./tripMath.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
@@ -279,4 +280,19 @@ test("bills and photos swipe, including when one image is open", () => {
   assert.match(view, /pagingEnabled/);
   assert.match(view, /decelerationRate="fast"/);
   assert.match(view, /stepGallery/);
+});
+
+test("privacy and usage says what stays, what each permission is for, and what never leaves", () => {
+  const joined = [PRIVACY_STAYS, PRIVACY_NEVER, ...PRIVACY_PERMISSIONS.map((row) => `${row.name} ${row.line}`)].join(" ");
+  assert.match(PRIVACY_STAYS, /on this phone/);
+  assert.match(PRIVACY_NEVER, /stay on this phone/);
+  for (const name of ["Fingerprint or face", "Notifications", "Notification access", "Photos", "Location"]) {
+    assert.equal(PRIVACY_PERMISSIONS.some((row) => row.name === name), true, name);
+  }
+  assert.match(joined, /cannot turn the phone's location switch on or off/);
+  assert.doesNotMatch(joined, /\bshe\b|overdue|\bmissed\b|behind|\blate\b|\bfail|arousal|\bpoints\b/i);
+  const screen = readFileSync(new URL("../../app/privacy.tsx", import.meta.url), "utf8");
+  assert.match(screen, /PRIVACY_STAYS/);
+  assert.match(screen, /PRIVACY_NEVER/);
+  assert.match(screen, /PRIVACY_PERMISSIONS/);
 });
