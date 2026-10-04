@@ -61,7 +61,7 @@ const TRAVEL: PresetItem[] = [
   { id: "service", size: "small" },
   { id: "range", size: "small" },
   { id: "stops", size: "small" },
-  { id: "weather", size: "small" },
+  { id: "weather", size: "large" },
   { id: "packing", size: "small" },
 ];
 
@@ -81,7 +81,7 @@ const DESK: PresetItem[] = [
   { id: "notes", size: "small" },
   { id: "media", size: "small" },
   { id: "rules", size: "small" },
-  { id: "attention", size: "small" },
+  { id: "attention", size: "large" },
 ];
 
 const WORKSHOP: PresetItem[] = [
@@ -633,7 +633,57 @@ export function showsCustomizeHome(preset: HomePresetId): boolean {
   }
 }
 
-const LARGE_TILES = new Set(["attention", "trip", "budget", "vehicle"]);
+const LARGE_TILES = new Set(["attention", "weather", "trip", "budget", "vehicle"]);
+
+/** The size a tile uses before a long press. Notes and tools stay short. */
+export function defaultTileSize(id: string): "large" | "small" {
+  return LARGE_TILES.has(id) ? "large" : "small";
+}
+
+export function parseTileSizes(raw: unknown): Record<string, "large" | "small"> {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, "large" | "small"> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if ((value === "large" || value === "small") && /^[a-z0-9-]{1,40}$/.test(key)) out[key] = value;
+  }
+  return out;
+}
+
+/** A saved long-press wins. Everything else keeps the size the board already chose. */
+export function withTileSizes(db: DB, items: PresetItem[]): PresetItem[] {
+  const saved = db.settings.tileSizes ?? {};
+  return items.map((item) => {
+    const chosen = saved[item.id];
+    if (chosen === "large" || chosen === "small") return { ...item, size: chosen };
+    return item;
+  });
+}
+
+/** Flips one tile. A second argument is the size on screen when nothing is saved yet. */
+export function toggleTileSize(db: DB, id: string, shown?: "large" | "small"): DB {
+  const saved = db.settings.tileSizes?.[id];
+  const current = saved === "large" || saved === "small" ? saved : shown === "large" || shown === "small" ? shown : defaultTileSize(id);
+  const next = current === "large" ? "small" : "large";
+  return { ...db, settings: { ...db.settings, tileSizes: { ...(db.settings.tileSizes ?? {}), [id]: next } } };
+}
+
+const TIMELINE_FILTERS = ["all", "money", "vehicles", "travel", "home", "notes"] as const;
+
+/** Timeline chips in a circle. The last filter wraps to the first. */
+export function nextTimelineFilter(id: string, dir: "next" | "prev"): string {
+  const index = TIMELINE_FILTERS.indexOf(id as (typeof TIMELINE_FILTERS)[number]);
+  const at = index < 0 ? 0 : index;
+  switch (dir) {
+    case "next":
+      return TIMELINE_FILTERS[(at + 1) % TIMELINE_FILTERS.length];
+    case "prev":
+      return TIMELINE_FILTERS[(at - 1 + TIMELINE_FILTERS.length) % TIMELINE_FILTERS.length];
+    default: {
+      const unreachable: never = dir;
+      return unreachable;
+    }
+  }
+}
 
 export function customItems(ids: string[]): PresetItem[] {
   return ids.map((id) => ({ id, size: LARGE_TILES.has(id) ? "large" : "small" }));

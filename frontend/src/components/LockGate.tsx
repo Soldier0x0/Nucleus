@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Platform, StyleSheet, useColorScheme, View } from "react-native";
+import { AppState, Platform, StyleSheet, useColorScheme, View, type AppStateStatus } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ScreenCapture from "expo-screen-capture";
 import { useTheme } from "@/src/theme";
@@ -10,8 +10,8 @@ import { Mark } from "./Mark";
 import { NameAsk } from "./NameAsk";
 import { resolveLauncher } from "@/src/core/launcher";
 import { emergencyLockCard } from "@/src/core/featureAccess";
-import { shouldAskBiometric } from "@/src/core/lockPolicy";
-import { consumeIconRestart, consumePhoneLock, hideLockCard, showLockCard } from "@/src/native/android";
+import { askAfterLeave } from "@/src/core/lockPolicy";
+import { consumeIconRestart, hideLockCard, readPhoneLock, showLockCard } from "@/src/native/android";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
@@ -35,7 +35,7 @@ export function LockGate() {
   const [attempt, setAttempt] = useState(0);
   const [forgot, setForgot] = useState(false);
   const [waitSec, setWaitSec] = useState(0);
-  const bgAt = useRef<number | null>(null);
+  const shot = useRef(false);
   const bioAllowed = s.unlockMethod !== "pin" && s.biometricEnabled && Platform.OS !== "web";
 
   useEffect(() => {
@@ -58,16 +58,35 @@ export function LockGate() {
   }, [s.blockScreenshots]);
 
   useEffect(() => {
-    const sub = AppState.addEventListener("change", (st) => {
-      if (st === "active") {
-        setCovered(false);
-        const backgroundMs = bgAt.current ? Date.now() - bgAt.current : 0;
-        const signal = consumePhoneLock() ? "phone-locked" : "still-unlocked";
-        if (shouldAskBiometric(s.lockEnabled, signal, backgroundMs)) setLocked(true);
-        bgAt.current = null;
-      } else {
-        setCovered(s.blockScreenshots || s.lockEnabled);
-        if (!bgAt.current) bgAt.current = Date.now();
+    if (Platform.OS === "web") return;
+    const sub = ScreenCapture.addScreenshotListener(() => {
+      shot.current = true;
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (st: AppStateStatus) => {
+      switch (st) {
+        case "active": {
+          setCovered(false);
+          const phone = readPhoneLock();
+          const screenshot = shot.current;
+          shot.current = false;
+          if (askAfterLeave({ lockEnabled: s.lockEnabled, deviceLocked: phone.deviceLocked, screenTurnedOff: phone.screenTurnedOff, screenshot })) setLocked(true);
+          return;
+        }
+        case "background":
+          setCovered(s.blockScreenshots || s.lockEnabled);
+          return;
+        case "inactive":
+        case "unknown":
+        case "extension":
+          return;
+        default: {
+          const unreachable: never = st;
+          void unreachable;
+        }
       }
     });
     return () => sub.remove();

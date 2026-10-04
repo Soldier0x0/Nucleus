@@ -30,6 +30,7 @@
     "src/core/layouts.test.ts",
     "src/core/v063.test.ts",
     "src/core/v07.test.ts",
-    "src/core/v071.test.ts"
+    "src/core/v071.test.ts",
+    "src/core/v072.test.ts"
   ]
 }

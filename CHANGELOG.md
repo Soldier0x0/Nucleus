@@ -8,6 +8,17 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.7.2
+
+The earlier home cards, circle swipe, and a screenshot that stays unlocked.
+
+- Paper, with bento and cards, stays the default for a new install and an update, unless a look or layout was already chosen.
+- Home cards use the earlier icons and the earlier type. A small label such as Attention or Weather, a large figure, and urgent, upcoming, and info counts.
+- Short cards sit in two columns. A card with more information keeps a full row. A tile sizes itself to what it shows. A long press resizes that one tile, and the motion stays smooth.
+- A screenshot on an unlocked phone does not ask for a PIN or the thumbprint.
+- Swipe goes through every home board in a circle, and the last board wraps to the first. The timeline and the money month swipe as well.
+- Privacy and usage says what stays on the phone, what each permission is for, and what never leaves.
+
 ## v0.7.1
 
 Fixes for leftover sample data, the home cards, and bank texts.

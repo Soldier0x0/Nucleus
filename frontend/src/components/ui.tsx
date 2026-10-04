@@ -136,7 +136,6 @@ export function Card({ children, style, testID, onPress, onLongPress, tone = "de
     borderWidth: 1,
     borderColor: tone === "default" ? colors.border : "transparent",
     padding: layout.bento ? sp.xl : sp.lg,
-    minHeight: layout.bento ? 112 : undefined,
     overflow: frost ? "hidden" : undefined,
     ...shadow,
     ...(pop === "ink" ? { borderWidth: 2, borderColor: colors.onSurface } : {}),

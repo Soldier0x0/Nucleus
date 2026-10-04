@@ -8,7 +8,7 @@ import { Weather, weather, wmo } from "@/src/core/online";
 import { Card, Eyebrow, Icon, T } from "./ui";
 
 /** Weather card: renders only from Online data or cache. Credits Open-Meteo per its licence. */
-export function WeatherCard({ place, testID = "weather-card", from, to }: { place: Place; testID?: string; from?: string; to?: string }) {
+export function WeatherCard({ place, testID = "weather-card", from, to, onPress, onLongPress }: { place: Place; testID?: string; from?: string; to?: string; onPress?: () => void; onLongPress?: () => void }) {
   const { online, log } = useOnline();
   const { db } = useStore();
   const { colors } = useTheme();
@@ -26,7 +26,7 @@ export function WeatherCard({ place, testID = "weather-card", from, to }: { plac
   }, [online, place.lat, place.lon]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!w)
     return (
-      <Card testID={testID}>
+      <Card testID={testID} onPress={onPress} onLongPress={onLongPress}>
         <Eyebrow>Weather · {place.name.split(",")[0]}</Eyebrow>
         <T muted style={{ marginTop: 6 }}>{loading ? "Loading…" : online ? "Weather unavailable right now." : "Turn Online on to fetch weather."}</T>
       </Card>
@@ -34,7 +34,7 @@ export function WeatherCard({ place, testID = "weather-card", from, to }: { plac
   const [label, icon] = wmo(w.w.current.code);
   const days = w.w.daily.filter((d) => (!from || d.date >= from) && (!to || d.date <= to));
   return (
-    <Card testID={testID}>
+    <Card testID={testID} onPress={onPress} onLongPress={onLongPress}>
       <Eyebrow>Weather · {place.name.split(",")[0]}{w.stale ? " · cached" : ""}</Eyebrow>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
         <Icon name={icon} size={40} color={colors.brandPrimary} />

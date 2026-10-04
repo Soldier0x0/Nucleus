@@ -17,7 +17,7 @@ type Native = {
   stopScan(): void;
   setLauncherIcon(name: string): void;
   clearIconRestart(): void;
-  consumePhoneLock(): boolean;
+  consumePhoneLock(): boolean | { deviceLocked?: boolean; screenTurnedOff?: boolean };
   consumeIconRestart(): boolean;
   readSms(): Promise<string>;
   readBankNotices(): string;
@@ -84,13 +84,25 @@ export function applyLauncherIcon(alias: string) {
   }
 }
 
+export type PhoneLock = { deviceLocked: boolean; screenTurnedOff: boolean };
+
+/** The screen-off latch and whether the phone is locked right now. A screenshot overlay is not a lock. */
+export function readPhoneLock(): PhoneLock {
+  try {
+    const raw = bridge()?.consumePhoneLock();
+    if (raw && typeof raw === "object") {
+      return { deviceLocked: raw.deviceLocked === true, screenTurnedOff: raw.screenTurnedOff === true };
+    }
+    return { deviceLocked: raw === true, screenTurnedOff: false };
+  } catch {
+    return { deviceLocked: false, screenTurnedOff: false };
+  }
+}
+
 /** True when the phone was locked since the last check. Minimizing the app does not set this. */
 export function consumePhoneLock(): boolean {
-  try {
-    return bridge()?.consumePhoneLock() ?? false;
-  } catch {
-    return false;
-  }
+  const phone = readPhoneLock();
+  return phone.deviceLocked || phone.screenTurnedOff;
 }
 
 /** True when this process was restarted by an icon change and the phone is still unlocked. */
