@@ -104,6 +104,12 @@ export function applianceOwnership(db: DB, applianceId: string) {
   return { price, repairs, total: price + repairs };
 }
 
+export function dueDayLabel(days: number): string {
+  if (days < 0) return `was due ${-days} days ago`;
+  if (days === 0) return "today";
+  return `${days} days`;
+}
+
 export type HealthIssue = { id: string; title: string; detail: string };
 
 export function dataHealth(db: DB): HealthIssue[] {

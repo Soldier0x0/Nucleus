@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { normalizeDB } from "./defaults.ts";
 import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
-import { dataHealth } from "./life.ts";
+import { dataHealth, dueDayLabel } from "./life.ts";
 import { withoutSampleData } from "./sample.ts";
 import type { DB } from "./types.ts";
 
@@ -90,4 +91,23 @@ test("a repeated vehicle expense names both notes", () => {
   assert.notEqual(dup.title, "Two Vehicle expenses on 2026-08-02");
   assert.match(dup.detail, /Activa · Engine oil/);
   assert.match(dup.detail, /Activa · 5\.6 L/);
+});
+
+test("a past home date says it was due, and does not say late", () => {
+  assert.equal(dueDayLabel(-3), "was due 3 days ago");
+  assert.equal(dueDayLabel(0), "today");
+  assert.equal(dueDayLabel(4), "4 days");
+  assert.doesNotMatch(dueDayLabel(-1), /late|overdue|missed|behind|fail/i);
+  const home = readFileSync(new URL("../../app/home/index.tsx", import.meta.url), "utf8");
+  const chores = readFileSync(new URL("../components/HomeLife.tsx", import.meta.url), "utf8");
+  const widgets = readFileSync(new URL("./widgets.ts", import.meta.url), "utf8");
+  const rules = readFileSync(new URL("./rules.ts", import.meta.url), "utf8");
+  const attention = readFileSync(new URL("./intelligence.ts", import.meta.url), "utf8");
+  assert.equal(home.includes("d late"), false);
+  assert.equal(chores.includes("d late"), false);
+  assert.equal(widgets.includes("days overdue"), false);
+  assert.equal(rules.includes("overdue by ${-x.days} days"), false);
+  assert.equal(attention.includes("urgent once overdue"), false);
+  assert.equal(attention.includes("overdue by ${-d} days"), false);
+  assert.equal(attention.includes("overdue by ${-x.days} days"), false);
 });

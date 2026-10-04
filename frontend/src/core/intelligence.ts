@@ -380,7 +380,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         subtitle: `Every ${x.p.everyMonths} months · last ${fmtDate(x.p.lastDone)}`,
         score: SEV_WEIGHT[sev] + Math.min(60, Math.max(0, -x.days + 20)),
         route: "/home",
-        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, and still listed after that date.", ranking: rankText(sev, "due date") },
+        why: { summary: `Plan "${x.p.name}" repeats every ${x.p.everyMonths} months; last done ${fmtDate(x.p.lastDone)}, so next due ${fmtDate(x.due)}.`, facts: [{ label: "Last done", value: fmtDate(x.p.lastDone) }, { label: "Interval", value: `${x.p.everyMonths} months` }, { label: "Next due", value: fmtDate(x.due) }], rule: "Upcoming within 7 days of the due date, urgent once that day has passed.", ranking: rankText(sev, "due date") },
       });
     }
     for (const c of db.chores) {
@@ -393,7 +393,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         module: "home",
         severity: sev,
         icon: "broom",
-        title: d < 0 ? `${c.name} overdue by ${-d} days` : d === 0 ? `${c.name} is due today` : `${c.name} is due tomorrow`,
+        title: d < 0 ? `${c.name} was due ${-d} days ago` : d === 0 ? `${c.name} is due today` : `${c.name} is due tomorrow`,
         subtitle: [c.room, c.assignee, `every ${c.everyDays} days`].filter(Boolean).join(" · "),
         score: SEV_WEIGHT[sev] + Math.min(40, Math.max(0, -d + 10)),
         route: "/home",

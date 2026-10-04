@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { homeSchedule, logMaintenance, ROOMS, upsertAppliance } from "@/src/core/domains";
-import { applianceOwnership } from "@/src/core/life";
+import { applianceOwnership, dueDayLabel } from "@/src/core/life";
 import { HomeLife } from "@/src/components/HomeLife";
 import { deleteEntity } from "@/src/core/actions";
 import type { Appliance } from "@/src/core/types";
@@ -44,7 +44,7 @@ export default function Home() {
               <Eyebrow style={{ color: next && next.days <= 7 ? colors.onSurfaceInverse : colors.muted }}>Next maintenance</Eyebrow>
               {next ? (
                 <>
-                  <T v="display" color={next.days <= 7 ? colors.onSurfaceInverse : colors.onSurface} testID="home-next-days">{next.days < 0 ? `${-next.days}d late` : `${next.days} days`}</T>
+                  <T v="display" color={next.days <= 7 ? colors.onSurfaceInverse : colors.onSurface} testID="home-next-days">{next.days < 0 ? dueDayLabel(next.days) : `${next.days} days`}</T>
                   <T color={next.days <= 7 ? colors.onSurfaceInverse : colors.onSurface} numberOfLines={1}>{next.a.name} · {next.p.name}</T>
                 </>
               ) : <T muted>No maintenance plans yet.</T>}
