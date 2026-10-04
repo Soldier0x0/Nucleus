@@ -5,6 +5,7 @@ import { normalizeDB } from "./defaults.ts";
 import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
 import { homePresetTiles } from "./presets.ts";
+import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
 import { dataHealth, dueDayLabel } from "./life.ts";
 import { withoutSampleData } from "./sample.ts";
 import type { DB } from "./types.ts";
@@ -136,4 +137,22 @@ test("a module that is off is hidden on the home screen and the records stay", (
   };
   assert.equal(homePresetTiles(cycleOff, "home", "real").some((item) => item.id === "cycle"), false);
   assert.deepEqual(cycleOff.cycle.days, db.cycle.days);
+});
+
+test("public transport is metro, train, cab or taxi, or bus", () => {
+  assert.equal(transitLabel("metro"), "Metro");
+  assert.equal(transitLabel("train"), "Train");
+  assert.equal(transitLabel("cab"), "Cab or taxi");
+  assert.equal(transitLabel("bus"), "Bus");
+  assert.equal(isPersonalTrip({}), true);
+  assert.equal(isPersonalTrip({ mode: "personal" }), true);
+  assert.equal(isPersonalTrip({ mode: "public" }), false);
+  const fare = transitExpense(40, "cab", "2026-09-04");
+  assert.deepEqual(fare, { type: "expense", amount: 40, category: "Transport", date: "2026-09-04", note: "Cab or taxi" });
+  assert.notEqual(fare.category, "Fuel");
+  assert.notEqual(fare.category, "Vehicle");
+  const travel = readFileSync(new URL("../../app/travel/index.tsx", import.meta.url), "utf8");
+  assert.match(travel, /trip-mode-public/);
+  assert.match(travel, /trip-transit-cab/);
+  assert.match(travel, /Cab or taxi/);
 });

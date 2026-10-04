@@ -7,7 +7,8 @@ import { useStore } from "@/src/core/store";
 import { useOnline } from "@/src/core/useOnline";
 import { geocode } from "@/src/core/online";
 import { newDocs, readiness, tripStatus, upsertTrip } from "@/src/core/domains";
-import type { Place, Trip } from "@/src/core/types";
+import type { Place, TransitKind, Trip, TripMode } from "@/src/core/types";
+import { transitLabel } from "@/src/core/transit";
 import { addDays, fmtDate, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, EmptyState, Eyebrow, IconButton, Press, T } from "@/src/components/ui";
@@ -31,10 +32,12 @@ export function TripSheet({ visible, onClose, trip }: { visible: boolean; onClos
   const [trav, setTrav] = useState(String(trip?.travellers ?? 1));
   const [budget, setBudget] = useState(trip?.budget ? String(trip.budget) : "");
   const [err, setErr] = useState<string>();
+  const [mode, setMode] = useState<TripMode>(trip?.mode === "public" ? "public" : "personal");
+  const [transit, setTransit] = useState<TransitKind>(trip?.transit ?? "metro");
   const save = () => {
     if (!name.trim() || !dest.trim()) return setErr("Name and destination are required");
     if (end < start) return setErr("End date must be after start");
-    const t: Trip = { id: trip?.id ?? uid(), createdAt: trip?.createdAt ?? new Date().toISOString(), packing: trip?.packing ?? [], itinerary: trip?.itinerary ?? [], docs: trip?.docs ?? newDocs(), name: name.trim(), destination: dest.trim(), place, start, end, travellers: Math.max(1, parseNum(trav) || 1), budget: parseNum(budget) || 0 };
+    const t: Trip = { id: trip?.id ?? uid(), createdAt: trip?.createdAt ?? new Date().toISOString(), packing: trip?.packing ?? [], itinerary: trip?.itinerary ?? [], docs: trip?.docs ?? newDocs(), name: name.trim(), destination: dest.trim(), place, start, end, travellers: Math.max(1, parseNum(trav) || 1), budget: parseNum(budget) || 0, mode, ...(mode === "public" ? { transit } : {}) };
     update((d) => upsertTrip(d, t));
     onClose();
     toast(trip ? "Trip updated" : `${t.name} created`, "bag-suitcase-outline");
@@ -42,6 +45,30 @@ export function TripSheet({ visible, onClose, trip }: { visible: boolean; onClos
   };
   return (
     <Sheet visible={visible} onClose={onClose} title={trip ? "Edit trip" : "New trip"} testID="trip-sheet" footer={<Button label="Save trip" icon="check" onPress={save} testID="trip-save-button" />}>
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+        <Press testID="trip-mode-personal" onPress={() => setMode("personal")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+          <T v="label">Personal vehicle</T>
+        </Press>
+        <Press testID="trip-mode-public" onPress={() => setMode("public")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+          <T v="label">Public transport</T>
+        </Press>
+      </View>
+      {mode === "public" ? (
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+          <Press testID="trip-transit-metro" onPress={() => setTransit("metro")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+            <T v="label">{transitLabel("metro")}</T>
+          </Press>
+          <Press testID="trip-transit-train" onPress={() => setTransit("train")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+            <T v="label">{transitLabel("train")}</T>
+          </Press>
+          <Press testID="trip-transit-cab" onPress={() => setTransit("cab")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+            <T v="label">Cab or taxi</T>
+          </Press>
+          <Press testID="trip-transit-bus" onPress={() => setTransit("bus")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+            <T v="label">{transitLabel("bus")}</T>
+          </Press>
+        </View>
+      ) : null}
       <Field label="Trip name" testID="trip-name-input" value={name} onChangeText={(t) => (setName(t), setErr(undefined))} placeholder="Goa 2027" error={err} />
       <Field label="Destination" testID="trip-destination-input" value={dest} onChangeText={(t) => (setDest(t), setPlace(undefined))} placeholder="Goa, India" hint={place ? `Located: ${place.name}` : online ? "Tap 'Find place' to enable weather & holidays" : "Turn Online on to look up weather & holidays"} />
       {online ? <Button small kind="ghost" icon="map-search-outline" label="Find place" testID="trip-find-place" onPress={async () => setMatches(await geocode(online, log, dest))} style={{ marginBottom: 8 }} /> : null}
