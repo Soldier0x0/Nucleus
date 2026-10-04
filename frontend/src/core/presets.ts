@@ -350,6 +350,21 @@ export function withModulesOn(db: DB, items: PresetItem[]): PresetItem[] {
   });
 }
 
+/** Saved order wins. Tiles that are not in that list stay at the end. */
+export function applyTileOrder(items: PresetItem[], order: string[] | undefined): PresetItem[] {
+  if (!order?.length) return items;
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const next: PresetItem[] = [];
+  for (const id of order) {
+    const item = byId.get(id);
+    if (!item) continue;
+    next.push(item);
+    byId.delete(id);
+  }
+  for (const item of byId.values()) next.push(item);
+  return next;
+}
+
 /** Every built-in board lists its own tiles. Empty records stay on the board as placeholders. */
 export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
   let items: PresetItem[];
@@ -360,11 +375,13 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
       items = customItems(ids);
       break;
     }
+    case "desk":
+    case "workshop":
+      items = applyTileOrder(presetItems(preset), db.settings.tileOrder?.[preset]);
+      break;
     case "money":
     case "travel":
     case "home":
-    case "desk":
-    case "workshop":
     case "adhd":
       items = presetItems(preset);
       break;

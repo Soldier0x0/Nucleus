@@ -4,6 +4,7 @@ import { cleanCallName } from "./greeting";
 import { parseLauncher } from "./launcher";
 import { parseLook } from "./looks";
 import { parseLayout } from "./layouts";
+import { parseTileOrder } from "./homeOrder";
 import { emptyAdhd, emptyHeadsUp, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { uid } from "./format";
 
@@ -66,6 +67,7 @@ export const defaultSettings: Settings = {
     { id: "tools", enabled: true },
   ],
   tileSizes: {},
+  tileOrder: {},
   boards: [],
   remindersEnabled: false,
   highContrast: false,
@@ -112,6 +114,7 @@ export function emptyDB(): DB {
     modules: defaultSettings.modules.map((m) => ({ ...m })),
     tiles: defaultSettings.tiles.map((t) => ({ ...t })),
     tileSizes: { ...defaultSettings.tileSizes },
+    tileOrder: { ...defaultSettings.tileOrder },
   },
     vehicles: [],
     fuel: [],
@@ -215,6 +218,7 @@ export function normalizeDB(raw: any): DB {
     ...base.settings.tiles.filter((t) => !(raw?.settings?.tiles ?? []).some((x: any) => x.id === t.id)),
   ];
   s.tileSizes = parseTileSizes(raw?.settings?.tileSizes);
+  s.tileOrder = parseTileOrder(raw?.settings?.tileOrder);
   return {
     ...base,
     ...raw,

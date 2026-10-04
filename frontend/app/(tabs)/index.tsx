@@ -102,7 +102,7 @@ export default function Today() {
                     <Icon name="tune-variant" size={18} color={colors.muted} />
                     <T muted v="label">Customize home</T>
                   </Press>
-                  <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to resize it.</T>
+                  <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to rearrange it.</T>
                 </>
               ) : null}
               <View style={{ height: bottomChrome }} />

@@ -235,6 +235,8 @@ export type Settings = {
   tiles: { id: TileId; enabled: boolean }[];
   /** Long-press size for one tile. An unset tile keeps the size its board already uses. */
   tileSizes: Record<string, "large" | "small">;
+  /** Order saved by holding a tile on Desk or Workshop. */
+  tileOrder: Partial<Record<HomePresetId, string[]>>;
   boards: Board[];
   activeBoardId?: string;
   remindersEnabled: boolean;
