@@ -9,6 +9,7 @@ import { grewMost } from "./moneyDesk.ts";
 import { emptyCycle, forecast, markStart, rememberPeriod, typicalCompare } from "./cycle.ts";
 import { galleryShots, stepGallery } from "./gallery.ts";
 import { PRIVACY_NEVER, PRIVACY_PERMISSIONS, PRIVACY_STAYS } from "./privacyCopy.ts";
+import { tabRipple } from "./tabRipple.ts";
 import { receiptMismatchLine } from "./receiptPage.ts";
 import { reuseMarkedStops, weatherReminder } from "./tripMath.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
@@ -295,4 +296,14 @@ test("privacy and usage says what stays, what each permission is for, and what n
   assert.match(screen, /PRIVACY_STAYS/);
   assert.match(screen, /PRIVACY_NEVER/);
   assert.match(screen, /PRIVACY_PERMISSIONS/);
+});
+
+test("the bottom bar tap splash is a small short circle", () => {
+  const ripple = tabRipple();
+  assert.ok(ripple.radius <= 20);
+  assert.ok(ripple.durationMs <= 140);
+  const tabs = readFileSync(new URL("../../app/(tabs)/_layout.tsx", import.meta.url), "utf8");
+  assert.match(tabs, /tabRipple\(/);
+  assert.match(tabs, /android_ripple=\{\{[^}]*radius: ripple\.radius/);
+  assert.match(tabs, /duration: ripple\.durationMs/);
 });
