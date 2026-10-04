@@ -449,6 +449,10 @@ export function presetTileTitle(id: string): string {
       return "Rules";
     case "attention":
       return "Attention";
+    case "trip":
+      return "Trip";
+    case "home":
+      return "Home";
     case "tools":
       return "Tools";
     case "history":

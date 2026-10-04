@@ -4,7 +4,7 @@
  */
 export const SMS_LEAVES_THE_PHONE = false;
 
-export type InboxLine = { sender: string; body: string; at: string };
+export type InboxLine = { sender: string; body: string; at: string; app?: string };
 export type KeptLine = { kind: "debit" | "credit" | "balance"; amount: number; sender: string; at: string };
 
 const OTP = /\b(otp|one[ -]?time(?: password)?|verification code|do not share)\b/i;
@@ -197,4 +197,53 @@ export function applyInbox(
     }
   }
   return { saved, asks, dropped: filtered.dropped };
+}
+
+const PAYMENT_NAME = /google pay|\bgpay\b|phonepe|phone pe|\bbank\b|\bhdfc\b|\bicici\b|\bsbi\b|axis bank|\bkotak\b/i;
+
+function isBankNotice(line: { sender: string; app?: string }): boolean {
+  const app = (line.app ?? "").toLowerCase();
+  if (app.includes("nbu.paisa") || app.includes("walletnfcrel") || app.includes("phonepe")) return true;
+  if (app.includes("bank")) return true;
+  return PAYMENT_NAME.test(`${line.sender} ${line.app ?? ""}`);
+}
+
+/**
+ * Google Pay, PhonePe, and bank notifications become ledger rows.
+ * An unknown sender still asks. An own-account transfer still asks.
+ */
+export function saveBankNotices(
+  lines: InboxLine[],
+  input: {
+    ownAccounts: string[];
+    memory: SmsMemory[];
+    categoryFor: (body: string, kind: KeptLine["kind"]) => string | null;
+  },
+): { saved: BankTxn[]; asks: BankAsk[]; dropped: number } {
+  const applied = applyInbox(lines, {
+    knownSenders: [],
+    ownAccounts: input.ownAccounts,
+    memory: input.memory,
+    categoryFor: input.categoryFor,
+  });
+  const saved = [...applied.saved];
+  const asks: BankAsk[] = [];
+  for (const ask of applied.asks) {
+    const source = lines.find((row) => smsTxnId(row.sender, row.at, ask.kind) === ask.id);
+    if (ask.reason !== "transfer" && ask.date && source && isBankNotice(source)) {
+      saved.push({
+        id: ask.id,
+        type: ask.kind === "credit" ? "income" : "expense",
+        amount: ask.kind === "balance" ? 0 : ask.amount,
+        category: ask.kind === "balance" ? "Balance" : ask.category || "Other",
+        date: ask.date,
+        note: ask.sender,
+        transfer: false,
+        ...(ask.kind === "balance" ? { balance: ask.amount } : {}),
+      });
+    } else {
+      asks.push(ask);
+    }
+  }
+  return { saved, asks, dropped: applied.dropped };
 }

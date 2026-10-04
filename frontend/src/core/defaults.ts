@@ -17,9 +17,10 @@ export const defaultSettings: Settings = {
   volumeUnit: "L",
   tempUnit: "C",
   timeFormat: "12h",
-  theme: "midnight",
-  look: "current",
-  layout: "stack",
+  theme: "paper",
+  look: "cards",
+  layout: "bento",
+  appearanceChosen: true,
   dualTone: false,
   online: false,
   locationAsked: false,
@@ -76,6 +77,7 @@ export const defaultSettings: Settings = {
   launcher: { family: "paper", variant: "paper" },
   cloud: { provider: "off", askedSinceUnlock: false },
   smsInbox: false,
+  bankTextsAsked: false,
   lockAlerts: false,
   moneyNames: [],
   smsMemory: [],
@@ -152,9 +154,18 @@ export function normalizeDB(raw: any): DB {
   if ((s.theme as string) === "dark") s.theme = "midnight";
   s.look = parseLook(raw?.settings?.look);
   s.layout = parseLayout(raw?.settings?.layout);
+  if (raw?.settings?.appearanceChosen === true) {
+    s.appearanceChosen = true;
+  } else {
+    if (!raw?.settings?.theme || s.theme === "midnight") s.theme = "paper";
+    if (!raw?.settings?.look || raw.settings.look === "current") s.look = "cards";
+    if (!raw?.settings?.layout || raw.settings.layout === "stack") s.layout = "bento";
+    s.appearanceChosen = true;
+  }
   s.dualTone = raw?.settings?.dualTone === true;
   s.cloud = parseCloud(raw?.settings?.cloud);
   s.smsInbox = raw?.settings?.smsInbox === true;
+  s.bankTextsAsked = raw?.settings?.bankTextsAsked === true;
   s.lockAlerts = raw?.settings?.lockAlerts === true;
   s.readOnly = raw?.settings?.readOnly === true;
   s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();

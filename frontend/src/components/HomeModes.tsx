@@ -1,11 +1,12 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ScrollView, Switch, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
+import { homeCard, type HomeForecast } from "@/src/core/homeCards";
 import { presentHome, type HomePresentation } from "@/src/core/layouts";
+import { weather, wmo } from "@/src/core/online";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { balanceOverTime, monthFlow, repeatingBills } from "@/src/core/moneyDesk";
-import { money, monthKey, todayISO } from "@/src/core/format";
+import { todayISO } from "@/src/core/format";
 import {
   ADHD_BUFFER_MS,
   adhdBuddy,
@@ -29,110 +30,12 @@ import {
   swipeScreens,
   swipeStartIndex,
   swipeWrap,
-  tilePlaceholder,
   typeAdhdDraft,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
 import type { HomePresetId } from "@/src/core/types";
-import { Button, Card, T } from "./ui";
+import { Button, Card, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
-
-function slotCopy(db: ReturnType<typeof useStore>["db"], id: string): { title: string; line: string; route: string } {
-  const today = todayISO();
-  const cur = db.settings.currency;
-  switch (id) {
-    case "balance": {
-      const points = balanceOverTime(db.txns);
-      const last = points[points.length - 1];
-      return { title: "Balance", line: last ? money(last.balance, cur) : "Balance", route: "/money" };
-    }
-    case "spending": {
-      const flow = monthFlow(db.txns, monthKey(today));
-      return { title: "Spending", line: money(flow.out, cur), route: "/money" };
-    }
-    case "charts": {
-      const flow = monthFlow(db.txns, monthKey(today));
-      return { title: "Charts", line: `In ${money(flow.in, cur)} · out ${money(flow.out, cur)}`, route: "/money" };
-    }
-    case "receipts":
-      return { title: "Receipts", line: `${db.txns.filter((row) => row.photo).length}`, route: "/money" };
-    case "bills": {
-      const bill = repeatingBills(db.txns)[0];
-      return { title: "Bills", line: bill ? bill.name : "Bills", route: "/money?tab=subscriptions" };
-    }
-    case "budget":
-      return { title: "Budget", line: money(db.budget.monthly, cur), route: "/money" };
-    case "subscriptions":
-      return { title: "Subscriptions", line: `${db.subscriptions.length}`, route: "/money?tab=subscriptions" };
-    case "funds":
-      return { title: "Funds", line: db.funds[0]?.name ?? `${db.funds.length}`, route: "/money/plan" };
-    case "debts":
-      return { title: "Debts", line: db.debts[0]?.name ?? `${db.debts.length}`, route: "/money/plan" };
-    case "categories":
-      return { title: "Categories", line: db.settings.moneyNames[0] ?? db.txns[0]?.category ?? "Categories", route: "/money" };
-    case "networth":
-      return { title: "Net worth", line: db.netWorth[0] ? money(db.netWorth[db.netWorth.length - 1].assets - db.netWorth[db.netWorth.length - 1].liabilities, cur) : "Net worth", route: "/money/plan" };
-    case "route": {
-      const trip = [...db.trips].sort((a, b) => a.start.localeCompare(b.start))[0];
-      return { title: "Route", line: trip ? `${trip.name} · ${trip.destination}` : "Route", route: trip ? `/travel/${trip.id}` : "/travel" };
-    }
-    case "mileage":
-      return { title: "Mileage", line: "From your fills", route: "/vehicles" };
-    case "fuel":
-      return { title: "Fuel", line: db.fuel[0] ? money(db.fuel[db.fuel.length - 1].total, cur) : "Fuel", route: "/vehicles" };
-    case "papers":
-      return { title: "Papers", line: `${db.papers.length}`, route: "/papers" };
-    case "vehicle":
-      return { title: "Vehicle", line: db.vehicles[0]?.name ?? "Vehicle", route: db.vehicles[0] ? `/vehicles/${db.vehicles[0].id}` : "/vehicles" };
-    case "service":
-      return { title: "Service", line: db.services[0] ? db.services[db.services.length - 1].date : "Service", route: "/vehicles" };
-    case "range":
-      return { title: "Range", line: "From mileage and the last fill", route: "/vehicles" };
-    case "stops":
-      return { title: "Stops", line: "Fuel and snack stops", route: "/travel" };
-    case "weather":
-      return { title: "Weather", line: db.trips.find((trip) => trip.place)?.place?.name ?? "Weather", route: "/travel" };
-    case "packing":
-      return { title: "Packing", line: "Trip list", route: "/travel" };
-    case "maintenance":
-      return { title: "Maintenance", line: db.appliances[0]?.name ?? "Home", route: "/home" };
-    case "chores":
-      return { title: "Chores", line: db.chores[0]?.name ?? "Chores", route: "/home" };
-    case "appliances":
-      return { title: "Appliances", line: `${db.appliances.length}`, route: "/home" };
-    case "notes":
-      return { title: "Notes", line: db.notes[0]?.title || "Notes", route: "/notes" };
-    case "cycle":
-      return { title: "Cycle", line: "On this phone", route: "/cycle" };
-    case "warranties":
-      return { title: "Warranties", line: "Papers and appliances", route: "/papers" };
-    case "utilities":
-      return { title: "Utilities", line: `${db.utilities.length}`, route: "/home" };
-    case "kanban":
-      return { title: "Kanban", line: db.kanban[0]?.name ?? "Board", route: "/kanban" };
-    case "wiki":
-      return { title: "Wiki", line: db.wiki[0]?.title ?? "Wiki", route: "/wiki" };
-    case "media":
-      return { title: "Media", line: db.media[0]?.title ?? "Media", route: "/media" };
-    case "rules":
-      return { title: "Rules", line: db.rules[0]?.name ?? "Rules", route: "/rules" };
-    case "attention":
-      return { title: "Attention", line: "Open", route: "/(tabs)/attention" };
-    case "tools":
-    case "history":
-      return { title: id === "history" ? "History" : "Tools", line: db.toolHistory[0]?.label ?? "Tools", route: "/tools" };
-    case "builder":
-      return { title: "Builder", line: db.customTools[0]?.name ?? "Builder", route: "/builder" };
-    case "dev":
-      return { title: "Dev", line: "Dev", route: "/dev" };
-    case "lab":
-      return { title: "Lab", line: "Lab", route: "/lab" };
-    case "net":
-      return { title: "Network", line: "This phone", route: "/net" };
-    default:
-      return { title: id, line: "", route: "/" };
-  }
-}
 
 export function PresetGrid({
   preset,
@@ -145,11 +48,28 @@ export function PresetGrid({
 }) {
   const { db, update, session } = useStore();
   const router = useRouter();
-  const { sp, layout } = useTheme();
+  const { colors, sp, layout } = useTheme();
   const presented = layoutFor
     ? layoutFor(preset)
     : presentHome(layout.layout, homePresetTiles(db, preset, session));
-  const placeFor = emptyCopy ?? tilePlaceholder;
+  void emptyCopy;
+  const [forecast, setForecast] = useState<HomeForecast | null>(null);
+  const city = db.settings.homeCity;
+  useEffect(() => {
+    if (!city) {
+      setForecast(null);
+      return;
+    }
+    let alive = true;
+    weather(db.settings.online, () => {}, city).then((result) => {
+      if (!alive || !result) return;
+      const [label] = wmo(result.w.current.code);
+      setForecast({ temp: result.w.current.temp, label });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [city, db.settings.online]);
   const lastId = lastPresetThing(db, preset);
   const lastLabel = presetThingLabel(db, lastId);
   const routeForRemembered = (id: string) => {
@@ -176,18 +96,15 @@ export function PresetGrid({
         return (
           <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
             {row.items.map((item) => {
-              const copy = slotCopy(db, item.id);
-              const title = presetTileTitle(item.id);
-              const place = placeFor(item.id);
-              const dataLine = copy.line === title ? "" : copy.line;
-              const knownPlace = place.title !== item.id;
-              const line = dataLine || (knownPlace ? place.line : "");
-              const route = dataLine ? copy.route : knownPlace ? place.route : copy.route;
+              const shown = homeCard(db, item.id, item.id === "weather" ? forecast : null);
               return (
                 <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
-                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
-                    <T v={item.size === "large" ? "h2" : "label"}>{title}</T>
-                    {line ? <T muted numberOfLines={2}>{line}</T> : null}
+                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, shown.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
+                    <Icon name={shown.icon} size={22} color={colors.onSurface} />
+                    <T v="label">{presetTileTitle(item.id)}</T>
+                    {shown.lines.map((line, lineIndex) => (
+                      <T key={`${item.id}-${lineIndex}`} v={lineIndex === 0 ? "h2" : "body"} muted={lineIndex > 0} numberOfLines={2}>{line}</T>
+                    ))}
                   </Card>
                 </View>
               );

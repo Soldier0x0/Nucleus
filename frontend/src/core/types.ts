@@ -210,6 +210,8 @@ export type Settings = {
   look: LookId;
   /** Glass or Bento on top of the look. Stack keeps the current rows. */
   layout: LayoutId;
+  /** True after this phone picked a color, look, or layout, or after the v0.7.1 default was applied. */
+  appearanceChosen: boolean;
   /** Background keeps the color set. Type, buttons, and marks use a second color. */
   dualTone: boolean;
   online: boolean;
@@ -256,6 +258,8 @@ export type Settings = {
   cloud: CloudSync;
   /** Bank texts may be read on this phone. Off until chosen. */
   smsInbox: boolean;
+  /** The person asked for bank texts. Access is checked again when they come back. */
+  bankTextsAsked: boolean;
   /** Reminders and the emergency card may show on the lock screen. */
   lockAlerts: boolean;
   /** Categories you named. Unused ones can be removed. */

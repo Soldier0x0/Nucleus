@@ -27,7 +27,7 @@ type Tab = "overview" | "transactions" | "subscriptions";
 
 export default function Money() {
   const real = useRealSession();
-  const params = useLocalSearchParams<{ tab?: Tab; focus?: string; field?: string; seed?: string }>();
+  const params = useLocalSearchParams<{ tab?: Tab; focus?: string; field?: string; seed?: string; sheet?: string }>();
   const { db } = useStore();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
@@ -35,7 +35,7 @@ export default function Money() {
   const { width } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>(params.tab ?? "overview");
   const [month, setMonth] = useState(monthKey(todayISO()));
-  const [sheet, setSheet] = useState<null | "txn" | "budget" | "sub">(null);
+  const [sheet, setSheet] = useState<null | "txn" | "budget" | "sub">(params.sheet === "budget" ? "budget" : null);
   const [editSub, setEditSub] = useState<Subscription | undefined>();
   const [why, setWhy] = useState<Insight | null>(null);
   const [receipt, setReceipt] = useState<string | null>(null);
@@ -50,6 +50,9 @@ export default function Money() {
   const isCurrent = month === monthKey(todayISO());
   const maxCat = Math.max(1, ...mt.categories.map(([, v]) => v), ...Object.values(db.budget.categories));
 
+  useEffect(() => {
+    if (params.sheet === "budget") setSheet("budget");
+  }, [params.sheet]);
   useEffect(() => {
     const waiting = takeReceiptText();
     if (waiting) setReceipt(waiting);
