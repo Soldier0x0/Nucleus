@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { monthKey, monthLabel, todayISO } from "@/src/core/format";
-import { BUDDY_EMOJIS, buddyTitle, dayInWindow, forecast, markEnd, markStart, packingTarget, setBuddy, togglePacked } from "@/src/core/cycle";
+import { BUDDY_EMOJIS, buddyTitle, dayInWindow, forecast, markEnd, markStart, packingTarget, setBuddy, togglePacked, typicalCompare } from "@/src/core/cycle";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Icon, Press, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
@@ -48,6 +48,7 @@ export default function CycleScreen() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const cells = [...Array(startPad).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const line = next?.line ?? "Log a period to see a guess.";
+  const typical = typicalCompare(db.cycle.days, today);
 
   const shift = (delta: number) => {
     const d = new Date(year, month - 1 + delta, 1);
@@ -75,6 +76,7 @@ export default function CycleScreen() {
         <T testID="cycle-window" v="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={{ textAlign: "center", marginBottom: 16 }}>
           {line}
         </T>
+        {typical ? <T testID="cycle-typical" style={{ textAlign: "center", marginBottom: 16 }}>{typical.line}</T> : null}
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
           <Press testID="cycle-prev" onPress={() => shift(-1)} style={{ padding: 8 }}><Icon name="chevron-left" size={26} /></Press>

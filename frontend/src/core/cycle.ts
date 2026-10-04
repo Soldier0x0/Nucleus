@@ -296,6 +296,16 @@ export function cycleLengths(days: CycleDay[]): number[] {
   return lengths;
 }
 
+export function typicalCompare(days: CycleDay[], today: string): { typical: number; thisOne: number; line: string } | null {
+  const lengths = cycleLengths(days);
+  if (lengths.length < 2) return null;
+  const typical = median(lengths);
+  const start = periodStarts(days).at(-1);
+  if (!start) return null;
+  const thisOne = Math.max(0, daysBetween(start, today));
+  return { typical, thisOne, line: `Your typical length is ${typical} days. This one is ${thisOne} days so far.` };
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);

@@ -6,6 +6,7 @@ import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
 import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
 import { grewMost } from "./moneyDesk.ts";
+import { emptyCycle, forecast, markStart, typicalCompare } from "./cycle.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
 import { homePresetTiles } from "./presets.ts";
 import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
@@ -212,4 +213,22 @@ test("a personal vehicle shows cost per kilometer, fuel against the tank, and di
   const care = readFileSync(new URL("../components/VehicleCare.tsx", import.meta.url), "utf8");
   assert.match(care, /costPerKmLine/);
   assert.match(care, /fuelAgainstTank/);
+});
+
+test("two real cycles show a typical length, and the forecast stays a guess", () => {
+  let days: ReturnType<typeof markStart> = [];
+  days = markStart(days, "2026-01-01");
+  days = markStart(days, "2026-01-29");
+  days = markStart(days, "2026-02-26");
+  const compared = typicalCompare(days, "2026-03-05");
+  assert.ok(compared);
+  assert.equal(compared.typical, 28);
+  assert.match(compared.line, /Your typical length is 28 days/);
+  assert.match(compared.line, /This one is \d+ days so far/);
+  assert.equal(typicalCompare(markStart([], "2026-01-01"), "2026-01-10"), null);
+  const guess = forecast({ ...emptyCycle(), days }, "2026-03-05");
+  assert.ok(guess);
+  assert.match(guess.line, /^Guess/);
+  const screen = readFileSync(new URL("../../app/cycle/index.tsx", import.meta.url), "utf8");
+  assert.match(screen, /cycle-typical/);
 });
