@@ -3,6 +3,7 @@ import test from "node:test";
 import { normalizeDB } from "./defaults.ts";
 import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
+import { dataHealth } from "./life.ts";
 import { withoutSampleData } from "./sample.ts";
 import type { DB } from "./types.ts";
 
@@ -77,4 +78,16 @@ test("an upgraded phone gets the budget from before the demo", () => {
   const own = upgradedPhone();
   own.budget = { monthly: 3000, categories: { Food: 500 } };
   assert.deepEqual(withoutSampleData(own).budget, { monthly: 3000, categories: { Food: 500 } });
+});
+
+test("a repeated vehicle expense names both notes", () => {
+  const db = upgradedPhone();
+  db.txns.push({ id: "dup-fuel", type: "expense", amount: 450, category: "Vehicle", date: "2026-08-02", note: "Activa · 5.6 L" });
+  const dup = dataHealth(db).find((issue) => issue.id.startsWith("dup:"));
+  assert.ok(dup);
+  assert.match(dup.title, /Activa · Engine oil/);
+  assert.match(dup.title, /Activa · 5\.6 L/);
+  assert.notEqual(dup.title, "Two Vehicle expenses on 2026-08-02");
+  assert.match(dup.detail, /Activa · Engine oil/);
+  assert.match(dup.detail, /Activa · 5\.6 L/);
 });
