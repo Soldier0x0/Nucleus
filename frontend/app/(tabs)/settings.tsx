@@ -20,6 +20,8 @@ import { allowLockScreenChannel, notifyOnce, scheduledCount } from "@/src/core/n
 import { shownInDecoy } from "@/src/core/profiles";
 import { emergencyLockCard } from "@/src/core/featureAccess";
 import { enableFeature } from "@/src/native/enableFeature";
+import { openNotificationListener, requestNotificationAccess } from "@/src/native/android";
+import { bankAccessPrompt } from "@/src/core/bankAccess";
 import { forgetCloudFile, hideLockCard, installedVersion, showLockCard } from "@/src/native/android";
 import { storeLockedCopy } from "@/src/native/cloudFile";
 import { secureStorage } from "@/src/utils/storage";
@@ -104,6 +106,8 @@ export default function Settings() {
   const [exportEncrypt, setExportEncrypt] = useState(true);
   const pwStrength = passwordStrength(exportPw);
   const sizeKb = (JSON.stringify(db).length / 1024).toFixed(1);
+  const prompt = bankAccessPrompt();
+  const [bankNote, setBankNote] = useState("");
   const [city, setCity] = useState("");
   const [cityMatches, setCityMatches] = useState<Place[]>([]);
   const locationOnce = locationPhase({ asked: s.locationAsked, granted: s.locationGranted, read: !!s.locationRead });
@@ -375,11 +379,19 @@ export default function Settings() {
             await allowLockScreenChannel();
             setSettings({ lockAlerts: true });
           }} {...sw} />} />
-          <Row icon="message-text-outline" label="Bank texts" sub="Debit, credit, and balance lines come from bank notifications on this phone. Codes are dropped." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={async (v) => {
-            if (!v) return setSettings({ smsInbox: false });
-            if (!(await enableFeature("sms-inbox"))) return toast("Notification access is off, so bank lines stay off.", "alert-circle-outline");
-            setSettings({ smsInbox: true });
+          <Row icon="message-text-outline" label="Bank texts" sub="Debit, credit, and balance lines come from bank notifications on this phone. Codes are dropped. Opens notification access." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={(v) => {
+            if (!v) {
+              setBankNote("");
+              return setSettings({ smsInbox: false });
+            }
+            if (requestNotificationAccess()) {
+              setBankNote(prompt.line);
+              return setSettings({ smsInbox: true });
+            }
+            const opened = openNotificationListener();
+            setBankNote(opened === "blocked" ? `${prompt.line} ${prompt.blockedLine}` : prompt.line);
           }} {...sw} />} />
+          {bankNote ? <T testID="settings-sms-note" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>{bankNote}</T> : null}
         </Section>
 
         <Section title="Home screen">

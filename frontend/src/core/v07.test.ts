@@ -9,6 +9,7 @@ import { grewMost } from "./moneyDesk.ts";
 import { emptyCycle, forecast, markStart, rememberPeriod, typicalCompare } from "./cycle.ts";
 import { galleryShots, stepGallery } from "./gallery.ts";
 import { PRIVACY_NEVER, PRIVACY_PERMISSIONS, PRIVACY_STAYS } from "./privacyCopy.ts";
+import { bankAccessPrompt } from "./bankAccess.ts";
 import { tabRipple } from "./tabRipple.ts";
 import { receiptMismatchLine } from "./receiptPage.ts";
 import { reuseMarkedStops, weatherReminder } from "./tripMath.ts";
@@ -306,4 +307,21 @@ test("the bottom bar tap splash is a small short circle", () => {
   assert.match(tabs, /tabRipple\(/);
   assert.match(tabs, /android_ripple=\{\{[^}]*radius: ripple\.radius/);
   assert.match(tabs, /duration: ripple\.durationMs/);
+});
+
+test("the bank-texts switch opens notification access and does not turn it on", () => {
+  const prompt = bankAccessPrompt();
+  assert.equal(prompt.grantsItself, false);
+  assert.match(prompt.line, /Turn Nucleus on/);
+  assert.match(prompt.blockedLine, /restricted settings/);
+  assert.match(prompt.blockedLine, /app info/);
+  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const kotlin = readFileSync(new URL("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt", import.meta.url), "utf8");
+  assert.match(settings, /bankAccessPrompt\(/);
+  assert.match(settings, /prompt\.line/);
+  assert.match(settings, /prompt\.blockedLine/);
+  assert.doesNotMatch(settings, /setNotificationListenerAccessGranted/);
+  assert.match(kotlin, /ACTION_NOTIFICATION_LISTENER_SETTINGS/);
+  assert.match(kotlin, /"blocked"/);
+  assert.doesNotMatch(kotlin, /setNotificationListenerAccessGranted/);
 });

@@ -22,6 +22,7 @@ type Native = {
   readSms(): Promise<string>;
   readBankNotices(): string;
   notificationAccess(): boolean;
+  openNotificationListener(): string;
   showLockCard(title: string, body: string): void;
   hideLockCard(): void;
   installedVersion(): string;
@@ -112,12 +113,21 @@ export function readBankNotices(): InboxLine[] {
   }
 }
 
-/** Opens notification access when it is off. True only when this app is already allowed. */
+/** True only when this app is already allowed to read notifications. Does not turn that permission on. */
 export function requestNotificationAccess(): boolean {
   try {
     return bridge()?.notificationAccess() === true;
   } catch {
     return false;
+  }
+}
+
+/** Opens the system notification-access screen. The app does not turn Nucleus on itself. */
+export function openNotificationListener(): "opened" | "blocked" {
+  try {
+    return bridge()?.openNotificationListener() === "opened" ? "opened" : "blocked";
+  } catch {
+    return "blocked";
   }
 }
 
