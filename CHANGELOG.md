@@ -14,6 +14,7 @@ Money and Travel each show their own board.
 
 - Tapping Money shows only money tiles: balance, spending, charts, receipts, bills, and the rest of that board. Tapping Travel shows only driving tiles: route, mileage, fuel, papers, vehicle, service, range, stops, weather, and packing.
 - An empty tile stays visible, and its title is that tile's own name.
+- Tapping the home-screen icon leaves the current picture in place. A still-unlocked phone stays unlocked. The thumbprint is asked after the phone was locked, or after the app was fully closed.
 
 ## v0.6.1
 

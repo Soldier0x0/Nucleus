@@ -331,6 +331,20 @@ test("money and travel each stay on their own board", () => {
   assert.deepEqual(swipeScreens("adhd"), ["adhd"]);
 });
 
+test("travel opens on the travel tiles and money opens on the money tiles", () => {
+  const db = emptyDB();
+  const travel = homePresetTiles(db, "travel", "real").map((item) => item.id);
+  const money = homePresetTiles(db, "money", "real").map((item) => item.id);
+  assert.deepEqual(travel.slice(0, 5), ["route", "mileage", "fuel", "papers", "vehicle"]);
+  assert.deepEqual(money.slice(0, 5), ["balance", "spending", "charts", "receipts", "bills"]);
+  assert.deepEqual(swipeScreens("travel"), ["travel"]);
+  assert.notEqual(swipeScreens("travel")[0], "money");
+  assert.deepEqual(swipeScreens("money"), ["money"]);
+  const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
+  assert.match(home, /<PresetGrid preset=\{preset\} \/>/);
+  assert.equal(home.includes("SwipeHome"), false);
+});
+
 test("the timer shows time already spent and does not count down", () => {
   const early = adhdTimer({ startedAt: 0, now: 120_000, lastMs: 600_000, bufferMs: 300_000 });
   const later = adhdTimer({ startedAt: 0, now: 180_000, lastMs: 600_000, bufferMs: 300_000 });
