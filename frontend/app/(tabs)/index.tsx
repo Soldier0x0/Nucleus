@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { presentHome } from "@/src/core/layouts";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
@@ -13,7 +14,7 @@ import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
-import { PRESET_CHOICES, showsCustomizeHome } from "@/src/core/presets";
+import { PRESET_CHOICES, presetBoard, showsCustomizeHome, tilePlaceholder } from "@/src/core/presets";
 import { HeadsUpCard, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
@@ -24,7 +25,7 @@ import { choreDueDate } from "@/src/core/domains";
 
 export default function Today() {
   const { db, setSettings, session } = useStore();
-  const { colors, sp } = useTheme();
+  const { colors, sp, layout } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -89,7 +90,11 @@ export default function Today() {
         {!anyModule ? (
           <EmptyState testID="today-empty" icon="view-grid-plus-outline" title="Your workbench is empty" body="Turn on a module to start adding tiles here." action={<Button label="Open module library" icon="view-grid-outline" onPress={() => router.push("/(tabs)/modules")} testID="today-open-modules-button" />} />
         ) : (
-          <SwipeHome preset={preset} />
+          <SwipeHome
+            preset={preset}
+            layoutFor={(page) => presentHome(layout.layout, presetBoard(db, page, session))}
+            emptyCopy={(id) => tilePlaceholder(id)}
+          />
         )}
         {preset === "adhd" ? null : <HeadsUpCard />}
         {showsCustomizeHome(preset) ? (

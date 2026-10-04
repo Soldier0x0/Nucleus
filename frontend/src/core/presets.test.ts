@@ -328,7 +328,7 @@ test("money and travel show different tiles, and each title names that tile", ()
   }
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
   const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
-  assert.match(home, /<SwipeHome preset=\{preset\} \/>/);
+  assert.match(home, /<SwipeHome[\s\S]*preset=\{preset\}/);
   assert.match(modes, /homePresetTiles\(/);
   assert.match(modes, /presetTileTitle\(/);
   const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function AdhdPanel"));

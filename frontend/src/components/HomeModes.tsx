@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { ScrollView, Switch, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
-import { presentHome } from "@/src/core/layouts";
+import { presentHome, type HomePresentation } from "@/src/core/layouts";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { balanceOverTime, monthFlow, repeatingBills } from "@/src/core/moneyDesk";
@@ -29,6 +29,7 @@ import {
   swipeScreens,
   swipeStartIndex,
   swipeWrap,
+  tilePlaceholder,
   typeAdhdDraft,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
@@ -133,11 +134,22 @@ function slotCopy(db: ReturnType<typeof useStore>["db"], id: string): { title: s
   }
 }
 
-export function PresetGrid({ preset }: { preset: HomePresetId }) {
+export function PresetGrid({
+  preset,
+  layoutFor,
+  emptyCopy,
+}: {
+  preset: HomePresetId;
+  layoutFor?: (page: HomePresetId) => HomePresentation;
+  emptyCopy?: (id: string) => { title: string; line: string; route: string };
+}) {
   const { db, update, session } = useStore();
   const router = useRouter();
   const { sp, layout } = useTheme();
-  const presented = presentHome(layout.layout, homePresetTiles(db, preset, session));
+  const presented = layoutFor
+    ? layoutFor(preset)
+    : presentHome(layout.layout, homePresetTiles(db, preset, session));
+  const placeFor = emptyCopy ?? tilePlaceholder;
   const lastId = lastPresetThing(db, preset);
   const lastLabel = presetThingLabel(db, lastId);
   const routeForRemembered = (id: string) => {
@@ -166,10 +178,14 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
             {row.items.map((item) => {
               const copy = slotCopy(db, item.id);
               const title = presetTileTitle(item.id);
-              const line = copy.line === title ? "" : copy.line;
+              const place = placeFor(item.id);
+              const dataLine = copy.line === title ? "" : copy.line;
+              const knownPlace = place.title !== item.id;
+              const line = dataLine || (knownPlace ? place.line : "");
+              const route = dataLine ? copy.route : knownPlace ? place.route : copy.route;
               return (
                 <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
-                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, copy.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
+                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
                     <T v={item.size === "large" ? "h2" : "label"}>{title}</T>
                     {line ? <T muted numberOfLines={2}>{line}</T> : null}
                   </Card>
@@ -184,7 +200,15 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
   );
 }
 
-export function SwipeHome({ preset }: { preset: HomePresetId }) {
+export function SwipeHome({
+  preset,
+  layoutFor,
+  emptyCopy,
+}: {
+  preset: HomePresetId;
+  layoutFor?: (page: HomePresetId) => HomePresentation;
+  emptyCopy?: (id: string) => { title: string; line: string; route: string };
+}) {
   const { width } = useWindowDimensions();
   const { sp } = useTheme();
   const { setSettings } = useStore();
@@ -224,7 +248,7 @@ export function SwipeHome({ preset }: { preset: HomePresetId }) {
     >
       {pages.map((page, index) => (
         <View key={`${page}-${index}`} style={{ width: pageW }}>
-          {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} />}
+          {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} />}
         </View>
       ))}
     </ScrollView>
