@@ -296,6 +296,23 @@ export function cycleLengths(days: CycleDay[]): number[] {
   return lengths;
 }
 
+export function rememberPeriod(days: CycleDay[], start: string, end: string): CycleDay[] {
+  if (!DATE.test(start) || !DATE.test(end) || end < start) return days;
+  const next = days.map((day) => ({ ...day }));
+  let cursor = start;
+  while (cursor <= end) {
+    const existing = next.find((day) => day.date === cursor);
+    if (existing) {
+      existing.bleeding = "flow";
+      if (cursor === end) existing.ended = true;
+    } else {
+      next.push({ id: `period-${cursor}`, date: cursor, bleeding: "flow", ended: cursor === end ? true : undefined });
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return next;
+}
+
 export function typicalCompare(days: CycleDay[], today: string): { typical: number; thisOne: number; line: string } | null {
   const lengths = cycleLengths(days);
   if (lengths.length < 2) return null;

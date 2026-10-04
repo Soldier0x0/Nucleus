@@ -6,7 +6,7 @@ import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
 import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
 import { grewMost } from "./moneyDesk.ts";
-import { emptyCycle, forecast, markStart, typicalCompare } from "./cycle.ts";
+import { emptyCycle, forecast, markStart, rememberPeriod, typicalCompare } from "./cycle.ts";
 import { receiptMismatchLine } from "./receiptPage.ts";
 import { reuseMarkedStops, weatherReminder } from "./tripMath.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
@@ -252,4 +252,16 @@ test("a trip reminds you once to save weather, and offers stops from an earlier 
   const desk = readFileSync(new URL("../components/TripDesk.tsx", import.meta.url), "utf8");
   assert.match(desk, /weatherReminder/);
   assert.match(desk, /reuseMarkedStops/);
+});
+
+test("past period dates are remembered once", () => {
+  const once = rememberPeriod([], "2026-03-01", "2026-03-03");
+  assert.deepEqual(once.map((day) => day.date), ["2026-03-01", "2026-03-02", "2026-03-03"]);
+  assert.equal(once.every((day) => day.bleeding === "flow"), true);
+  assert.equal(once.at(-1)?.ended, true);
+  const twice = rememberPeriod(once, "2026-03-01", "2026-03-03");
+  assert.equal(twice.length, 3);
+  assert.deepEqual(rememberPeriod(once, "2026-03-05", "2026-03-01"), once);
+  const screen = readFileSync(new URL("../../app/cycle/index.tsx", import.meta.url), "utf8");
+  assert.match(screen, /cycle-past-save/);
 });

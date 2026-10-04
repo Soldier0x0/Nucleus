@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { monthKey, monthLabel, todayISO } from "@/src/core/format";
-import { BUDDY_EMOJIS, buddyTitle, dayInWindow, forecast, markEnd, markStart, packingTarget, setBuddy, togglePacked, typicalCompare } from "@/src/core/cycle";
+import { BUDDY_EMOJIS, buddyTitle, dayInWindow, forecast, markEnd, markStart, packingTarget, rememberPeriod, setBuddy, togglePacked, typicalCompare } from "@/src/core/cycle";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Icon, Press, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
@@ -28,6 +28,8 @@ export default function CycleScreen() {
   const [cursor, setCursor] = useState(monthKey(today));
   const [selected, setSelected] = useState(today);
   const [buddyOpen, setBuddyOpen] = useState(false);
+  const [pastStart, setPastStart] = useState("");
+  const [pastEnd, setPastEnd] = useState("");
   const [name, setName] = useState(db.cycle.buddyName);
   const [emoji, setEmoji] = useState(db.cycle.buddyEmoji);
 
@@ -114,6 +116,18 @@ export default function CycleScreen() {
           </Press>
         ) : null}
 
+        <Field label="Past period start" testID="cycle-past-start" value={pastStart} onChangeText={setPastStart} placeholder="2026-03-01" />
+        <Field label="Past period end" testID="cycle-past-end" value={pastEnd} onChangeText={setPastEnd} placeholder="2026-03-03" />
+        <Button
+          label="Remember these dates"
+          testID="cycle-past-save"
+          kind="secondary"
+          style={{ marginTop: 8 }}
+          onPress={() => {
+            update((d) => ({ ...d, cycle: { ...d.cycle, days: rememberPeriod(d.cycle.days, pastStart, pastEnd) } }));
+            toast("Saved");
+          }}
+        />
         <Button
           label="Started today"
           testID="cycle-start"
