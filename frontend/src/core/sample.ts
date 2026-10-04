@@ -293,6 +293,11 @@ function mirrorVehicleName(note: string): string | null {
   return null;
 }
 
+function budgetAfterDemo(db: DB): Budget | undefined {
+  if (!sameBudget(db.budget, SAMPLE_BUDGET)) return undefined;
+  return db.settings.sampleBudget ?? { monthly: 0, categories: {} };
+}
+
 function leftoverMirrorIds(db: DB): Set<string> {
   const names = new Set(db.vehicles.map((vehicle) => vehicle.name));
   const ids = new Set<string>();
@@ -311,10 +316,9 @@ export function withoutSampleData(db: DB): DB {
   const tagged = new Set(db.settings.sampleIds ?? []);
   if (tagged.size) {
     for (const id of mirrors) tagged.add(id);
-    const restore = db.settings.sampleBudget && sameBudget(db.budget, SAMPLE_BUDGET) ? db.settings.sampleBudget : undefined;
-    return dropSampleRows(db, tagged, restore);
+    return dropSampleRows(db, tagged, budgetAfterDemo(db));
   }
   const drop = legacySampleIds(db);
   for (const id of mirrors) drop.add(id);
-  return dropSampleRows(db, drop, undefined);
+  return dropSampleRows(db, drop, budgetAfterDemo(db));
 }

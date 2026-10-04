@@ -58,3 +58,23 @@ test("an upgraded phone drops Activa mirror notes and keeps the real rows", () =
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: true, fullyClosed: false }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: true }), true);
 });
+
+test("an upgraded phone gets the budget from before the demo", () => {
+  const db = upgradedPhone();
+  assert.deepEqual(db.settings.sampleIds, []);
+  const next = withoutSampleData(db);
+  assert.deepEqual(next.budget, { monthly: 9000, categories: { Rent: 4000 } });
+  assert.equal(next.settings.sampleBudget, undefined);
+  const bare = upgradedPhone();
+  bare.settings.sampleBudget = undefined;
+  bare.budget = { monthly: 45000, categories: { Food: 6000, Shopping: 4000 } };
+  const cleared = withoutSampleData(bare);
+  assert.deepEqual(cleared.budget, { monthly: 0, categories: {} });
+  assert.equal(cleared.txns.some((row) => row.type === "income" && row.amount === 2000), true);
+  assert.equal(cleared.txns.some((row) => row.amount === 177), true);
+  assert.equal(cleared.txns.some((row) => row.amount === 100), true);
+  assert.equal(cleared.vehicles.some((row) => row.body === "naked"), true);
+  const own = upgradedPhone();
+  own.budget = { monthly: 3000, categories: { Food: 500 } };
+  assert.deepEqual(withoutSampleData(own).budget, { monthly: 3000, categories: { Food: 500 } });
+});
