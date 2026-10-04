@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Share, TextInput, View } from "react-native";
 import { useStore } from "@/src/core/store";
 import { useTheme } from "@/src/theme";
-import { monthKey, todayISO } from "@/src/core/format";
-import { balanceOverTime, categorySplit, dayBefore, monthFlow, priceChange, repeatingBills, unusedCategories } from "@/src/core/moneyDesk";
+import { addMonths, monthKey, todayISO } from "@/src/core/format";
+import { balanceOverTime, categorySplit, dayBefore, grewMost, monthFlow, priceChange, repeatingBills, unusedCategories } from "@/src/core/moneyDesk";
 import { memoryKey, type BankAsk } from "@/src/core/smsMoney";
 import { suggestShared } from "@/src/core/recordLinks";
 import { shareBill } from "@/src/core/shareLine";
@@ -20,6 +20,8 @@ export function MoneyDesk({ month }: { month: string }) {
   const [readNote, setReadNote] = useState("");
   const flow = monthFlow(db.txns, month);
   const split = categorySplit(db.txns, month);
+  const previousMonth = addMonths(`${month}-01`, -1).slice(0, 7);
+  const grew = grewMost(db.txns, month, previousMonth);
   const balances = balanceOverTime(db.txns.filter((row) => row.date.slice(0, 7) === month));
   const bills = repeatingBills(db.txns);
   const unused = unusedCategories(db.settings.moneyNames, db.txns);
@@ -80,6 +82,10 @@ export function MoneyDesk({ month }: { month: string }) {
         {split.length === 0 ? <T muted style={{ marginTop: 6 }}>No spending this month.</T> : split.map((row) => (
           <T key={row.category} style={{ marginTop: 6 }}>{row.category} · {row.amount}</T>
         ))}
+      </Card>
+      <Card testID="money-grew-card">
+        <Eyebrow>Since last month</Eyebrow>
+        <T style={{ marginTop: 6 }}>{grew ? grew.line : "No category grew from last month."}</T>
       </Card>
       <Card testID="money-balance-card">
         <Eyebrow>Balance over time</Eyebrow>

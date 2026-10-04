@@ -5,6 +5,7 @@ import { normalizeDB } from "./defaults.ts";
 import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
 import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
+import { grewMost } from "./moneyDesk.ts";
 import { homePresetTiles } from "./presets.ts";
 import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
 import { dataHealth, dueDayLabel } from "./life.ts";
@@ -171,4 +172,27 @@ test("location is asked once, read once, then stopped", () => {
   assert.equal(settings.includes("ACTION_LOCATION_SOURCE_SETTINGS"), false);
   assert.equal(appJson.includes("android.permission.ACCESS_FINE_LOCATION"), true);
   assert.equal(appJson.includes("android.permission.ACCESS_COARSE_LOCATION"), false);
+});
+
+test("money names the category that grew most, this month versus last month", () => {
+  const rows = [
+    { type: "expense" as const, amount: 100, category: "Fuel", date: "2026-08-02" },
+    { type: "expense" as const, amount: 400, category: "Fuel", date: "2026-09-02" },
+    { type: "expense" as const, amount: 50, category: "Food", date: "2026-08-03" },
+    { type: "expense" as const, amount: 80, category: "Food", date: "2026-09-03" },
+    { type: "expense" as const, amount: 900, category: "Rent", date: "2026-09-01", transfer: true },
+    { type: "income" as const, amount: 2000, category: "Salary", date: "2026-09-01" },
+  ];
+  const grew = grewMost(rows, "2026-09", "2026-08");
+  assert.deepEqual(grew, {
+    category: "Fuel",
+    thisMonth: 400,
+    lastMonth: 100,
+    line: "Fuel grew the most. 400 this month, 100 last month.",
+  });
+  assert.equal("score" in (grew ?? {}), false);
+  assert.equal(grewMost([{ type: "expense", amount: 10, category: "Food", date: "2026-08-01" }], "2026-09", "2026-08"), null);
+  const desk = readFileSync(new URL("../components/MoneyDesk.tsx", import.meta.url), "utf8");
+  assert.match(desk, /money-grew-card/);
+  assert.doesNotMatch(desk, /grewMost\([^)]*score/);
 });

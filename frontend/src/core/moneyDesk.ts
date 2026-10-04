@@ -126,6 +126,38 @@ export function billReminders(rows: DeskTxn[], quiet: { enabled: boolean; from: 
   });
 }
 
+export type MonthGrowth = { category: string; thisMonth: number; lastMonth: number; line: string };
+
+export function grewMost(
+  rows: { type: "expense" | "income"; amount: number; category: string; date: string; transfer?: boolean }[],
+  thisMonth: string,
+  lastMonth: string,
+): MonthGrowth | null {
+  const totals = new Map<string, { thisMonth: number; lastMonth: number }>();
+  for (const row of rows) {
+    if (row.type !== "expense" || row.transfer) continue;
+    const month = row.date.slice(0, 7);
+    if (month !== thisMonth && month !== lastMonth) continue;
+    const bag = totals.get(row.category) ?? { thisMonth: 0, lastMonth: 0 };
+    if (month === thisMonth) bag.thisMonth += row.amount;
+    else bag.lastMonth += row.amount;
+    totals.set(row.category, bag);
+  }
+  let best: MonthGrowth | null = null;
+  for (const [category, bag] of totals) {
+    const growth = bag.thisMonth - bag.lastMonth;
+    if (growth <= 0) continue;
+    if (best && growth <= best.thisMonth - best.lastMonth) continue;
+    best = {
+      category,
+      thisMonth: bag.thisMonth,
+      lastMonth: bag.lastMonth,
+      line: `${category} grew the most. ${bag.thisMonth} this month, ${bag.lastMonth} last month.`,
+    };
+  }
+  return best;
+}
+
 export function quietDelivery(at: Date, quiet: { enabled: boolean; from: number; to: number }): Date {
   if (!quiet.enabled) return at;
   const hour = at.getHours();
