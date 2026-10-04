@@ -4,6 +4,7 @@ import test from "node:test";
 import { normalizeDB } from "./defaults.ts";
 import { LAUNCHER_ALIASES, launcherIconChange } from "./launcher.ts";
 import { askOnRelaunch } from "./lockPolicy.ts";
+import { homePresetTiles } from "./presets.ts";
 import { dataHealth, dueDayLabel } from "./life.ts";
 import { withoutSampleData } from "./sample.ts";
 import type { DB } from "./types.ts";
@@ -110,4 +111,29 @@ test("a past home date says it was due, and does not say late", () => {
   assert.equal(attention.includes("urgent once overdue"), false);
   assert.equal(attention.includes("overdue by ${-d} days"), false);
   assert.equal(attention.includes("overdue by ${-x.days} days"), false);
+});
+
+test("a module that is off is hidden on the home screen and the records stay", () => {
+  const db = upgradedPhone();
+  const before = db.txns.map((row) => row.id);
+  const moneyOff = {
+    ...db,
+    settings: {
+      ...db.settings,
+      modules: db.settings.modules.map((row) => (row.id === "money" ? { ...row, enabled: false } : row)),
+    },
+  };
+  const moneyTiles = homePresetTiles(moneyOff, "money", "real").map((item) => item.id);
+  assert.equal(moneyTiles.includes("balance"), false);
+  assert.equal(moneyTiles.includes("spending"), false);
+  assert.deepEqual(moneyOff.txns.map((row) => row.id), before);
+  const cycleOff = {
+    ...db,
+    settings: {
+      ...db.settings,
+      modules: db.settings.modules.map((row) => (row.id === "cycle" ? { ...row, enabled: false } : row)),
+    },
+  };
+  assert.equal(homePresetTiles(cycleOff, "home", "real").some((item) => item.id === "cycle"), false);
+  assert.deepEqual(cycleOff.cycle.days, db.cycle.days);
 });

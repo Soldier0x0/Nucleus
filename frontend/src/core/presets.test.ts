@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tileModule, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -222,7 +222,12 @@ test("every preset shows its tiles when there is no data", () => {
     const shown = visiblePresetItems(db, preset);
     const catalog = presetItems(preset);
     assert.ok(catalog.length > 4, preset);
-    assert.deepEqual(shown.map((item) => item.id), catalog.map((item) => item.id));
+    const on = catalog.filter((item) => {
+      const moduleId = tileModule(item.id);
+      if (!moduleId) return true;
+      return db.settings.modules.find((row) => row.id === moduleId)?.enabled !== false;
+    });
+    assert.deepEqual(shown.map((item) => item.id), on.map((item) => item.id));
     assert.equal(shown[0]?.size, "large");
   }
   const custom = visiblePresetItems(db, "custom").map((item) => item.id);

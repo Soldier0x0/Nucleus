@@ -1,4 +1,4 @@
-import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, TileId } from "./types";
+import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, ModuleId, TileId } from "./types";
 import { uid } from "./format";
 import { repeatingBills } from "./moneyDesk";
 
@@ -295,13 +295,70 @@ const DECOY_HIDDEN_TILES = new Set([
   "networth",
 ]);
 
+const ITEM_MODULE: Record<string, ModuleId> = {
+  balance: "money",
+  spending: "money",
+  charts: "money",
+  receipts: "money",
+  bills: "money",
+  budget: "money",
+  subscriptions: "money",
+  funds: "money",
+  debts: "money",
+  categories: "money",
+  networth: "money",
+  route: "travel",
+  packing: "travel",
+  stops: "travel",
+  weather: "travel",
+  mileage: "vehicles",
+  fuel: "vehicles",
+  vehicle: "vehicles",
+  service: "vehicles",
+  range: "vehicles",
+  papers: "papers",
+  maintenance: "home",
+  chores: "home",
+  appliances: "home",
+  utilities: "home",
+  warranties: "home",
+  cycle: "cycle",
+  notes: "notes",
+  kanban: "kanban",
+  wiki: "wiki",
+  media: "media",
+  rules: "rules",
+  tools: "tools",
+  history: "tools",
+  builder: "builder",
+  dev: "dev",
+  lab: "lab",
+  net: "net",
+  trip: "travel",
+  home: "home",
+};
+
+export function tileModule(id: string): ModuleId | null {
+  return ITEM_MODULE[id] ?? null;
+}
+
+export function withModulesOn(db: DB, items: PresetItem[]): PresetItem[] {
+  return items.filter((item) => {
+    const moduleId = tileModule(item.id);
+    if (!moduleId) return true;
+    return db.settings.modules.find((row) => row.id === moduleId)?.enabled !== false;
+  });
+}
+
 /** Every built-in board lists its own tiles. Empty records stay on the board as placeholders. */
 export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
+  let items: PresetItem[];
   switch (preset) {
     case "custom": {
       const board = db.settings.boards.find((row) => row.id === db.settings.activeBoardId);
       const ids = board ? board.tiles : db.settings.tiles.filter((tile) => tile.enabled).map((tile) => tile.id);
-      return customItems(ids);
+      items = customItems(ids);
+      break;
     }
     case "money":
     case "travel":
@@ -309,12 +366,14 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
     case "desk":
     case "workshop":
     case "adhd":
-      return presetItems(preset);
+      items = presetItems(preset);
+      break;
     default: {
       const never: never = preset;
       return never;
     }
   }
+  return withModulesOn(db, items);
 }
 
 /** The tiles painted for one preset tap. Money does not include Travel, and Travel does not include Money. */
