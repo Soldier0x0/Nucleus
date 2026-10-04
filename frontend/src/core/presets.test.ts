@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, snoozeAdhdReminder, startAdhdTask, swipeScreens, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipeScreens, swipeStartIndex, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -298,10 +299,68 @@ test("a preset remembers the last thing done in it", () => {
   assert.equal(lastPresetThing(away, "travel"), "trip-1");
 });
 
-test("money and travel are two swipeable home screens", () => {
+test("money and travel show different tiles, and each title names that tile", () => {
+  const db = emptyDB();
+  const money = homePresetTiles(db, "money", "real").map((item) => item.id);
+  const travel = homePresetTiles(db, "travel", "real").map((item) => item.id);
+  assert.deepEqual(money, presetItems("money").map((item) => item.id));
+  assert.deepEqual(travel, presetItems("travel").map((item) => item.id));
+  assert.equal(money.includes("route"), false);
+  assert.equal(money.includes("fuel"), false);
+  assert.equal(travel.includes("balance"), false);
+  assert.equal(travel.includes("receipts"), false);
+  assert.ok(money.length > 0);
+  assert.ok(travel.length > 0);
+  const named = (id: string) => presetTileTitle(id).toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const id of [...money, ...travel]) {
+    assert.equal(named(id), id, id);
+    assert.notEqual(presetTileTitle(id), "Open");
+  }
+  const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
+  const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
+  assert.match(home, /<SwipeHome preset=\{preset\} \/>/);
+  assert.match(modes, /homePresetTiles\(/);
+  assert.match(modes, /presetTileTitle\(/);
+  const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function AdhdPanel"));
+  assert.match(swipe, /swipeScreens\(/);
+  assert.match(swipe, /swipeStartIndex\(preset\)/);
+  assert.match(swipe, /contentOffset/);
+  assert.equal(/contentOffset=\{\{\s*x:\s*0/.test(swipe), false);
+});
+
+test("money and travel swipe as two different boards", () => {
   assert.deepEqual(swipeScreens("money"), ["money", "travel"]);
   assert.deepEqual(swipeScreens("travel"), ["money", "travel"]);
+  assert.equal(swipeStartIndex("money"), 0);
+  assert.equal(swipeStartIndex("travel"), 1);
+  assert.deepEqual(swipeScreens("home"), ["home"]);
   assert.deepEqual(swipeScreens("adhd"), ["adhd"]);
+  assert.deepEqual(swipeScreens("desk"), ["desk"]);
+  assert.deepEqual(swipeScreens("workshop"), ["workshop"]);
+  assert.deepEqual(swipeScreens("custom"), ["custom"]);
+});
+
+test("travel opens on the travel tiles and money opens on the money tiles", () => {
+  const db = emptyDB();
+  const travel = homePresetTiles(db, "travel", "real").map((item) => item.id);
+  const money = homePresetTiles(db, "money", "real").map((item) => item.id);
+  assert.deepEqual(travel.slice(0, 5), ["route", "mileage", "fuel", "papers", "vehicle"]);
+  assert.deepEqual(money.slice(0, 5), ["balance", "spending", "charts", "receipts", "bills"]);
+  assert.equal(swipeScreens("travel")[swipeStartIndex("travel")], "travel");
+  assert.equal(swipeScreens("money")[swipeStartIndex("money")], "money");
+  assert.notEqual(swipeScreens("travel")[swipeStartIndex("travel")], "money");
+});
+
+test("money, travel, and home do not show the dashed customize box", () => {
+  assert.equal(showsCustomizeHome("money"), false);
+  assert.equal(showsCustomizeHome("travel"), false);
+  assert.equal(showsCustomizeHome("home"), false);
+  assert.equal(showsCustomizeHome("custom"), true);
+  assert.equal(showsCustomizeHome("desk"), true);
+  assert.equal(showsCustomizeHome("workshop"), true);
+  const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
+  assert.match(home, /showsCustomizeHome\(preset\)/);
+  assert.match(home, /borderStyle: "dashed"/);
 });
 
 test("the timer shows time already spent and does not count down", () => {

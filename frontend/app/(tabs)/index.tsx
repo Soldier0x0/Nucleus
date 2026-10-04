@@ -19,7 +19,7 @@ import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
 import { presentHome } from "@/src/core/layouts";
-import { PRESET_CHOICES, presetBoard, tilePlaceholder } from "@/src/core/presets";
+import { PRESET_CHOICES, presetBoard, showsCustomizeHome, tilePlaceholder } from "@/src/core/presets";
 import { AdhdPanel, HeadsUpCard, PresetGrid, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
@@ -363,11 +363,15 @@ export default function Today() {
           <PresetGrid preset={preset} />
         )}
         {preset === "adhd" ? null : <HeadsUpCard />}
-        <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
-          <Icon name="tune-variant" size={18} color={colors.muted} />
-          <T muted v="label">Customize home</T>
-        </Press>
-        <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to rearrange it.</T>
+        {showsCustomizeHome(preset) ? (
+          <>
+            <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
+              <Icon name="tune-variant" size={18} color={colors.muted} />
+              <T muted v="label">Customize home</T>
+            </Press>
+            <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to rearrange it.</T>
+          </>
+        ) : null}
       </ScrollView>
       <Sheet visible={arrange} onClose={() => setArrange(false)} title={activeBoard ? `Arrange ${activeBoard.name}` : "Arrange home"} testID="today-arrange">
         <T muted style={{ marginBottom: 10 }}>Hold a row, then drag. This order is saved on this device.</T>

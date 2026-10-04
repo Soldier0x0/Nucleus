@@ -227,12 +227,36 @@ class NucleusAndroidModule : Module() {
       if (name !in LAUNCHER_ALIASES) return@Function
       val pm = ctx.packageManager
       val pkg = ctx.packageName
-      // Enable the new picture first so the home screen never loses every icon.
-      pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$name"), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+      // Rewriting an alias restarts this activity. Leave it alone when the picture is already the one showing.
+      if (launcherAliasUnchanged(pm, pkg, name)) return@Function
+      if (!componentEnabled(pm, pkg, name)) {
+        pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$name"), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
+      }
       for (alias in LAUNCHER_ALIASES) {
         if (alias == name) continue
+        if (!componentEnabled(pm, pkg, alias)) continue
         pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
       }
+    }
+  }
+
+  private fun launcherAliasUnchanged(pm: PackageManager, pkg: String, name: String): Boolean {
+    for (alias in LAUNCHER_ALIASES) {
+      val on = componentEnabled(pm, pkg, alias)
+      if (alias == name && !on) return false
+      if (alias != name && on) return false
+    }
+    return true
+  }
+
+  /** COMPONENT_ENABLED_STATE_DEFAULT follows the manifest: only IconPaperPaper starts enabled. */
+  private fun componentEnabled(pm: PackageManager, pkg: String, alias: String): Boolean {
+    return when (pm.getComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"))) {
+      PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> true
+      PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+      PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+      PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> false
+      else -> alias == "IconPaperPaper"
     }
   }
 

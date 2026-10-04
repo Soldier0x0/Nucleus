@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ScrollView, Switch, TextInput, View, useWindowDimensions } from "react-native";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { ScrollView, Switch, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { presentHome } from "@/src/core/layouts";
 import { useTheme } from "@/src/theme";
@@ -15,8 +15,9 @@ import {
   finishAdhdTask,
   lastPresetThing,
   parkAdhdTask,
-  presetBoard,
+  homePresetTiles,
   presetThingLabel,
+  presetTileTitle,
   recallAdhdTask,
   rememberPreset,
   reviewAdhdDay,
@@ -24,6 +25,7 @@ import {
   setAdhdMotion,
   startAdhdTask,
   swipeScreens,
+  swipeStartIndex,
   typeAdhdDraft,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
@@ -132,7 +134,7 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
   const { db, update, session } = useStore();
   const router = useRouter();
   const { sp, layout } = useTheme();
-  const presented = presentHome(layout.layout, presetBoard(db, preset, session));
+  const presented = presentHome(layout.layout, homePresetTiles(db, preset, session));
   const lastId = lastPresetThing(db, preset);
   const lastLabel = presetThingLabel(db, lastId);
   const routeForRemembered = (id: string) => {
@@ -157,11 +159,13 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
         <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
           {row.items.map((item) => {
             const copy = slotCopy(db, item.id);
+            const title = presetTileTitle(item.id);
+            const line = copy.line === title ? "" : copy.line;
             return (
               <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
                 <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, copy.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
-                  <T muted>{copy.title}</T>
-                  <T v={item.size === "large" ? "h2" : "label"} numberOfLines={2}>{copy.line}</T>
+                  <T v={item.size === "large" ? "h2" : "label"}>{title}</T>
+                  {line ? <T muted numberOfLines={2}>{line}</T> : null}
                 </Card>
               </View>
             );
@@ -178,16 +182,32 @@ export function SwipeHome({ preset }: { preset: "money" | "travel" }) {
   const { setSettings } = useStore();
   const pages = swipeScreens(preset);
   const pageW = Math.max(280, Math.min(width, 720) - sp.lg * 2);
+  const scrollRef = useRef<ScrollView>(null);
+  const fromSwipe = useRef(false);
+  const start = swipeStartIndex(preset);
+
+  useLayoutEffect(() => {
+    if (fromSwipe.current) {
+      fromSwipe.current = false;
+      return;
+    }
+    scrollRef.current?.scrollTo({ x: start * pageW, animated: false });
+  }, [start, pageW]);
+
   return (
     <ScrollView
+      ref={scrollRef}
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
       testID="today-swipe-home"
+      contentOffset={{ x: swipeStartIndex(preset) * pageW, y: 0 }}
       onMomentumScrollEnd={(event) => {
         const index = Math.round(event.nativeEvent.contentOffset.x / pageW);
         const next = pages[index];
-        if (next) setSettings({ homePreset: next });
+        if (!next || next === preset) return;
+        fromSwipe.current = true;
+        setSettings({ homePreset: next });
       }}
     >
       {pages.map((page) => (

@@ -122,3 +122,45 @@ export function markPalette(family: IconFamily, variant: IconVariant): MarkPalet
 }
 
 export const LAUNCHER_ALIASES = ICON_FAMILIES.flatMap((family) => ICON_VARIANTS.map((variant) => launcherAlias(family, variant)));
+
+/** How PackageManager reports one activity-alias. "default" follows the manifest. */
+export type AliasComponentState = "default" | "enabled" | "disabled" | "disabled-user" | "disabled-until-used";
+
+export type LauncherIconPlan = {
+  changed: boolean;
+  enable: string[];
+  disable: string[];
+};
+
+/** IconPaperPaper is the only alias the manifest enables. The rest start disabled. */
+const MANIFEST_ENABLED_ALIAS = "IconPaperPaper";
+
+function aliasIsEnabled(alias: string, state: AliasComponentState): boolean {
+  switch (state) {
+    case "enabled":
+      return true;
+    case "disabled":
+    case "disabled-user":
+    case "disabled-until-used":
+      return false;
+    case "default":
+      return alias === MANIFEST_ENABLED_ALIAS;
+    default: {
+      const unreachable: never = state;
+      return unreachable;
+    }
+  }
+}
+
+/** Writes only the aliases whose enabled state actually changes. An unchanged picture writes nothing. */
+export function launcherIconChange(
+  states: Readonly<Record<string, AliasComponentState | undefined>>,
+  nextAlias: string,
+): LauncherIconPlan {
+  if (!LAUNCHER_ALIASES.includes(nextAlias)) return { changed: false, enable: [], disable: [] };
+  const on = LAUNCHER_ALIASES.filter((alias) => aliasIsEnabled(alias, states[alias] ?? "default"));
+  if (on.length === 1 && on[0] === nextAlias) return { changed: false, enable: [], disable: [] };
+  const enable = on.includes(nextAlias) ? [] : [nextAlias];
+  const disable = on.filter((alias) => alias !== nextAlias);
+  return { changed: enable.length > 0 || disable.length > 0, enable, disable };
+}
