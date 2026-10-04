@@ -24,3 +24,8 @@ export function receiptCounts(confirmed: boolean): boolean {
 export function flagMismatch(receiptAmount: number, debitAmount: number): boolean {
   return Math.round(receiptAmount * 100) !== Math.round(debitAmount * 100);
 }
+
+export function receiptMismatchLine(receiptAmount: number, debitAmount: number): string | null {
+  if (!flagMismatch(receiptAmount, debitAmount)) return null;
+  return "This receipt does not match the bank debit.";
+}

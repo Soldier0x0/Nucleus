@@ -7,6 +7,7 @@ import { askOnRelaunch } from "./lockPolicy.ts";
 import { CAN_TOGGLE_SYSTEM_LOCATION, locationPhase, placeFromFix } from "./locationAsk.ts";
 import { grewMost } from "./moneyDesk.ts";
 import { emptyCycle, forecast, markStart, typicalCompare } from "./cycle.ts";
+import { receiptMismatchLine } from "./receiptPage.ts";
 import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath.ts";
 import { homePresetTiles } from "./presets.ts";
 import { isPersonalTrip, transitExpense, transitLabel } from "./transit.ts";
@@ -231,4 +232,10 @@ test("two real cycles show a typical length, and the forecast stays a guess", ()
   assert.match(guess.line, /^Guess/);
   const screen = readFileSync(new URL("../../app/cycle/index.tsx", import.meta.url), "utf8");
   assert.match(screen, /cycle-typical/);
+});
+
+test("a receipt that does not match the bank debit is named", () => {
+  assert.equal(receiptMismatchLine(120, 100), "This receipt does not match the bank debit.");
+  assert.equal(receiptMismatchLine(100, 100), null);
+  assert.equal(receiptMismatchLine(10.004, 10), null);
 });
