@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ScrollView, Switch, TextInput, useWindowDimensions, View } from "react-native";
+import { LayoutAnimation, Platform, ScrollView, Switch, TextInput, UIManager, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
-import { homeCard, type HomeForecast } from "@/src/core/homeCards";
+import { homeCard } from "@/src/core/homeCards";
+import { homeFace, type HomeWeather } from "@/src/core/homeFace";
 import { presentHome, type HomePresentation } from "@/src/core/layouts";
 import { weather, wmo } from "@/src/core/online";
 import { useTheme } from "@/src/theme";
@@ -30,12 +31,20 @@ import {
   swipeScreens,
   swipeStartIndex,
   swipeWrap,
+  toggleTileSize,
   typeAdhdDraft,
+  withTileSizes,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
 import type { HomePresetId } from "@/src/core/types";
-import { Button, Card, Icon, T } from "./ui";
+import { Button, Card, Eyebrow, Icon, T } from "./ui";
+import { Ring } from "./charts";
 import { Sheet } from "./Sheet";
+import { WeatherCard } from "./WeatherCard";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export function PresetGrid({
   preset,
@@ -51,9 +60,9 @@ export function PresetGrid({
   const { colors, sp, layout } = useTheme();
   const presented = layoutFor
     ? layoutFor(preset)
-    : presentHome(layout.layout, homePresetTiles(db, preset, session));
+    : presentHome(layout.layout, withTileSizes(db, homePresetTiles(db, preset, session)));
   void emptyCopy;
-  const [forecast, setForecast] = useState<HomeForecast | null>(null);
+  const [forecast, setForecast] = useState<HomeWeather | null>(null);
   const city = db.settings.homeCity;
   useEffect(() => {
     if (!city) {
@@ -64,7 +73,7 @@ export function PresetGrid({
     weather(db.settings.online, () => {}, city).then((result) => {
       if (!alive || !result) return;
       const [label] = wmo(result.w.current.code);
-      setForecast({ temp: result.w.current.temp, label });
+      setForecast({ temp: result.w.current.temp, label, feels: result.w.current.feels, wind: result.w.current.wind });
     });
     return () => {
       alive = false;
@@ -83,6 +92,10 @@ export function PresetGrid({
     update((current) => rememberPreset(current, preset, id));
     router.push(route as never);
   };
+  const resize = (id: string, size: "large" | "small") => {
+    if (!db.settings.reducedMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    update((current) => toggleTileSize(current, id, size));
+  };
   return (
     <View style={{ gap: sp.md }} testID={`today-preset-${preset}-grid`}>
       {lastLabel ? (
@@ -94,16 +107,56 @@ export function PresetGrid({
         const flexes = rowFlex(row);
         const loneSmall = flexes.length === 1 && flexes[0].span === 1;
         return (
-          <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>
+          <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md, alignItems: "stretch" }}>
             {row.items.map((item) => {
               const shown = homeCard(db, item.id, item.id === "weather" ? forecast : null);
+              const face = homeFace(db, item.id, item.id === "weather" ? forecast : null);
+              const title = presetTileTitle(item.id);
+              const hold = () => resize(item.id, item.size);
+              if (item.id === "weather" && city) {
+                return (
+                  <View key={item.id} style={{ flex: 1 }}>
+                    <WeatherCard place={city} testID={`today-slot-${item.id}`} onPress={() => open(item.id, shown.route)} onLongPress={hold} />
+                  </View>
+                );
+              }
               return (
-                <View key={item.id} style={{ flex: 1, minHeight: presented.cardMin > 0 ? presented.cardMin : undefined }}>
-                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, shown.route)} style={presented.cardMin > 0 ? { minHeight: presented.cardMin } : undefined}>
-                    <Icon name={shown.icon} size={22} color={colors.onSurface} />
-                    <T v="label">{presetTileTitle(item.id)}</T>
-                    {shown.lines.map((line, lineIndex) => (
-                      <T key={`${item.id}-${lineIndex}`} v={lineIndex === 0 ? "h2" : "body"} muted={lineIndex > 0} numberOfLines={2}>{line}</T>
+                <View key={item.id} style={{ flex: 1 }}>
+                  <Card testID={`today-slot-${item.id}`} onPress={() => open(item.id, face.route || shown.route)} onLongPress={hold}>
+                    <Eyebrow>{face.eyebrow || title}</Eyebrow>
+                    {item.id === "attention" && face.counts ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
+                        <Ring value={face.counts.urgent + face.counts.upcoming > 0 ? 1 : 0} size={64} stroke={6}>
+                          <T v="monoXl">{face.figure}</T>
+                        </Ring>
+                        <View style={{ flex: 1, gap: 6 }}>
+                          <T>{face.detail}</T>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                            <CountPill icon="alert-octagon" label={`${face.counts.urgent} urgent`} color={colors.error} />
+                            <CountPill icon="clock-alert-outline" label={`${face.counts.upcoming} upcoming`} color={colors.warning} />
+                            <CountPill icon="information-outline" label={`${face.counts.info} info`} color={colors.info} />
+                          </View>
+                        </View>
+                      </View>
+                    ) : item.id === "budget" ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
+                        <Ring value={face.meter ?? 0} size={72} stroke={8} />
+                        <T v="monoXl">{face.figure}</T>
+                      </View>
+                    ) : (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
+                        <Icon name={face.icon || shown.icon} size={28} color={colors.onSurface} />
+                        <View style={{ flex: 1 }}>
+                          <T v="monoXl">{face.figure}</T>
+                          {face.detail ? <T muted numberOfLines={2}>{face.detail}</T> : null}
+                        </View>
+                      </View>
+                    )}
+                    {face.lines.map((line) => (
+                      <View key={line.title} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+                        <Icon name={line.icon} size={16} color={colors.muted} />
+                        <T muted numberOfLines={1} style={{ flex: 1 }}>{line.title}</T>
+                      </View>
                     ))}
                   </Card>
                 </View>
@@ -117,21 +170,33 @@ export function PresetGrid({
   );
 }
 
+function CountPill({ icon, label, color }: { icon: string; label: string; color: string }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <Icon name={icon} size={14} color={color} />
+      <T v="caption" color={color}>{label}</T>
+    </View>
+  );
+}
+
 export function SwipeHome({
   preset,
   layoutFor,
   emptyCopy,
+  below,
 }: {
   preset: HomePresetId;
   layoutFor?: (page: HomePresetId) => HomePresentation;
   emptyCopy?: (id: string) => { title: string; line: string; route: string };
+  below?: (page: HomePresetId) => React.ReactNode;
 }) {
   const { width } = useWindowDimensions();
   const { sp } = useTheme();
   const { setSettings } = useStore();
   const circle = swipeScreens(preset);
   const pages = swipePages(preset);
-  const pageW = Math.max(280, Math.min(width, 720) - sp.lg * 2);
+  const pageW = Math.min(width, 720);
+  const [frameH, setFrameH] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const fromSwipe = useRef(false);
   const start = swipeStartIndex(preset);
@@ -145,13 +210,16 @@ export function SwipeHome({
   }, [start, pageW]);
 
   return (
+    <View style={{ flex: 1 }} onLayout={(event) => setFrameH(event.nativeEvent.layout.height)}>
     <ScrollView
       ref={scrollRef}
       horizontal
       pagingEnabled
+      nestedScrollEnabled
       decelerationRate="fast"
       showsHorizontalScrollIndicator={false}
       testID="today-swipe-home"
+      style={{ flex: 1, width: pageW, alignSelf: "center", height: frameH || undefined }}
       contentOffset={{ x: start * pageW, y: 0 }}
       onMomentumScrollEnd={(event) => {
         const raw = Math.round(event.nativeEvent.contentOffset.x / pageW);
@@ -164,11 +232,15 @@ export function SwipeHome({
       }}
     >
       {pages.map((page, index) => (
-        <View key={`${page}-${index}`} style={{ width: pageW }}>
-          {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} />}
+        <View key={`${page}-${index}`} style={{ width: pageW, height: frameH || undefined }}>
+          <ScrollView nestedScrollEnabled style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 24, gap: sp.md }}>
+            {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} />}
+            {below ? below(page) : null}
+          </ScrollView>
         </View>
       ))}
     </ScrollView>
+    </View>
   );
 }
 

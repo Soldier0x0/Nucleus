@@ -22,13 +22,17 @@ test("a look and a layout change the home screen, not only the label", () => {
   const bento = presentHome("bento", items);
   assert.equal(stack.frost, false);
   assert.equal(glass.frost, true);
-  assert.equal(bento.cardMin > stack.cardMin, true);
-  assert.equal(bento.rows.length, items.length);
-  assert.equal(bento.rows.every((row) => row.items.length === 1 && row.items[0]?.size === "large"), true);
+  assert.equal(bento.frost, false);
+  assert.equal(bento.cardMin, 0);
+  assert.equal(bento.rows[0]?.items.length, 1);
+  assert.equal(bento.rows[0]?.items[0]?.id, "balance");
+  assert.equal(bento.rows[0]?.items[0]?.size, "large");
+  assert.equal(bento.rows[1]?.items.length, 2);
+  assert.equal(bento.rows[1]?.items.every((item) => item.size === "small"), true);
   assert.equal(stack.rows[1]?.items.length, 2);
   assert.equal(stack.rows[1]?.items.every((item) => item.size === "small"), true);
   assert.deepEqual(
-    bento.rows.map((row) => row.items[0]?.id),
+    bento.rows.flatMap((row) => row.items.map((item) => item.id)),
     items.map((item) => item.id),
   );
 });

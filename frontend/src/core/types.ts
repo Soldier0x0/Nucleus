@@ -176,7 +176,7 @@ export type HeadsUpState = { dismissed: string[]; answers: { id: string; choice:
 export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper";
 /** A visual look. Color sets stay on `theme`. Current matches the original app. */
 export type LookId = "current" | "soft" | "tight" | "plain" | "cards" | "ink" | "signal" | "poster";
-/** Sits on a look. Stack is the current rows. Glass frosts cards. Bento uses a few big tiles. */
+  /** Sits on a look. Stack is the current rows. Glass frosts cards. Bento pairs short cards. */
 export type LayoutId = "stack" | "glass" | "bento";
 export type CloudProvider = "off" | "drive" | "onedrive";
 export type CloudSync = { provider: CloudProvider; lastSyncAt?: string; askedSinceUnlock: boolean; unlockedAt?: string };
@@ -233,6 +233,8 @@ export type Settings = {
   defaultVehicleId?: string;
   modules: ModuleState[];
   tiles: { id: TileId; enabled: boolean }[];
+  /** Long-press size for one tile. An unset tile keeps the size its board already uses. */
+  tileSizes: Record<string, "large" | "small">;
   boards: Board[];
   activeBoardId?: string;
   remindersEnabled: boolean;

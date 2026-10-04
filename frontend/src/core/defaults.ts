@@ -4,7 +4,7 @@ import { cleanCallName } from "./greeting";
 import { parseLauncher } from "./launcher";
 import { parseLook } from "./looks";
 import { parseLayout } from "./layouts";
-import { emptyAdhd, emptyHeadsUp, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast } from "./presets";
+import { emptyAdhd, emptyHeadsUp, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
@@ -65,6 +65,7 @@ export const defaultSettings: Settings = {
     { id: "notes", enabled: true },
     { id: "tools", enabled: true },
   ],
+  tileSizes: {},
   boards: [],
   remindersEnabled: false,
   highContrast: false,
@@ -110,6 +111,7 @@ export function emptyDB(): DB {
     sampleIds: [],
     modules: defaultSettings.modules.map((m) => ({ ...m })),
     tiles: defaultSettings.tiles.map((t) => ({ ...t })),
+    tileSizes: { ...defaultSettings.tileSizes },
   },
     vehicles: [],
     fuel: [],
@@ -212,6 +214,7 @@ export function normalizeDB(raw: any): DB {
     ...(raw?.settings?.tiles ?? []).filter((t: any) => knownTiles.includes(t.id)),
     ...base.settings.tiles.filter((t) => !(raw?.settings?.tiles ?? []).some((x: any) => x.id === t.id)),
   ];
+  s.tileSizes = parseTileSizes(raw?.settings?.tileSizes);
   return {
     ...base,
     ...raw,

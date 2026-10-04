@@ -17,7 +17,7 @@ export type ResolvedLayout = {
 export const LAYOUT_LIST: { id: LayoutId; name: string; line: string }[] = [
   { id: "stack", name: "Stack", line: "Rows, as the app is now." },
   { id: "glass", name: "Glass", line: "Frosted cards on this look." },
-  { id: "bento", name: "Bento", line: "A few big tiles on this look." },
+  { id: "bento", name: "Bento", line: "Short cards share a row. A fuller card keeps the row." },
 ];
 
 export function resolveLayout(layout: LayoutId, look: LookId, theme: ThemeKey): ResolvedLayout {
@@ -46,11 +46,7 @@ export type HomePresentation = {
 export function presentHome(layout: LayoutId, items: PresetItem[]): HomePresentation {
   switch (layout) {
     case "bento":
-      return {
-        frost: false,
-        cardMin: 112,
-        rows: items.map((item) => ({ items: [{ id: item.id, size: "large" }] })),
-      };
+      return { frost: false, cardMin: 0, rows: rowsFor(items) };
     case "glass":
       return { frost: true, cardMin: 0, rows: rowsFor(items) };
     case "stack":

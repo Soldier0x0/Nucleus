@@ -173,10 +173,11 @@ class NucleusAndroidModule : Module() {
     }
 
     Function("consumePhoneLock") {
-      val ctx = appContext.reactContext ?: return@Function false
+      val ctx = appContext.reactContext ?: return@Function mapOf("deviceLocked" to false, "screenTurnedOff" to false)
       val keyguard = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-      val lockedNow = keyguard.isKeyguardLocked
-      phoneLocked.getAndSet(false) || lockedNow
+      val deviceLocked = keyguard.isDeviceLocked
+      val screenTurnedOff = phoneLocked.getAndSet(false)
+      mapOf("deviceLocked" to deviceLocked, "screenTurnedOff" to screenTurnedOff)
     }
 
     Function("clearIconRestart") {

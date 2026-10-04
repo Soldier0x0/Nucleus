@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { presentHome } from "@/src/core/layouts";
@@ -14,7 +14,7 @@ import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
-import { PRESET_CHOICES, presetBoard, showsCustomizeHome, tilePlaceholder } from "@/src/core/presets";
+import { PRESET_CHOICES, presetBoard, showsCustomizeHome, tilePlaceholder, withTileSizes } from "@/src/core/presets";
 import { HeadsUpCard, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
@@ -28,7 +28,6 @@ export default function Today() {
   const { colors, sp, layout } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
   const on = (id: string) => db.settings.modules.find((m) => m.id === id)?.enabled;
   const today = todayISO();
@@ -40,7 +39,6 @@ export default function Today() {
     ...db.chores.filter((chore) => choreDueDate(chore, today) === 0).map((chore) => ({ title: chore.name, date: today })),
   ];
   const greeting = homeLine(hour, session === "real" ? db.settings.givenName : undefined, oneDueToday(dues, today)?.title ?? null);
-  const contentW = Math.min(width, 720) - sp.lg * 2;
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
   const preset = db.settings.homePreset;
@@ -86,27 +84,32 @@ export default function Today() {
             <Chip label="New board" icon="plus" testID="today-board-new" onPress={() => setBoardSheet({ board: null })} />
         </ChipRow> : null}
       </View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24, gap: sp.md, maxWidth: 720, width: "100%", alignSelf: "center" }}>
-        {!anyModule ? (
+      {!anyModule ? (
+        <View style={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24 }}>
           <EmptyState testID="today-empty" icon="view-grid-plus-outline" title="Your workbench is empty" body="Turn on a module to start adding tiles here." action={<Button label="Open module library" icon="view-grid-outline" onPress={() => router.push("/(tabs)/modules")} testID="today-open-modules-button" />} />
-        ) : (
-          <SwipeHome
-            preset={preset}
-            layoutFor={(page) => presentHome(layout.layout, presetBoard(db, page, session))}
-            emptyCopy={(id) => tilePlaceholder(id)}
-          />
-        )}
-        {preset === "adhd" ? null : <HeadsUpCard />}
-        {showsCustomizeHome(preset) ? (
-          <>
-            <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong, width: contentW > 0 ? undefined : undefined }]}>
-              <Icon name="tune-variant" size={18} color={colors.muted} />
-              <T muted v="label">Customize home</T>
-            </Press>
-            <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to rearrange it.</T>
-          </>
-        ) : null}
-      </ScrollView>
+        </View>
+      ) : (
+        <SwipeHome
+          preset={preset}
+          layoutFor={(page) => presentHome(layout.layout, withTileSizes(db, presetBoard(db, page, session)))}
+          emptyCopy={(id) => tilePlaceholder(id)}
+          below={(page) => (
+            <>
+              {page === "adhd" ? null : <HeadsUpCard />}
+              {showsCustomizeHome(page) || (page === preset && showsCustomizeHome(preset)) ? (
+                <>
+                  <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong }]}>
+                    <Icon name="tune-variant" size={18} color={colors.muted} />
+                    <T muted v="label">Customize home</T>
+                  </Press>
+                  <T muted style={{ fontSize: 12, textAlign: "center" }}>Hold a tile to resize it.</T>
+                </>
+              ) : null}
+              <View style={{ height: bottomChrome }} />
+            </>
+          )}
+        />
+      )}
       <Sheet visible={arrange} onClose={() => setArrange(false)} title={activeBoard ? `Arrange ${activeBoard.name}` : "Arrange home"} testID="today-arrange">
         <T muted style={{ marginBottom: 10 }}>Hold a row, then drag. This order is saved on this device.</T>
         <ReorderGroup rowHeight={52} orderKey={(activeBoard ? activeBoard.tiles : db.settings.tiles.map((t) => t.id)).join("\n")}>

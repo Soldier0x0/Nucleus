@@ -29,6 +29,23 @@ export function askOnRelaunch(input: { lockEnabled: boolean; marked: boolean; ph
   return true;
 }
 
+/**
+ * A screenshot on an unlocked phone does not ask.
+ * The phone being locked, or the screen having turned off, still does.
+ */
+export function askAfterLeave(input: {
+  lockEnabled: boolean;
+  deviceLocked: boolean;
+  screenTurnedOff: boolean;
+  screenshot: boolean;
+}): boolean {
+  if (!input.lockEnabled) return false;
+  if (input.screenshot && !input.deviceLocked) return false;
+  if (input.deviceLocked) return true;
+  if (input.screenTurnedOff) return true;
+  return false;
+}
+
 export function shouldAskBiometric(lockEnabled: boolean, signal: LockSignal, _backgroundMs: number): boolean {
   if (!lockEnabled) return false;
   switch (signal) {

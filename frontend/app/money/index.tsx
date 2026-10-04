@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,7 +47,6 @@ export default function Money() {
   const pct = b > 0 ? flow.out / b : 0;
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
   const insights = moneyInsights(db);
-  const isCurrent = month === monthKey(todayISO());
   const maxCat = Math.max(1, ...mt.categories.map(([, v]) => v), ...Object.values(db.budget.categories));
 
   useEffect(() => {
@@ -75,11 +74,7 @@ export default function Money() {
         <FocusNote focus={typeof params.focus === "string" ? params.focus : ""} field={typeof params.field === "string" ? params.field : ""} seed={typeof params.seed === "string" ? params.seed : ""} />
         {tab === "overview" && (
           <>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <IconButton icon="chevron-left" testID="money-prev-month" label="Previous month" onPress={() => setMonth(monthKey(addMonths(month + "-01", -1)))} />
-              <T v="h2" style={{ flex: 1, textAlign: "center" }} testID="money-month-label">{monthLabel(month)} {month.slice(0, 4)}</T>
-              <IconButton icon="chevron-right" testID="money-next-month" label="Next month" onPress={() => !isCurrent && setMonth(monthKey(addMonths(month + "-01", 1)))} />
-            </View>
+            <MonthSwipe month={month} width={Math.max(1, Math.min(width, 720) - sp.lg * 2)} onMonth={setMonth} />
             <Card testID="money-budget-card">
               <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
                 <Ring value={pct} size={140} stroke={14} testID="money-budget-ring">
@@ -227,6 +222,53 @@ export default function Money() {
       <WhySheet visible={!!why} onClose={() => setWhy(null)} title={why?.title ?? ""} why={why?.why} />
       <ModuleGate id="money" name="Money" icon="wallet-outline" />
     </View>
+  );
+}
+
+function shiftMonth(month: string, dir: -1 | 1): string {
+  const next = monthKey(addMonths(`${month}-01`, dir));
+  if (next > monthKey(todayISO())) return month;
+  return next;
+}
+
+function MonthSwipe({ month, width, onMonth }: { month: string; width: number; onMonth: (month: string) => void }) {
+  const ref = useRef<ScrollView>(null);
+  useLayoutEffect(() => {
+    ref.current?.scrollTo({ x: width, animated: false });
+  }, [month, width]);
+  const panes = [-1, 0, 1] as const;
+  return (
+    <ScrollView
+      ref={ref}
+      horizontal
+      pagingEnabled
+      nestedScrollEnabled
+      showsHorizontalScrollIndicator={false}
+      decelerationRate="fast"
+      contentOffset={{ x: width, y: 0 }}
+      onMomentumScrollEnd={(event) => {
+        const page = Math.round(event.nativeEvent.contentOffset.x / Math.max(width, 1));
+        if (page === 0) onMonth(shiftMonth(month, -1));
+        if (page === 2) onMonth(shiftMonth(month, 1));
+      }}
+    >
+      {panes.map((pane) => {
+        const key = pane === 0 ? month : shiftMonth(month, pane);
+        return (
+          <View key={pane} style={{ width, flexDirection: "row", alignItems: "center" }}>
+            {pane === 0 ? (
+              <>
+                <IconButton icon="chevron-left" testID="money-prev-month" label="Previous month" onPress={() => onMonth(shiftMonth(month, -1))} />
+                <T v="h2" style={{ flex: 1, textAlign: "center" }} testID="money-month-label">{monthLabel(month)} {month.slice(0, 4)}</T>
+                <IconButton icon="chevron-right" testID="money-next-month" label="Next month" onPress={() => onMonth(shiftMonth(month, 1))} />
+              </>
+            ) : (
+              <T v="h2" style={{ flex: 1, textAlign: "center" }}>{monthLabel(key)} {key.slice(0, 4)}</T>
+            )}
+          </View>
+        );
+      })}
+    </ScrollView>
   );
 }
 
