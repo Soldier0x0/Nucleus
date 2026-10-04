@@ -20,7 +20,7 @@ import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
 import { presentHome } from "@/src/core/layouts";
 import { PRESET_CHOICES, presetBoard, tilePlaceholder } from "@/src/core/presets";
-import { AdhdPanel, HeadsUpCard, PresetGrid, SwipeHome } from "@/src/components/HomeModes";
+import { AdhdPanel, HeadsUpCard, PresetGrid } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
 import type { Board } from "@/src/core/types";
@@ -350,7 +350,7 @@ export default function Today() {
         ) : preset === "adhd" ? (
           <AdhdPanel />
         ) : preset === "money" || preset === "travel" ? (
-          <SwipeHome preset={preset} />
+          <PresetGrid preset={preset} />
         ) : preset === "custom" ? (
           customPresented.rows.map((row, index) => (
             <View key={`${row.items.map((item) => item.id).join("-")}-${index}`} style={{ flexDirection: "row", gap: sp.md }}>

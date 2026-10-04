@@ -311,6 +311,98 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
   }
 }
 
+/** The tiles painted for one preset tap. Money does not include Travel, and Travel does not include Money. */
+export function homePresetTiles(db: DB, preset: HomePresetId, session: "real" | "decoy"): PresetItem[] {
+  return presetBoard(db, preset, session);
+}
+
+export function presetTileTitle(id: string): string {
+  switch (id) {
+    case "balance":
+      return "Balance";
+    case "spending":
+      return "Spending";
+    case "charts":
+      return "Charts";
+    case "receipts":
+      return "Receipts";
+    case "bills":
+      return "Bills";
+    case "budget":
+      return "Budget";
+    case "subscriptions":
+      return "Subscriptions";
+    case "funds":
+      return "Funds";
+    case "debts":
+      return "Debts";
+    case "categories":
+      return "Categories";
+    case "networth":
+      return "Net worth";
+    case "route":
+      return "Route";
+    case "mileage":
+      return "Mileage";
+    case "fuel":
+      return "Fuel";
+    case "papers":
+      return "Papers";
+    case "vehicle":
+      return "Vehicle";
+    case "service":
+      return "Service";
+    case "range":
+      return "Range";
+    case "stops":
+      return "Stops";
+    case "weather":
+      return "Weather";
+    case "packing":
+      return "Packing";
+    case "maintenance":
+      return "Maintenance";
+    case "chores":
+      return "Chores";
+    case "appliances":
+      return "Appliances";
+    case "notes":
+      return "Notes";
+    case "cycle":
+      return "Cycle";
+    case "warranties":
+      return "Warranties";
+    case "utilities":
+      return "Utilities";
+    case "kanban":
+      return "Kanban";
+    case "wiki":
+      return "Wiki";
+    case "media":
+      return "Media";
+    case "rules":
+      return "Rules";
+    case "attention":
+      return "Attention";
+    case "tools":
+      return "Tools";
+    case "history":
+      return "History";
+    case "builder":
+      return "Builder";
+    case "dev":
+      return "Dev";
+    case "lab":
+      return "Lab";
+    case "net":
+      return "Network";
+    case "next":
+      return "Next";
+    default:
+      return id;
+  }
+}
+
 /** The decoy keeps the same boards, without cycle or money tiles. */
 export function presetBoard(db: DB, preset: HomePresetId, session: "real" | "decoy"): PresetItem[] {
   const items = visiblePresetItems(db, preset);
@@ -418,7 +510,6 @@ export function tileHasData(db: DB, id: string): boolean {
 }
 
 export function swipeScreens(preset: HomePresetId): HomePresetId[] {
-  if (preset === "money" || preset === "travel") return ["money", "travel"];
   return [preset];
 }
 

@@ -41,5 +41,5 @@ test("the home screen uses that layout and keeps empty tiles", () => {
   assert.match(home, /tilePlaceholder\(/);
   assert.equal(/\btileHasData\b/.test(home), false);
   assert.match(modes, /presentHome\(/);
-  assert.match(modes, /presetBoard\(/);
+  assert.match(modes, /homePresetTiles\(/);
 });
