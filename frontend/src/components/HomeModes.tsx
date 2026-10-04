@@ -24,8 +24,10 @@ import {
   setAdhdBuddy,
   setAdhdMotion,
   startAdhdTask,
+  swipePages,
   swipeScreens,
   swipeStartIndex,
+  swipeWrap,
   typeAdhdDraft,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
@@ -176,11 +178,12 @@ export function PresetGrid({ preset }: { preset: HomePresetId }) {
   );
 }
 
-export function SwipeHome({ preset }: { preset: "money" | "travel" }) {
+export function SwipeHome({ preset }: { preset: HomePresetId }) {
   const { width } = useWindowDimensions();
   const { sp } = useTheme();
   const { setSettings } = useStore();
-  const pages = swipeScreens(preset);
+  const circle = swipeScreens(preset);
+  const pages = swipePages(preset);
   const pageW = Math.max(280, Math.min(width, 720) - sp.lg * 2);
   const scrollRef = useRef<ScrollView>(null);
   const fromSwipe = useRef(false);
@@ -199,20 +202,23 @@ export function SwipeHome({ preset }: { preset: "money" | "travel" }) {
       ref={scrollRef}
       horizontal
       pagingEnabled
+      decelerationRate="fast"
       showsHorizontalScrollIndicator={false}
       testID="today-swipe-home"
-      contentOffset={{ x: swipeStartIndex(preset) * pageW, y: 0 }}
+      contentOffset={{ x: start * pageW, y: 0 }}
       onMomentumScrollEnd={(event) => {
-        const index = Math.round(event.nativeEvent.contentOffset.x / pageW);
-        const next = pages[index];
+        const raw = Math.round(event.nativeEvent.contentOffset.x / pageW);
+        const nextIndex = swipeWrap(raw, circle.length);
+        if (raw >= circle.length) scrollRef.current?.scrollTo({ x: nextIndex * pageW, animated: false });
+        const next = circle[nextIndex];
         if (!next || next === preset) return;
         fromSwipe.current = true;
         setSettings({ homePreset: next });
       }}
     >
-      {pages.map((page) => (
-        <View key={page} style={{ width: pageW }}>
-          <PresetGrid preset={page} />
+      {pages.map((page, index) => (
+        <View key={`${page}-${index}`} style={{ width: pageW }}>
+          {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} />}
         </View>
       ))}
     </ScrollView>

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipeScreens, swipeStartIndex, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -328,16 +328,17 @@ test("money and travel show different tiles, and each title names that tile", ()
   assert.equal(/contentOffset=\{\{\s*x:\s*0/.test(swipe), false);
 });
 
-test("money and travel swipe as two different boards", () => {
-  assert.deepEqual(swipeScreens("money"), ["money", "travel"]);
-  assert.deepEqual(swipeScreens("travel"), ["money", "travel"]);
-  assert.equal(swipeStartIndex("money"), 0);
-  assert.equal(swipeStartIndex("travel"), 1);
-  assert.deepEqual(swipeScreens("home"), ["home"]);
-  assert.deepEqual(swipeScreens("adhd"), ["adhd"]);
-  assert.deepEqual(swipeScreens("desk"), ["desk"]);
-  assert.deepEqual(swipeScreens("workshop"), ["workshop"]);
-  assert.deepEqual(swipeScreens("custom"), ["custom"]);
+test("every board is one circle and the last wraps to the first", () => {
+  const circle = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"] as const;
+  for (const preset of circle) assert.deepEqual(swipeScreens(preset), [...circle]);
+  assert.equal(swipeStartIndex("custom"), 0);
+  assert.equal(swipeStartIndex("money"), 1);
+  assert.equal(swipeStartIndex("travel"), 2);
+  assert.equal(swipeStartIndex("adhd"), 6);
+  assert.equal(swipeWrap(circle.length, circle.length), 0);
+  assert.equal(swipeScreens("adhd")[swipeWrap(swipeScreens("adhd").length, swipeScreens("adhd").length)], "custom");
+  assert.equal(swipePages("home").at(-1), "custom");
+  assert.equal(swipePages("home").length, circle.length + 1);
 });
 
 test("travel opens on the travel tiles and money opens on the money tiles", () => {

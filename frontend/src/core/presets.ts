@@ -509,18 +509,18 @@ export function tileHasData(db: DB, id: string): boolean {
   }
 }
 
-/** Money and Travel share a pager. The opened preset is the page that shows first. */
+export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"];
+
 export function swipeScreens(preset: HomePresetId): HomePresetId[] {
   switch (preset) {
+    case "custom":
     case "money":
     case "travel":
-      return ["money", "travel"];
-    case "custom":
     case "home":
     case "desk":
     case "workshop":
     case "adhd":
-      return [preset];
+      return BOARD_CIRCLE;
     default: {
       const never: never = preset;
       return never;
@@ -531,6 +531,18 @@ export function swipeScreens(preset: HomePresetId): HomePresetId[] {
 export function swipeStartIndex(preset: HomePresetId): number {
   const index = swipeScreens(preset).indexOf(preset);
   return index < 0 ? 0 : index;
+}
+
+export function swipeWrap(index: number, count: number): number {
+  if (count <= 0) return 0;
+  return ((index % count) + count) % count;
+}
+
+export function swipePages(preset: HomePresetId): HomePresetId[] {
+  const circle = swipeScreens(preset);
+  const first = circle[0];
+  if (!first) return circle;
+  return [...circle, first];
 }
 
 /** Money, Travel, and Home are fixed boards. The dashed customize box stays on the boards the user arranges. */
