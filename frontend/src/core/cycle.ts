@@ -62,6 +62,9 @@ export function emptyCycle(): CycleState {
       { kind: "tampon", count: null, lowAt: 2 },
       { kind: "cup", count: null, lowAt: 1 },
     ],
+    customSymptoms: [],
+    reportName: "private",
+    pinkCalendar: false,
   };
 }
 
@@ -139,7 +142,8 @@ export function normalizeCycle(raw: unknown): CycleState {
     if (!DATE.test(date) || seen.has(date)) continue;
     const bleeding = row.bleeding === "flow" || row.bleeding === "spotting" ? row.bleeding : undefined;
     const symptom = SYMPTOMS.some((s) => s.id === row.symptom) ? (row.symptom as CycleSymptom) : undefined;
-    if (!bleeding && !symptom) continue;
+    const symptoms = cleanSymptomList(row.symptoms, symptom);
+    if (!bleeding && !symptom && symptoms.length === 0) continue;
     seen.add(date);
     const day: CycleDay = {
       id: typeof row.id === "string" && row.id.trim() ? row.id.trim().slice(0, 40) : `day-${date}`,
@@ -149,6 +153,7 @@ export function normalizeCycle(raw: unknown): CycleState {
     if (bleeding === "flow" && row.ended === true) day.ended = true;
     if (bleeding === "flow" && (row.flow === "light" || row.flow === "medium" || row.flow === "heavy")) day.flow = row.flow;
     if (symptom) day.symptom = symptom;
+    if (symptoms.length) day.symptoms = symptoms;
     days.push(day);
   }
   days.sort((a, b) => a.date.localeCompare(b.date));
@@ -182,7 +187,40 @@ export function normalizeCycle(raw: unknown): CycleState {
     ...(packedFor ? { packedFor } : {}),
     ...(absorbencySeenFor ? { absorbencySeenFor } : {}),
     stash,
+    customSymptoms: cleanCustomSymptoms(src.customSymptoms),
+    reportName: src.reportName === "normal" ? "normal" : "private",
+    pinkCalendar: src.pinkCalendar === true,
   };
+}
+
+function cleanLabel(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim().slice(0, 24);
+}
+
+function cleanSymptomList(raw: unknown, primary?: string): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const clean = cleanLabel(item);
+    if (!clean || clean === primary || out.includes(clean)) continue;
+    out.push(clean);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+function cleanCustomSymptoms(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") continue;
+    const clean = cleanLabel(item);
+    if (!clean || out.some((name) => name.toLowerCase() === clean.toLowerCase())) continue;
+    out.push(clean);
+    if (out.length >= 12) break;
+  }
+  return out;
 }
 
 function writeDay(days: CycleDay[], date: string, build: (prev: CycleDay | undefined) => CycleDay | null): CycleDay[] {
@@ -194,7 +232,25 @@ function writeDay(days: CycleDay[], date: string, build: (prev: CycleDay | undef
 }
 
 function carry(prev: CycleDay | undefined, date: string): CycleDay {
-  return { id: prev?.id ?? `day-${date}`, date };
+  const day: CycleDay = { id: prev?.id ?? `day-${date}`, date };
+  if (prev?.symptom) day.symptom = prev.symptom;
+  if (prev?.symptoms?.length) day.symptoms = [...prev.symptoms];
+  return day;
+}
+
+/** Built-in chip first, then any extra chips, including a name the person added. */
+export function listedSymptoms(day: CycleDay): string[] {
+  const first = day.symptom ? [day.symptom] : [];
+  const extra = (day.symptoms ?? []).filter((id) => id && id !== day.symptom);
+  return [...first, ...extra];
+}
+
+export function symptomLabel(id: string): string {
+  return SYMPTOMS.find((item) => item.id === id)?.label ?? id;
+}
+
+function isBuiltin(id: string): id is CycleSymptom {
+  return SYMPTOMS.some((item) => item.id === id);
 }
 
 /** One tap: bleeding started today. Does not fill any other day. */
@@ -203,7 +259,6 @@ export function markStart(days: CycleDay[], date: string): CycleDay[] {
     const day = carry(prev, date);
     day.bleeding = "flow";
     if (prev?.flow) day.flow = prev.flow;
-    if (prev?.symptom) day.symptom = prev.symptom;
     return day;
   });
 }
@@ -219,7 +274,6 @@ export function markEnd(days: CycleDay[], date: string): CycleDay[] {
     day.bleeding = "flow";
     day.ended = true;
     if (prev?.flow) day.flow = prev.flow;
-    if (prev?.symptom) day.symptom = prev.symptom;
     return day;
   });
 }
@@ -231,8 +285,11 @@ export function clearDay(days: CycleDay[], date: string): CycleDay[] {
 export function setBleeding(days: CycleDay[], date: string, bleeding: CycleBleeding | "none"): CycleDay[] {
   if (bleeding === "none") {
     return writeDay(days, date, (prev) => {
-      if (!prev?.symptom) return null;
-      return { id: prev.id, date, symptom: prev.symptom };
+      if (!prev?.symptom && !(prev?.symptoms?.length)) return null;
+      const day: CycleDay = { id: prev.id, date };
+      if (prev.symptom) day.symptom = prev.symptom;
+      if (prev.symptoms?.length) day.symptoms = [...prev.symptoms];
+      return day;
     });
   }
   return writeDay(days, date, (prev) => {
@@ -242,7 +299,6 @@ export function setBleeding(days: CycleDay[], date: string, bleeding: CycleBleed
       if (prev?.ended) day.ended = true;
       if (prev?.flow) day.flow = prev.flow;
     }
-    if (prev?.symptom) day.symptom = prev.symptom;
     return day;
   });
 }
@@ -255,7 +311,6 @@ export function setFlowLevel(days: CycleDay[], date: string, flow: CycleFlow | n
     day.bleeding = "flow";
     if (prev.ended) day.ended = true;
     if (flow) day.flow = flow;
-    if (prev.symptom) day.symptom = prev.symptom;
     return day;
   });
 }
@@ -267,9 +322,56 @@ export function setSymptom(days: CycleDay[], date: string, symptom: CycleSymptom
     if (prev?.bleeding === "flow" && prev.ended) day.ended = true;
     if (prev?.bleeding === "flow" && prev.flow) day.flow = prev.flow;
     if (symptom) day.symptom = symptom;
-    if (!day.bleeding && !day.symptom) return null;
+    else delete day.symptom;
+    if (!day.bleeding && !day.symptom && !(day.symptoms?.length)) return null;
     return day;
   });
+}
+
+/** Add or remove one chip. The first built-in chip stays on `symptom`. Other chips sit on `symptoms`. */
+export function toggleSymptom(days: CycleDay[], date: string, id: string): CycleDay[] {
+  const clean = cleanLabel(id);
+  if (!clean) return days;
+  return writeDay(days, date, (prev) => {
+    const current = new Set(prev ? listedSymptoms(prev) : []);
+    if (current.has(clean)) current.delete(clean);
+    else current.add(clean);
+    const ids = [...current];
+    const symptom = ids.find(isBuiltin);
+    const symptoms = ids.filter((item) => item !== symptom);
+    const day = carry(prev, date);
+    if (prev?.bleeding) day.bleeding = prev.bleeding;
+    if (prev?.bleeding === "flow" && prev.ended) day.ended = true;
+    if (prev?.bleeding === "flow" && prev.flow) day.flow = prev.flow;
+    if (symptom) day.symptom = symptom;
+    else delete day.symptom;
+    if (symptoms.length) day.symptoms = symptoms;
+    else delete day.symptoms;
+    if (!day.bleeding && !day.symptom && !day.symptoms?.length) return null;
+    return day;
+  });
+}
+
+export function addCustomSymptom(cycle: CycleState, raw: string): CycleState {
+  const name = cleanLabel(raw);
+  if (!name) return cycle;
+  if (SYMPTOMS.some((item) => item.id.toLowerCase() === name.toLowerCase() || item.label.toLowerCase() === name.toLowerCase())) return cycle;
+  if (cycle.customSymptoms.some((item) => item.toLowerCase() === name.toLowerCase())) return cycle;
+  return { ...cycle, customSymptoms: [...cycle.customSymptoms, name].slice(0, 12) };
+}
+
+export function removeCustomSymptom(cycle: CycleState, name: string): CycleState {
+  const days = cycle.days
+    .map((day) => {
+      const symptoms = (day.symptoms ?? []).filter((item) => item !== name);
+      const next: CycleDay = { ...day };
+      if (next.symptom === name) delete next.symptom;
+      if (symptoms.length) next.symptoms = symptoms;
+      else delete next.symptoms;
+      return next;
+    })
+    .filter((day) => day.bleeding || day.symptom || day.symptoms?.length);
+  return { ...cycle, customSymptoms: cycle.customSymptoms.filter((item) => item !== name), days };
 }
 
 /** Flow days only. A new period starts when the previous flow day is at least 10 days earlier. Spotting never starts one. */
@@ -346,6 +448,8 @@ export function formatWindow(from: string, to: string): string {
   return `Guess · ${left} – ${right}`;
 }
 
+export type CycleConfidence = "low" | "closer" | "wider";
+
 export type CycleForecast = {
   from: string;
   to: string;
@@ -356,6 +460,7 @@ export type CycleForecast = {
   paused: boolean;
   longGap: boolean;
   wide: boolean;
+  confidence: CycleConfidence;
   line: string;
 };
 
@@ -372,6 +477,7 @@ export function forecast(cycle: CycleState, today: string): CycleForecast | null
   const longGap = daysBetween(anchor, today) > LONG_GAP_DAYS;
   const paused = cycle.paused || longGap;
   const wide = own && half > 1;
+  const confidence: CycleConfidence = paused || !own ? "low" : wide ? "wider" : "closer";
   return {
     from,
     to,
@@ -382,8 +488,17 @@ export function forecast(cycle: CycleState, today: string): CycleForecast | null
     paused,
     longGap,
     wide,
+    confidence,
     line: paused ? "Paused" : formatWindow(from, to),
   };
+}
+
+/** How sure the range is. The guess line itself stays a range. */
+export function estimateLine(next: CycleForecast): string {
+  if (next.confidence === "low" && next.paused) return "Low confidence. Guesses are paused. Logged days stay as they are. This is not a prediction.";
+  if (next.confidence === "low") return "Low confidence. A 28-day placeholder until two of your own cycles are logged. The dates are a range, not one promised day.";
+  if (next.confidence === "wider") return `Less sure. Recent cycles differ, so the range is wider. The middle length is ${next.length} days. Still a guess.`;
+  return `Closer. The middle of your own cycle lengths is ${next.length} days. Still a guess.`;
 }
 
 export function forecastDetail(next: CycleForecast): string {
@@ -534,7 +649,7 @@ export function searchCycleDays(days: CycleDay[], query: string): CycleDay[] {
   const sorted = [...days].sort((a, b) => b.date.localeCompare(a.date));
   if (!q) return sorted;
   return sorted.filter((day) => {
-    const symptom = SYMPTOMS.find((s) => s.id === day.symptom)?.label ?? "";
+    const symptom = listedSymptoms(day).map(symptomLabel).join(" ");
     return [day.date, day.bleeding ?? "", day.flow ?? "", symptom].some((bit) => bit.toLowerCase().includes(q));
   });
 }
@@ -548,7 +663,7 @@ export function cycleCsv(days: CycleDay[]): string {
     ["Date", "Bleeding", "Flow", "Symptom"],
     ...[...days]
       .sort((a, b) => a.date.localeCompare(b.date))
-      .map((day) => [day.date, day.bleeding ?? "", day.flow ?? "", SYMPTOMS.find((s) => s.id === day.symptom)?.label ?? ""]),
+      .map((day) => [day.date, day.bleeding ?? "", day.flow ?? "", listedSymptoms(day).map(symptomLabel).join("; ")]),
   ];
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
 }

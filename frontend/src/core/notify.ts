@@ -6,6 +6,7 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import type { Reminder } from "./rules";
+import { waterNoticeCopy } from "./water";
 
 export const notificationsSupported = Platform.OS !== "web";
 
@@ -62,8 +63,13 @@ export async function requestPermission(): Promise<PermissionState> {
 }
 
 const CYCLE_PREFIX = "cycle:";
+const WATER_PREFIX = "water:";
 
-async function cancelScheduled(keepCycle: boolean) {
+function keptAlarm(key: string): boolean {
+  return key.startsWith(CYCLE_PREFIX) || key.startsWith(WATER_PREFIX) || key.startsWith("heads-up") || key.startsWith("adhd:");
+}
+
+async function cancelMatching(match: (key: string) => boolean) {
   let existing: Awaited<ReturnType<typeof Notifications.getAllScheduledNotificationsAsync>> = [];
   try {
     existing = await Notifications.getAllScheduledNotificationsAsync();
@@ -73,13 +79,22 @@ async function cancelScheduled(keepCycle: boolean) {
   await Promise.all(
     existing.map(async (item) => {
       const key = item.content?.data?.key;
-      const cycle = typeof key === "string" && key.startsWith(CYCLE_PREFIX);
-      const quiet = typeof key === "string" && (key.startsWith("heads-up") || key.startsWith("adhd:"));
-      if (keepCycle && (cycle || quiet)) return;
-      if (!keepCycle && !cycle) return;
+      if (typeof key !== "string" || !match(key)) return;
       await Notifications.cancelScheduledNotificationAsync(item.identifier).catch(() => {});
     }),
   );
+}
+
+async function ensureChannel(id: string, name: string, opts: { color?: string; lockPublic: boolean }) {
+  if (!notificationsSupported || Platform.OS !== "android") return;
+  ensureHandler();
+  await Notifications.setNotificationChannelAsync(id, {
+    name,
+    importance: Notifications.AndroidImportance.DEFAULT,
+    sound: null,
+    lockscreenVisibility: opts.lockPublic ? Notifications.AndroidNotificationVisibility.PUBLIC : Notifications.AndroidNotificationVisibility.PRIVATE,
+    ...(opts.color ? { lightColor: opts.color, enableLights: true } : {}),
+  }).catch(() => {});
 }
 
 /** Replace rule reminders. Cycle alarms use their own ids and are left in place. */
@@ -89,7 +104,7 @@ export async function syncReminders(list: Reminder[], channelId = "nucleus-remin
   if (!p.granted) return [];
   ensureHandler();
   if (channelId === "nucleus-lock") await allowLockScreenChannel();
-  await cancelScheduled(true);
+  await cancelMatching((key) => !keptAlarm(key));
   const done: string[] = [];
   for (const r of list) {
     try {
@@ -119,29 +134,68 @@ export async function cancelAll() {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
+export const CYCLE_NOTICE_PINK = "#C48998";
+
+export type CycleNoticeOptions = { pink?: boolean; hide?: boolean; lockPublic?: boolean };
+
 /**
  * Replace cycle alarms. The lock-screen text is the title only.
- * No body, and no separate notification icon — Android keeps the app icon.
+ * A pink tint applies to these reminders only.
  */
-export async function syncCycleNotices(list: { id: string; title: string; at: Date }[]): Promise<void> {
+export async function syncCycleNotices(list: { id: string; title: string; at: Date }[], options: CycleNoticeOptions = {}): Promise<void> {
   if (!notificationsSupported) return;
   ensureHandler();
-  await cancelScheduled(false);
+  await cancelMatching((key) => key.startsWith(CYCLE_PREFIX));
   for (const id of ["cycle:period", "cycle:change"]) {
     await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
   }
   const p = await permissionState();
   if (!p.granted) return;
+  const pink = options.pink === true;
+  const channelId = "nucleus-cycle";
+  await ensureChannel(channelId, "Cycle", { color: pink ? CYCLE_NOTICE_PINK : undefined, lockPublic: options.lockPublic === true });
   for (const notice of list) {
-    if (!notice.title || notice.at.getTime() <= Date.now()) continue;
+    const title = options.hide ? "Reminder" : notice.title;
+    if (!title || notice.at.getTime() <= Date.now()) continue;
     try {
       await Notifications.scheduleNotificationAsync({
         identifier: notice.id,
-        content: { title: notice.title, body: "", data: { key: notice.id } },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: notice.at, channelId: "nucleus-reminders" },
+        content: {
+          title,
+          body: "",
+          data: { key: notice.id },
+          ...(pink ? { color: CYCLE_NOTICE_PINK } : {}),
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: notice.at, channelId },
       });
     } catch {
       /* one bad date must not block the other */
+    }
+  }
+}
+
+/** Daily water reminders at the times the person set. These stay untinted. */
+export async function syncWaterNotices(
+  list: { id: string; hour: number; minute: number }[],
+  options: { hide?: boolean; lockPublic?: boolean } = {},
+): Promise<void> {
+  if (!notificationsSupported) return;
+  ensureHandler();
+  await cancelMatching((key) => key.startsWith(WATER_PREFIX));
+  const p = await permissionState();
+  if (!p.granted) return;
+  const copy = waterNoticeCopy(options.hide === true);
+  const channelId = "nucleus-water";
+  await ensureChannel(channelId, "Water", { lockPublic: options.lockPublic === true });
+  for (const notice of list) {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: notice.id,
+        content: { title: copy.title, body: copy.body, data: { key: notice.id } },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: notice.hour, minute: notice.minute, channelId },
+      });
+    } catch {
+      /* one bad time must not block the others */
     }
   }
 }

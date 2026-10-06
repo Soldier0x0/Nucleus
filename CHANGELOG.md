@@ -8,13 +8,15 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
-## v0.8.1
+## v0.8.2
 
-Fixes for Phone Lab, Tools, and repeating bills.
+Phone Lab and Tools fixes, a softer cycle, a Blush skin, and water reminders.
 
-- Repeating bills ask for a due date, so a reminder can land on the day you choose.
-- The touch box stays still when you hold it. Vibrate uses a buzz you can feel. Make and model use title case.
-- Tools open as tiles. Cooking and date units open a list. Dice, a coin, and a number take a short moment to land. Display test checks for Dead pixels. Battery shows cycles, health, temperature, and voltage when the phone reports them.
+- Repeating bills ask for a due date. The touch box stays still when you hold it. Vibrate uses a buzz you can feel. Make and model use title case. Tools open as tiles. Cooking and date units open a list. Dice, a coin, and a number take a short moment to land. Display test checks for Dead pixels. Battery shows cycles, health, temperature, and voltage when the phone reports them.
+- Cycle shows a range and says how sure that guess is. Symptom chips can include a name you add. A doctor report stays on screen and can be saved as a PDF or a long image. The name is initials unless you choose the full name. Visit notes cite published ranges and do not diagnose.
+- Blush is a soft pink skin for pills, tiles, and sheets. Cycle can use a pink calendar, and cycle reminders can use a pink tint. Other reminders stay as they are.
+- Privacy and usage says what needs a connection and what never leaves.
+- Health has water reminders at the times you set. It does not track glasses.
 
 ## v0.8
 

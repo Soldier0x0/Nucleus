@@ -80,6 +80,35 @@ export const THEMES: Record<string, { name: string; mode: "light" | "dark"; colo
   graphite: { name: "Graphite", mode: "dark", swatch: "#1A1C1E", colors: palettes.dark },
   dune: { name: "Dune", mode: "dark", swatch: "#1F1912", colors: dk({ surface: "#15110C", onSurface: "#F3EDE4", surfaceSecondary: "#1F1912", surfaceTertiary: "#2A2219", border: "#30271C", divider: "#30271C", borderStrong: "#4A3D2C", muted: "#9C9080" }) },
   paper: { name: "Paper", mode: "light", swatch: "#F6F7F9", colors: palettes.light },
+  blush: {
+    name: "Blush",
+    mode: "light",
+    swatch: "#F8F1F3",
+    colors: {
+      ...palettes.light,
+      surface: "#F8F1F3",
+      onSurface: "#2C2428",
+      surfaceSecondary: "#FFF9FB",
+      onSurfaceSecondary: "#2C2428",
+      surfaceTertiary: "#F3E4E9",
+      onSurfaceTertiary: "#2C2428",
+      surfaceInverse: "#5C3E48",
+      onSurfaceInverse: "#FFF9FB",
+      brand: "#C48998",
+      brandPrimary: "#C48998",
+      onBrandPrimary: "#2C2428",
+      brandSecondary: "#E4B7C3",
+      onBrandSecondary: "#2C2428",
+      brandTertiary: "#F6E4EA",
+      onBrandTertiary: "#5C3A44",
+      border: "#E6D5DB",
+      borderStrong: "#D4B8C2",
+      divider: "#E6D5DB",
+      muted: "#7A6570",
+      onBrand: "#2C2428",
+      backdrop: "rgba(44,36,40,0.4)",
+    },
+  },
 };
 
 /** User-selectable accents. Each defines its light & dark tonal set. No blue/purple by design. */
@@ -90,13 +119,15 @@ export const accents: Record<string, { name: string; base: string; light2: strin
   teal: { name: "Teal", base: "#2F8F86", light2: "#5FB3AB", tint: "#DCF0EE", onTint: "#16524C", tintDark: "#15302D", onTintDark: "#DCF0EE" },
   graphite: { name: "Graphite", base: "#5A6068", light2: "#8A9098", tint: "#E6E8EB", onTint: "#2E3238", tintDark: "#24272B", onTintDark: "#E6E8EB" },
   rose: { name: "Rose", base: "#B85C72", light2: "#D58A9B", tint: "#F6E1E6", onTint: "#6E2A3A", tintDark: "#36202A", onTintDark: "#F6E1E6" },
+  blush: { name: "Blush", base: "#C48998", light2: "#E4B7C3", tint: "#F6E4EA", onTint: "#5C3A44", tintDark: "#3A2A30", onTintDark: "#F6E4EA" },
 };
 
-export function buildColors(themeKey: string, accentKey: string, dualTone = false): Colors {
-  const t = THEMES[themeKey] ?? THEMES.midnight;
+export function buildColors(themeKey: string, accentKey: string, dualTone = false, lookId?: LookId): Colors {
+  const skin = lookId === "blush" || themeKey === "blush";
+  const t = THEMES[skin ? "blush" : themeKey] ?? THEMES.midnight;
   const mode = t.mode;
   const base = t.colors;
-  const a = accents[accentKey] ?? accents.ochre;
+  const a = accents[skin ? "blush" : accentKey] ?? accents.ochre;
   const painted = {
     ...base,
     brand: a.base,
@@ -200,6 +231,7 @@ function themeForLayout(themeKey: string): ThemeKey {
     case "graphite":
     case "dune":
     case "paper":
+    case "blush":
       return themeKey;
     default:
       return "midnight";
@@ -219,8 +251,9 @@ export function buildTheme(
   const layout = resolveLayout(layoutId, lookId, themeForLayout(themeKey));
   const f = (dense ? 0.75 : 1) * look.space;
   const sp = Object.fromEntries(Object.entries(spacing).map(([k, v]) => [k, Math.round(v * f)])) as typeof spacing;
-  const mode = (THEMES[themeKey] ?? THEMES.midnight).mode;
-  const base = buildColors(themeKey, accentKey, dualTone);
+  const skin = lookId === "blush" || themeKey === "blush";
+  const mode = (THEMES[skin ? "blush" : themeKey] ?? THEMES.midnight).mode;
+  const base = buildColors(themeKey, accentKey, dualTone, lookId);
   return { mode, colors: a11y.highContrast ? contrasted(base, mode) : base, dense, sp, a11y, touch: a11y.largeTouch ? 1.25 : 1, look, dualTone, layout };
 }
 

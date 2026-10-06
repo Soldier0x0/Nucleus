@@ -143,7 +143,7 @@ export type Budget = { monthly: number; categories: Record<string, number> };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
-export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net" | "cycle";
+export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net" | "cycle" | "health";
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
@@ -173,9 +173,9 @@ export type AdhdSettings = {
 };
 export type HeadsUpChoice = "Yes" | "No";
 export type HeadsUpState = { dismissed: string[]; answers: { id: string; choice: HeadsUpChoice }[] };
-export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper";
+export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper" | "blush";
 /** A visual look. Color sets stay on `theme`. Current matches the original app. */
-export type LookId = "current" | "soft" | "tight" | "plain" | "cards" | "ink" | "signal" | "poster";
+export type LookId = "current" | "soft" | "tight" | "plain" | "cards" | "ink" | "signal" | "poster" | "blush";
   /** Sits on a look. Stack is the current rows. Glass frosts cards. Bento pairs short cards. */
 export type LayoutId = "stack" | "glass" | "bento";
 export type CloudProvider = "off" | "drive" | "onedrive";
@@ -315,7 +315,10 @@ export type CycleDay = {
   ended?: boolean;
   flow?: CycleFlow;
   symptom?: CycleSymptom;
+  /** Extra chips, including a name the person added. The first known chip can also sit on `symptom`. */
+  symptoms?: string[];
 };
+export type CycleReportName = "private" | "normal";
 export type CycleStash = { kind: CycleProduct; count: number | null; lowAt: number };
 export type CycleState = {
   days: CycleDay[];
@@ -330,7 +333,14 @@ export type CycleState = {
   packedFor?: string;
   absorbencySeenFor?: string;
   stash: CycleStash[];
+  customSymptoms: string[];
+  /** Private initials unless the person chooses the full name. */
+  reportName: CycleReportName;
+  /** Soft pink on the cycle calendar and on cycle reminders only. */
+  pinkCalendar: boolean;
 };
+export type WaterTime = { id: string; hour: number; minute: number };
+export type WaterState = { times: WaterTime[] };
 
 /** Custom tool builder: a few inputs, one safe formula, one result. */
 export type CustomToolInput = { id: string; label: string; key: string; unit?: string; value: string };
@@ -375,4 +385,5 @@ export type DB = {
   toolHistory: ToolHistoryItem[];
   recents: Record<string, string>;
   cycle: CycleState;
+  water: WaterState;
 };

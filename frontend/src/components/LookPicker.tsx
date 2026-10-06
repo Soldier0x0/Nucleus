@@ -25,7 +25,19 @@ export function LookPicker() {
       <T v="label">Look</T>
       <ChipRow testID="settings-look-row">
         {LOOK_LIST.map((look) => (
-          <Chip key={look.id} label={look.name} selected={s.look === look.id} onPress={() => setSettings({ look: look.id, appearanceChosen: true })} testID={`settings-look-${look.id}`} />
+          <Chip
+            key={look.id}
+            label={look.name}
+            selected={s.look === look.id}
+            onPress={() =>
+              setSettings(
+                look.id === "blush"
+                  ? { look: "blush", theme: "blush", accent: "blush", appearanceChosen: true }
+                  : { look: look.id, appearanceChosen: true },
+              )
+            }
+            testID={`settings-look-${look.id}`}
+          />
         ))}
       </ChipRow>
       <T muted style={{ fontSize: 12 }}>{current.line}</T>

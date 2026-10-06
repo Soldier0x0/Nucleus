@@ -32,6 +32,7 @@ export function launcherAlias(family: IconFamily, variant: IconVariant) {
 export function themeToIconVariant(theme: ThemeKey, scheme?: "light" | "dark" | "unspecified" | null): IconVariant {
   switch (theme) {
     case "paper":
+    case "blush":
       return "paper";
     case "dune":
       return "dune";

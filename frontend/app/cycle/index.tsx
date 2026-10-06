@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { monthKey, monthLabel, todayISO } from "@/src/core/format";
-import { BUDDY_EMOJIS, buddyTitle, dayInWindow, forecast, markEnd, markStart, packingTarget, rememberPeriod, setBuddy, togglePacked, typicalCompare } from "@/src/core/cycle";
+import { BUDDY_EMOJIS, buddyTitle, dayInWindow, estimateLine, forecast, markEnd, markStart, packingTarget, rememberPeriod, setBuddy, togglePacked, typicalCompare } from "@/src/core/cycle";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Icon, Press, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
@@ -50,6 +50,12 @@ export default function CycleScreen() {
   const daysInMonth = new Date(year, month, 0).getDate();
   const cells = [...Array(startPad).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const line = next?.line ?? "Log a period to see a guess.";
+  const pinkOn = db.cycle.pinkCalendar;
+  const wash = pinkOn ? "#F8F1F3" : colors.surface;
+  const flowBg = pinkOn ? "#C48998" : colors.brandPrimary;
+  const flowFg = pinkOn ? "#2C2428" : colors.onBrandPrimary;
+  const windowBg = pinkOn ? "#F6E4EA" : colors.brandTertiary;
+  const windowFg = pinkOn ? "#5C3A44" : colors.onBrandTertiary;
   const typical = typicalCompare(db.cycle.days, today);
 
   const shift = (delta: number) => {
@@ -63,7 +69,7 @@ export default function CycleScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: wash }} testID="cycle-calendar">
       <Header title="Cycle" testID="cycle-header" />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 28, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <Press testID="cycle-buddy" onPress={() => (setName(db.cycle.buddyName), setEmoji(db.cycle.buddyEmoji), setBuddyOpen(true))} style={{ alignItems: "center", marginBottom: 8 }}>
@@ -75,9 +81,10 @@ export default function CycleScreen() {
           </T>
         </Press>
 
-        <T testID="cycle-window" v="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={{ textAlign: "center", marginBottom: 16 }}>
+        <T testID="cycle-window" v="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={{ textAlign: "center", marginBottom: 8 }}>
           {line}
         </T>
+        {next ? <T testID="cycle-estimate" style={{ textAlign: "center", marginBottom: 16 }}>{estimateLine(next)}</T> : null}
         {typical ? <T testID="cycle-typical" style={{ textAlign: "center", marginBottom: 16 }}>{typical.line}</T> : null}
 
         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
@@ -100,9 +107,9 @@ export default function CycleScreen() {
             const isToday = iso === today;
             return (
               <Press key={iso} testID={`cycle-day-${iso}`} onPress={() => setSelected(iso)} style={{ width: `${100 / 7}%`, height: 76, alignItems: "center", justifyContent: "center" }}>
-                <View style={{ width: "88%", height: 68, borderRadius: radius.lg, alignItems: "center", justifyContent: "center", backgroundColor: flow ? colors.brandPrimary : inWindow ? colors.brandTertiary : colors.surfaceSecondary, borderWidth: isSelected || isToday ? 2 : 1, borderColor: isSelected ? colors.onSurface : isToday ? colors.brandPrimary : colors.border }}>
-                  <Text style={{ fontFamily: fonts.monoBold, fontSize: 22, color: flow ? colors.onBrandPrimary : inWindow ? colors.onBrandTertiary : colors.onSurface }}>{day}</Text>
-                  {spotting ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brandPrimary, marginTop: 3 }} /> : null}
+                <View style={{ width: "88%", height: 68, borderRadius: radius.lg, alignItems: "center", justifyContent: "center", backgroundColor: flow ? flowBg : inWindow ? windowBg : colors.surfaceSecondary, borderWidth: isSelected || isToday ? 2 : 1, borderColor: isSelected ? colors.onSurface : isToday ? flowBg : colors.border }}>
+                  <Text style={{ fontFamily: fonts.monoBold, fontSize: 22, color: flow ? flowFg : inWindow ? windowFg : colors.onSurface }}>{day}</Text>
+                  {spotting ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: flowBg, marginTop: 3 }} /> : null}
                 </View>
               </Press>
             );

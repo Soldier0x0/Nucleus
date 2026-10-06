@@ -147,6 +147,8 @@ function countLine(db: DB, id: ModuleId) {
         return 0;
       case "cycle":
         return db.cycle.days.length;
+      case "health":
+        return db.water.times.length;
       default: {
         const unknown: never = id;
         return unknown;

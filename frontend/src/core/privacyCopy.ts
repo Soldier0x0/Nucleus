@@ -2,6 +2,8 @@ export const PRIVACY_STAYS = "Your vehicles, money, trips, notes, photos, papers
 
 export const PRIVACY_NEVER = "Vehicles, money, photos, cycle dates, and bank lines stay on this phone. Nucleus has no account. Bank lines come from notifications, not SMS. A locked backup leaves only when you tap Sign in and store this file. Online weather sends the place you saved, and leaves the rest of the file here.";
 
+export const PRIVACY_CONNECTION = "A connection is used for online weather, a locked backup after Sign in, and bank lines after notification access. Cycle dates, water reminders, money, papers, and the rest stay on this phone.";
+
 export const PRIVACY_PERMISSIONS: { name: string; line: string }[] = [
   { name: "Fingerprint or face", line: "Unlocks this app. The phone keeps the print or the face." },
   { name: "Notifications", line: "Reminders you asked for, and the emergency card while that switch is on." },
