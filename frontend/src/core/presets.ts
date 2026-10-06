@@ -1,4 +1,6 @@
 import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, ModuleId, TileId } from "./types";
+import { billBoardItems } from "./bills";
+import { documentBoardItems } from "./documents";
 import { uid } from "./format";
 import { repeatingBills } from "./moneyDesk";
 
@@ -63,6 +65,7 @@ const TRAVEL: PresetItem[] = [
   { id: "stops", size: "small" },
   { id: "weather", size: "large" },
   { id: "packing", size: "small" },
+  { id: "heading", size: "small" },
 ];
 
 const HOME: PresetItem[] = [
@@ -98,12 +101,14 @@ export const PRESET_CHOICES: { id: HomePresetId; name: string; icon: string }[] 
   { id: "money", name: "Money", icon: "wallet-outline" },
   { id: "travel", name: "Travel", icon: "car-side" },
   { id: "home", name: "Home", icon: "home-outline" },
+  { id: "documents", name: "Documents", icon: "file-document-outline" },
+  { id: "bills", name: "Bills", icon: "calendar-clock" },
   { id: "desk", name: "Desk", icon: "book-open-variant" },
   { id: "workshop", name: "Workshop", icon: "hammer-wrench" },
   { id: "adhd", name: "ADHD mode", icon: "circle-outline" },
 ];
 
-const PRESET_IDS: HomePresetId[] = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"];
+const PRESET_IDS: HomePresetId[] = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"];
 
 export function parseHomePreset(raw: unknown): HomePresetId {
   return PRESET_IDS.includes(raw as HomePresetId) ? (raw as HomePresetId) : "custom";
@@ -143,6 +148,22 @@ export function presetItems(preset: HomePresetId): PresetItem[] {
       return TRAVEL;
     case "home":
       return HOME;
+    case "documents":
+      return [
+        { id: "docgaps", size: "small" },
+        { id: "docids", size: "small" },
+        { id: "docinsurance", size: "small" },
+        { id: "doctrips", size: "small" },
+        { id: "docfiles", size: "small" },
+      ];
+    case "bills":
+      return [
+        { id: "billdue", size: "small" },
+        { id: "rent", size: "small" },
+        { id: "emi", size: "small" },
+        { id: "subs", size: "small" },
+        { id: "billpaid", size: "small" },
+      ];
     case "desk":
       return DESK;
     case "workshop":
@@ -293,6 +314,11 @@ const DECOY_HIDDEN_TILES = new Set([
   "debts",
   "categories",
   "networth",
+  "billdue",
+  "rent",
+  "emi",
+  "subs",
+  "billpaid",
 ]);
 
 const ITEM_MODULE: Record<string, ModuleId> = {
@@ -309,6 +335,7 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   networth: "money",
   route: "travel",
   packing: "travel",
+  heading: "travel",
   stops: "travel",
   weather: "travel",
   mileage: "vehicles",
@@ -317,6 +344,16 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   service: "vehicles",
   range: "vehicles",
   papers: "papers",
+  docgaps: "papers",
+  docids: "papers",
+  docinsurance: "papers",
+  doctrips: "papers",
+  docfiles: "papers",
+  billdue: "money",
+  rent: "money",
+  emi: "money",
+  subs: "money",
+  billpaid: "money",
   maintenance: "home",
   chores: "home",
   appliances: "home",
@@ -379,6 +416,12 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
     case "workshop":
       items = applyTileOrder(presetItems(preset), db.settings.tileOrder?.[preset]);
       break;
+    case "documents":
+      items = documentBoardItems(db);
+      break;
+    case "bills":
+      items = billBoardItems(db);
+      break;
     case "money":
     case "travel":
     case "home":
@@ -430,6 +473,26 @@ export function presetTileTitle(id: string): string {
       return "Fuel";
     case "papers":
       return "Papers";
+    case "docgaps":
+      return "Missing";
+    case "docids":
+      return "IDs";
+    case "docinsurance":
+      return "Insurance";
+    case "doctrips":
+      return "Trip docs";
+    case "docfiles":
+      return "Papers";
+    case "billdue":
+      return "Due";
+    case "rent":
+      return "Rent";
+    case "emi":
+      return "EMI";
+    case "subs":
+      return "Subscriptions";
+    case "billpaid":
+      return "Paid";
     case "vehicle":
       return "Vehicle";
     case "service":
@@ -442,6 +505,8 @@ export function presetTileTitle(id: string): string {
       return "Weather";
     case "packing":
       return "Packing";
+    case "heading":
+      return "Heading";
     case "maintenance":
       return "Maintenance";
     case "chores":
@@ -595,7 +660,7 @@ export function tileHasData(db: DB, id: string): boolean {
   }
 }
 
-export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"];
+export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"];
 
 export function swipeScreens(preset: HomePresetId): HomePresetId[] {
   switch (preset) {
@@ -603,6 +668,8 @@ export function swipeScreens(preset: HomePresetId): HomePresetId[] {
     case "money":
     case "travel":
     case "home":
+    case "documents":
+    case "bills":
     case "desk":
     case "workshop":
     case "adhd":
@@ -637,6 +704,8 @@ export function showsCustomizeHome(preset: HomePresetId): boolean {
     case "money":
     case "travel":
     case "home":
+    case "documents":
+    case "bills":
       return false;
     case "custom":
     case "desk":

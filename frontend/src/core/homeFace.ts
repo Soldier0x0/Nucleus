@@ -89,6 +89,25 @@ export function homeFace(db: DB, id: string, forecast?: HomeWeather | null): Hom
         wide: true,
       };
     }
+    case "docgaps":
+    case "docids":
+    case "docinsurance":
+    case "doctrips":
+    case "docfiles":
+    case "billdue":
+    case "rent":
+    case "emi":
+    case "subs":
+    case "billpaid": {
+      const [first, ...rest] = card.lines;
+      return {
+        ...base,
+        eyebrow: card.title,
+        figure: first ?? "",
+        detail: "",
+        lines: rest.map((title) => ({ icon: card.icon, title })),
+      };
+    }
     default:
       return {
         ...base,

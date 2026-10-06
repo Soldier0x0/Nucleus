@@ -97,7 +97,7 @@ export function search(db: DB, q: string): SearchGroup[] {
     const people = db.people.filter((p) => has(p.name, p.note));
     if (papers.length || people.length)
       groups.push({
-        title: "Papers",
+        title: "Documents",
         summary: `${papers.length} document${papers.length === 1 ? "" : "s"}`,
         items: [
           ...papers.slice(0, 6).map((p) => ({ id: p.id, title: p.title, subtitle: [p.kind, p.expiry].filter(Boolean).join(" · "), icon: "file-document-outline", route: "/papers" })),

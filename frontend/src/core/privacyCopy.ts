@@ -1,4 +1,4 @@
-export const PRIVACY_STAYS = "Your vehicles, money, trips, notes, photos, bills, and cycle dates stay in the encrypted file on this phone.";
+export const PRIVACY_STAYS = "Your vehicles, money, trips, notes, photos, papers, bills, and cycle dates stay in the encrypted file on this phone.";
 
 export const PRIVACY_NEVER = "Vehicles, money, photos, cycle dates, and bank lines stay on this phone. Nucleus has no account. Bank lines come from notifications, not SMS. A locked backup leaves only when you tap Sign in and store this file. Online weather sends the place you saved, and leaves the rest of the file here.";
 
