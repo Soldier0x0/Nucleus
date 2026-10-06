@@ -3,14 +3,14 @@ import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { upsertSubscription } from "@/src/core/actions";
+import { nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { billReminder, repeatingBillBoard, setBillMark } from "@/src/core/bills";
 import type { Subscription } from "@/src/core/types";
 import { money, todayISO, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
-import { Field } from "@/src/components/inputs";
+import { DateField, Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
@@ -64,6 +64,7 @@ function BillSheet({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [cycle, setCycle] = useState<Subscription["cycle"]>("monthly");
+  const [due, setDue] = useState(() => nextCycleDate(todayISO(), "monthly"));
   const [category, setCategory] = useState<(typeof KINDS)[number]>("Rent");
   const save = () => {
     const value = Number(amount);
@@ -73,7 +74,7 @@ function BillSheet({ onClose }: { onClose: () => void }) {
       name: name.trim(),
       amount: value,
       cycle,
-      nextRenewal: todayISO(),
+      nextRenewal: due,
       category,
       active: true,
     }));
@@ -87,9 +88,10 @@ function BillSheet({ onClose }: { onClose: () => void }) {
       <Eyebrow style={{ marginBottom: 8 }}>How often</Eyebrow>
       <ChipRow testID="bill-cycle">
         {CYCLES.map((item) => (
-          <Chip key={item} label={item} selected={cycle === item} testID={`bill-cycle-${item}`} onPress={() => setCycle(item)} />
+          <Chip key={item} label={item} selected={cycle === item} testID={`bill-cycle-${item}`} onPress={() => (setCycle(item), setDue(nextCycleDate(todayISO(), item)))} />
         ))}
       </ChipRow>
+      <DateField label="Due" value={due} onChange={(v) => setDue(v ?? nextCycleDate(todayISO(), cycle))} testID="bill-due" />
       <Eyebrow style={{ marginTop: 12, marginBottom: 8 }}>Kind</Eyebrow>
       <ChipRow testID="bill-kind">
         {KINDS.map((item) => (

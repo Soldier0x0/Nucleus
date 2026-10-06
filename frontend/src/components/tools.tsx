@@ -214,6 +214,7 @@ export function DatesTool() {
   const [b, setB] = useState(addMonths(todayISO(), 1));
   const [n, setN] = useState("30");
   const [unit, setUnit] = useState<"days" | "weeks" | "months">("days");
+  const [unitOpen, setUnitOpen] = useState(false);
   let value = "—";
   let bd: [string, string][] = [];
   if (mode === "between") {
@@ -246,7 +247,26 @@ export function DatesTool() {
         <DateField label="To" value={b} onChange={(v) => setB(v ?? todayISO())} testID="dates-b" />
       ) : (
         <>
-          <Field numeric label="Amount (use - to subtract)" unit={unit} onUnitPress={() => setUnit(unit === "days" ? "weeks" : unit === "weeks" ? "months" : "days")} testID="dates-n-input" value={n} onChangeText={setN} keyboardType="numbers-and-punctuation" />
+          <Field numeric label="Amount (use - to subtract)" unit={unit} onUnitPress={() => setUnitOpen(true)} testID="dates-n-input" value={n} onChangeText={setN} keyboardType="numbers-and-punctuation" />
+          <OptionSheet
+            testID="dates-unit"
+            visible={unitOpen}
+            onClose={() => setUnitOpen(false)}
+            title="Amount unit"
+            value={unit}
+            options={[{ value: "days", label: "Days" }, { value: "weeks", label: "Weeks" }, { value: "months", label: "Months" }]}
+            onPick={(picked) => {
+              switch (picked) {
+                case "days":
+                case "weeks":
+                case "months":
+                  setUnit(picked);
+                  break;
+                default:
+                  break;
+              }
+            }}
+          />
         </>
       )}
       <Result tool="dates" label={mode === "between" ? "Difference" : "Resulting date"} value={value} breakdown={bd} />

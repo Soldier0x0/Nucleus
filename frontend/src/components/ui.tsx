@@ -166,14 +166,14 @@ export function Card({ children, style, testID, onPress, onLongPress, tone = "de
   );
 }
 
-export function Button({ label, icon, onPress, kind = "primary", testID, style, disabled, small }: { label: string; icon?: string; onPress?: () => void; kind?: "primary" | "secondary" | "ghost" | "danger"; testID?: string; style?: StyleProp<ViewStyle>; disabled?: boolean; small?: boolean }) {
+export function Button({ label, icon, onPress, kind = "primary", testID, style, disabled, small, haptic = true }: { label: string; icon?: string; onPress?: () => void; kind?: "primary" | "secondary" | "ghost" | "danger"; testID?: string; style?: StyleProp<ViewStyle>; disabled?: boolean; small?: boolean; haptic?: boolean }) {
   const { colors, touch, look } = useTheme();
   const signal = look.choices.pop === "signal" && kind === "primary";
   const bg = signal ? colors.brandPrimary : kind === "primary" ? colors.surfaceInverse : kind === "danger" ? colors.error : kind === "secondary" ? colors.surfaceTertiary : "transparent";
   const fg = signal ? colors.onBrandPrimary : kind === "primary" ? colors.onSurfaceInverse : kind === "danger" ? colors.onError : colors.onSurface;
   const grow = Math.max(look.space, look.typeScale);
   return (
-    <Press testID={testID} onPress={onPress} disabled={disabled} style={[styles.btn, { backgroundColor: bg, borderRadius: radius.md, minHeight: Math.round((small ? 40 : 50) * touch * (grow === 1 ? 1 : grow)), paddingHorizontal: small ? 14 : 20 }, kind === "ghost" && { borderWidth: 1, borderColor: colors.borderStrong }, style]}>
+    <Press testID={testID} haptic={haptic} onPress={onPress} disabled={disabled} style={[styles.btn, { backgroundColor: bg, borderRadius: radius.md, minHeight: Math.round((small ? 40 : 50) * touch * (grow === 1 ? 1 : grow)), paddingHorizontal: small ? 14 : 20 }, kind === "ghost" && { borderWidth: 1, borderColor: colors.borderStrong }, style]}>
       {icon ? <Icon name={icon} size={18} color={fg} /> : null}
       <Text style={{ fontFamily: look.plain ? fonts.text : fonts.textSemi, fontSize: px(small ? 13 : 15, look.typeScale), color: fg }}>{label}</Text>
     </Press>

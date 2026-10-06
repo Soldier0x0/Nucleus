@@ -72,7 +72,7 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8"]) {
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.1"]) {
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
   assert.match(readReleaseNotes("v0.6", changelogPath), /Empty modules stay hidden/);
@@ -96,8 +96,9 @@ test("the repository changelog records published versions and the cycle calendar
   assert.equal(prepareRelease({ changelog, tag: "v0.7.3" }).publish, true);
   assert.equal(prepareRelease({ changelog, tag: "v0.7.4" }).publish, true);
   assert.equal(prepareRelease({ changelog, tag: "v0.8" }).publish, true);
+  assert.equal(prepareRelease({ changelog, tag: "v0.8.1" }).publish, true);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.5" }), { publish: false, reason: "missing" });
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.1" }), { publish: false, reason: "missing" });
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.2" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.9" }), { publish: false, reason: "missing" });
   assert.match(readReleaseNotes("v0.7", changelogPath), /Activa · 5\.6 L/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /last board wraps to the first/);
@@ -150,11 +151,20 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.8", changelogPath), /Do not uninstall/);
   assert.doesNotMatch(readReleaseNotes("v0.8", changelogPath), /music player|expo-audio|streaming/i);
   assert.doesNotMatch(changelogSection(changelog, "v0.8"), /overdue|\bmissed\b|behind|\blate\b|\bfail/i);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /due date/);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /touch box/);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /Vibrate/);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /title case/);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /tiles/);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /Dead pixels/);
+  assert.match(readReleaseNotes("v0.8.1", changelogPath), /cycles/);
+  assert.doesNotMatch(readReleaseNotes("v0.8.1", changelogPath), /music player|expo-audio|streaming|Health Connect|desktop/i);
+  assert.doesNotMatch(changelogSection(changelog, "v0.8.1"), /overdue|\bmissed\b|behind|\blate\b|\bfail/i);
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.8",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4"],
+      tag: "v0.8.1",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8"],
     }),
   );
 });

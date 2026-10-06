@@ -8,6 +8,14 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+## v0.8.1
+
+Fixes for Phone Lab, Tools, and repeating bills.
+
+- Repeating bills ask for a due date, so a reminder can land on the day you choose.
+- The touch box stays still when you hold it. Vibrate uses a buzz you can feel. Make and model use title case.
+- Tools open as tiles. Cooking and date units open a list. Dice, a coin, and a number take a short moment to land. Display test checks for Dead pixels. Battery shows cycles, health, temperature, and voltage when the phone reports them.
+
 ## v0.8
 
 A documents board, a repeating bills board, and a heading on Travel.

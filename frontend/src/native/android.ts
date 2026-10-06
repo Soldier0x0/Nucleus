@@ -21,6 +21,7 @@ type Native = {
   consumeIconRestart(): boolean;
   readSms(): Promise<string>;
   readBankNotices(): string;
+  readBattery(): string;
   notificationAccess(): boolean;
   openNotificationListener(): string;
   showLockCard(title: string, body: string): void;
@@ -111,6 +112,15 @@ export function consumeIconRestart(): boolean {
     return bridge()?.consumeIconRestart() === true;
   } catch {
     return false;
+  }
+}
+
+/** JSON battery facts from the sticky intent. Empty when this build has no native module. */
+export function readPhoneBattery(): string {
+  try {
+    return bridge()?.readBattery() ?? "";
+  } catch {
+    return "";
   }
 }
 
