@@ -36,6 +36,7 @@
     "src/core/v074.test.ts",
     "src/core/v08.test.ts",
     "src/core/v081.test.ts",
-    "src/core/v082.test.ts"
+    "src/core/v082.test.ts",
+    "src/core/v083.test.ts"
   ]
 }

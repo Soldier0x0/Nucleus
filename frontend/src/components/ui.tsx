@@ -5,6 +5,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-na
 import * as Haptics from "expo-haptics";
 import { MaterialDesignIcons } from "@react-native-vector-icons/material-design-icons";
 import { fonts, radius, useTheme } from "@/src/theme";
+import { chipScrollAnimated, chipScrollX } from "@/src/core/chipScroll";
 import { useStore } from "@/src/core/store";
 import { money } from "@/src/core/format";
 
@@ -211,13 +212,65 @@ export function Chip({ label, selected, onPress, icon, testID }: { label: string
   );
 }
 
-/** Horizontal, never-wrapping chip row (fixed 56pt). */
-export function ChipRow({ children, testID }: { children: React.ReactNode; testID?: string }) {
-  const { look } = useTheme();
+/** Horizontal, never-wrapping chip row (fixed 56pt). `activeIndex` keeps that chip on screen. */
+export function ChipRow({ children, testID, activeIndex }: { children: React.ReactNode; testID?: string; activeIndex?: number }) {
+  const { look, a11y } = useTheme();
   const chip = Math.round(36 * (look.space === 1 ? 1 : look.space));
+  const scroller = React.useRef<ScrollView>(null);
+  const frames = React.useRef<{ x: number; width: number }[]>([]);
+  const viewW = React.useRef(0);
+  const contentW = React.useRef(0);
+  const shown = React.useRef<number | null>(null);
+
+  const reveal = React.useCallback(() => {
+    if (activeIndex === undefined || activeIndex < 0) return;
+    const frame = frames.current[activeIndex];
+    if (!frame || viewW.current <= 0 || contentW.current <= 0) return;
+    const x = chipScrollX(frame.x, frame.width, viewW.current, contentW.current);
+    scroller.current?.scrollTo({ x, animated: chipScrollAnimated(shown.current, activeIndex, a11y.reducedMotion) });
+    shown.current = activeIndex;
+  }, [activeIndex, a11y.reducedMotion]);
+
+  React.useEffect(() => {
+    reveal();
+  }, [reveal]);
+
+  const chips =
+    activeIndex === undefined
+      ? children
+      : React.Children.toArray(children).map((child, index) => (
+          <View
+            key={React.isValidElement(child) ? String(child.key ?? index) : String(index)}
+            collapsable={false}
+            style={{ flexGrow: 0, flexShrink: 0 }}
+            onLayout={(event) => {
+              const { x, width } = event.nativeEvent.layout;
+              frames.current[index] = { x, width };
+              if (index === activeIndex) reveal();
+            }}
+          >
+            {child}
+          </View>
+        ));
+
   return (
-    <ScrollView testID={testID} horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, height: chip + 20 }} contentContainerStyle={{ gap: px(8, look.space), alignItems: "center", paddingHorizontal: 16 }}>
-      {children}
+    <ScrollView
+      ref={scroller}
+      testID={testID}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ flexGrow: 0, height: chip + 20 }}
+      contentContainerStyle={{ gap: px(8, look.space), alignItems: "center", paddingHorizontal: 16 }}
+      onLayout={(event) => {
+        viewW.current = event.nativeEvent.layout.width;
+        reveal();
+      }}
+      onContentSizeChange={(width) => {
+        contentW.current = width;
+        reveal();
+      }}
+    >
+      {chips}
     </ScrollView>
   );
 }
