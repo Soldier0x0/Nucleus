@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { billBoardItems, billReminder, repeatingBillBoard, setBillMark } from "./bills.ts";
+import { headingFromField, headingTurn } from "./compass.ts";
 import { emptyDB, normalizeDB } from "./defaults.ts";
 import { documentBoardItems, missingDocumentNames } from "./documents.ts";
 import { homeCard } from "./homeCards.ts";
@@ -243,6 +244,54 @@ test("due, paid, and snooze stay ordinary reminders", () => {
   assert.doesNotMatch(screen, GUILT);
   assert.doesNotMatch(screen, /Activa/);
   assert.doesNotMatch(screen, /repeatingBills\(/);
+});
+
+test("travel keeps a small heading tile that opens an on-phone compass", () => {
+  const north = headingFromField(0, 40);
+  assert.equal(north?.degrees, 0);
+  assert.equal(north?.cardinal, "N");
+  assert.equal(north?.word, "North");
+  const east = headingFromField(-40, 0);
+  assert.equal(east?.degrees, 90);
+  assert.equal(east?.cardinal, "E");
+  assert.equal(east?.word, "East");
+  const south = headingFromField(0, -40);
+  assert.equal(south?.degrees, 180);
+  assert.equal(south?.word, "South");
+  const west = headingFromField(40, 0);
+  assert.equal(west?.degrees, 270);
+  assert.equal(west?.word, "West");
+  assert.equal(headingFromField(0, 0), null);
+  assert.equal(headingTurn(350, 10), 370);
+
+  const travel = presetItems("travel");
+  assert.equal(travel.at(-2)?.id, "packing");
+  assert.equal(travel.at(-1)?.id, "heading");
+  assert.equal(travel.at(-1)?.size, "small");
+  const last = presentHome("bento", travel).rows.at(-1);
+  assert.equal(last?.items.length, 2);
+  assert.deepEqual(last?.items.map((item) => item.id), ["packing", "heading"]);
+  assert.equal(presetItems("money").some((item) => item.id === "heading"), false);
+  assert.equal(columnsFor("travel", travel.length), 2);
+
+  const card = homeCard(emptyDB(), "heading");
+  assert.equal(card.route, "/compass");
+  assert.equal(card.title, "Heading");
+  assert.doesNotMatch(card.lines.join(" "), /online|stream|account/i);
+
+  const screen = readFileSync(new URL("../../app/compass/index.tsx", import.meta.url), "utf8");
+  const tile = readFileSync(new URL("../components/HeadingTile.tsx", import.meta.url), "utf8");
+  const hook = readFileSync(new URL("../components/useHeading.ts", import.meta.url), "utf8");
+  const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
+  assert.match(screen, /Magnetometer/);
+  assert.match(screen, /useHeading\(Magnetometer\)/);
+  assert.match(hook, /headingFromField\(/);
+  assert.match(tile, /Magnetometer/);
+  assert.match(modes, /HeadingTile/);
+  assert.match(modes, /item\.id === "heading"/);
+  for (const source of [screen, tile, hook]) {
+    assert.doesNotMatch(source, /Barometer|LightSensor|Accelerometer|Gyroscope|flashlight|expo-location|fetch\(/);
+  }
 });
 
 test("v0.8 does not add a music player", () => {

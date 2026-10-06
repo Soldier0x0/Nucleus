@@ -65,6 +65,7 @@ const TRAVEL: PresetItem[] = [
   { id: "stops", size: "small" },
   { id: "weather", size: "large" },
   { id: "packing", size: "small" },
+  { id: "heading", size: "small" },
 ];
 
 const HOME: PresetItem[] = [
@@ -334,6 +335,7 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   networth: "money",
   route: "travel",
   packing: "travel",
+  heading: "travel",
   stops: "travel",
   weather: "travel",
   mileage: "vehicles",
@@ -503,6 +505,8 @@ export function presetTileTitle(id: string): string {
       return "Weather";
     case "packing":
       return "Packing";
+    case "heading":
+      return "Heading";
     case "maintenance":
       return "Maintenance";
     case "chores":

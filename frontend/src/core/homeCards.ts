@@ -38,6 +38,7 @@ const ICONS: Record<string, string> = {
   range: "map-marker-distance",
   stops: "map-marker-outline",
   packing: "bag-checked",
+  heading: "compass-outline",
   maintenance: "home-outline",
   chores: "checkbox-marked-outline",
   appliances: "washing-machine",
@@ -163,6 +164,8 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
       const left = trip ? trip.packing.filter((item) => !item.done).length : 0;
       return card("Packing", id, [String(left)], trip ? `/travel/${trip.id}` : "/travel");
     }
+    case "heading":
+      return card("Heading", id, ["On this phone"], "/compass");
     case "maintenance":
     case "home":
       return card("Home", id, [db.appliances[0]?.name ?? String(db.appliances.length)], "/home");

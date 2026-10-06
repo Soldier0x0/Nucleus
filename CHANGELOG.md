@@ -10,10 +10,11 @@ A republished app is allowed only when the points name the file, say that nothin
 
 ## v0.8
 
-A documents board and a repeating bills board.
+A documents board, a repeating bills board, and a heading on Travel.
 
 - Documents is its own home board for papers and files kept in Nucleus: IDs, insurance, and trip docs. A missing paper is named, such as Travel insurance. Short cards sit two-up. A fuller card keeps the full row. Paper, with bento and cards, stays the default unless a look or layout was already chosen. Those papers stay in the encrypted file on this phone.
 - Repeating bills is its own board for rent, an EMI, a subscription, and similar charges. Due, paid, and snooze stay ordinary reminders. One-off expenses stay on the money board.
+- Travel has a Heading tile beside packing. It shows which way the top of the phone faces, and opens that compass in a card. It uses the magnetometer and stays on this phone.
 
 ## v0.7.4
 

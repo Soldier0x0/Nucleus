@@ -44,6 +44,7 @@ import type { HomePresetId } from "@/src/core/types";
 import { Button, Card, Eyebrow, Icon, T } from "./ui";
 import { Ring } from "./charts";
 import { Sheet } from "./Sheet";
+import { HeadingTile } from "./HeadingTile";
 import { WeatherCard } from "./WeatherCard";
 
 const NAMED_TILES = new Set(["docgaps", "docids", "docinsurance", "doctrips", "docfiles", "billdue", "rent", "emi", "subs", "billpaid"]);
@@ -166,6 +167,8 @@ export function PresetGrid({
               const full = flexes[itemIndex]?.span === 2;
               const body = item.id === "weather" && city ? (
                 <WeatherCard place={city} testID={`today-slot-${item.id}`} />
+              ) : item.id === "heading" ? (
+                <HeadingTile testID={`today-slot-${item.id}`} />
               ) : (
                 <Card testID={`today-slot-${item.id}`}>
                     <Eyebrow>{face.eyebrow || title}</Eyebrow>

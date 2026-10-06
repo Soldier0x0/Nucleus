@@ -144,6 +144,9 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.8", changelogPath), /Repeating bills/);
   assert.match(readReleaseNotes("v0.8", changelogPath), /EMI/);
   assert.match(readReleaseNotes("v0.8", changelogPath), /Due, paid, and snooze/);
+  assert.match(readReleaseNotes("v0.8", changelogPath), /Heading/);
+  assert.match(readReleaseNotes("v0.8", changelogPath), /magnetometer/);
+  assert.match(readReleaseNotes("v0.8", changelogPath), /Travel/);
   assert.match(readReleaseNotes("v0.8", changelogPath), /Do not uninstall/);
   assert.doesNotMatch(readReleaseNotes("v0.8", changelogPath), /music player|expo-audio|streaming/i);
   assert.doesNotMatch(changelogSection(changelog, "v0.8"), /overdue|\bmissed\b|behind|\blate\b|\bfail/i);
