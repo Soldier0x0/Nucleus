@@ -13,7 +13,7 @@ export type Why = { summary: string; facts: Fact[]; rule: string; ranking: strin
 export type Severity = "urgent" | "upcoming" | "info";
 export type AttentionItem = {
   key: string;
-  module: "vehicles" | "money" | "travel" | "home" | "papers";
+  module: "vehicles" | "money" | "travel" | "home" | "papers" | "cycle";
   severity: Severity;
   icon: string;
   title: string;
@@ -22,6 +22,8 @@ export type AttentionItem = {
   why: Why;
   route?: string;
   subscriptionId?: string;
+  /** Due date, when the item has one. Snooze choices still before today stay grey. */
+  due?: string;
 };
 
 const SEV_WEIGHT: Record<Severity, number> = { urgent: 300, upcoming: 200, info: 100 };
@@ -172,6 +174,7 @@ function expiryItem(db: DB, v: Vehicle, doc: "Insurance" | "PUC", date: string |
     subtitle: d < 0 ? `Expired on ${fmtDate(date)}` : `Expiry ${fmtDate(date)}`,
     score: SEV_WEIGHT[sev] + Math.max(0, 60 - d),
     route: `/vehicles/${v.id}`,
+    due: date,
     why: {
       summary: `The ${doc} date you recorded for ${v.name} is ${fmtDate(date)}.`,
       facts: [
@@ -217,6 +220,67 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         });
       }
     }
+    const latestFuel = new Map<string, (typeof db.fuel)[number]>();
+    for (const row of db.fuel) {
+      const prev = latestFuel.get(row.vehicleId);
+      const newer = !prev || (!row.date && !!prev.date) || (row.date && prev.date && row.date > prev.date) || (row.date === prev.date && row.id > prev.id);
+      if (!prev || newer) latestFuel.set(row.vehicleId, row);
+    }
+    for (const row of db.fuel) {
+      const vehicle = db.vehicles.find((item) => item.id === row.vehicleId);
+      if (!vehicle) continue;
+      const route = `/record/fuel/${row.id}`;
+      const whyFor = (summary: string, label: string, value: string, rule: string) => ({
+        summary,
+        facts: [{ label, value }, { label: "Vehicle", value: vehicle.name }],
+        rule,
+        ranking: rankText("info", "the fill"),
+      });
+      if (row.odometerEstimated) {
+        items.push({
+          key: `fuel-odo:${row.id}`,
+          module: "vehicles",
+          severity: "info",
+          icon: "gas-station-outline",
+          title: `${vehicle.name} fill still needs an odometer`,
+          subtitle: "A reading is estimated until you correct it.",
+          score: 70,
+          route,
+          why: whyFor(
+            `The ${vehicle.name} fill has an estimated odometer. Type the reading and earlier estimates are spaced again.`,
+            "Odometer",
+            "Estimated",
+            "Info when a fill is using an estimated odometer.",
+          ),
+        });
+      }
+      if (!row.date) {
+        items.push({
+          key: `fuel-date:${row.id}`,
+          module: "vehicles",
+          severity: "info",
+          icon: "calendar-blank-outline",
+          title: `${vehicle.name} fill still needs a date`,
+          subtitle: "You can add the date on the fill.",
+          score: 68,
+          route,
+          why: whyFor(`This ${vehicle.name} fill was saved without a date.`, "Date", "Not entered", "Info when a fill has no date."),
+        });
+      }
+      if (!row.station && latestFuel.get(row.vehicleId)?.id === row.id) {
+        items.push({
+          key: `fuel-station:${row.id}`,
+          module: "vehicles",
+          severity: "info",
+          icon: "map-marker-outline",
+          title: `${vehicle.name} fill still needs a station`,
+          subtitle: "You can add the station on the fill.",
+          score: 64,
+          route,
+          why: whyFor(`This ${vehicle.name} fill was saved without a station name.`, "Station", "Not entered", "Info when a fill has no station."),
+        });
+      }
+    }
   }
 
   if (on("money")) {
@@ -235,6 +299,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
         score: SEV_WEIGHT[sev] + Math.max(0, 30 - d),
         route: "/money?tab=subscriptions",
         subscriptionId: sub.id,
+        due: sub.nextRenewal,
         why: {
           summary: `${sub.name} is a ${sub.cycle} charge of ${money(sub.amount, cur)} (${money(yearly, cur)} per year). Next renewal: ${fmtDate(sub.nextRenewal)}.`,
           facts: [

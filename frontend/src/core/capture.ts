@@ -1,6 +1,7 @@
 /**
  * Capture bar grammar (fixed, deterministic, documented):
- *   fuel <litres>L <total> [odometer]        -> fuel entry for default vehicle
+ *   litres, total, and rate in any order, with an optional date, km, and station
+ *   a named saved vehicle becomes a fuel entry; otherwise fuel-like numbers are a Fuel expense
  *   <name> <amount> weekly|monthly|quarterly|yearly -> subscription
  *   <amount> <category> [note]               -> expense
  *   +<amount> <category> [note]              -> income
@@ -9,7 +10,7 @@ import type { DB } from "./types";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./defaults";
 import { classifyMoney } from "./moneyWords";
 import { addFuel, addTxn, nextCycleDate, upsertSubscription } from "./actions";
-import { currentOdometer } from "./intelligence";
+import { estimateOdometer, parseFuelDraft } from "./fuelCapture";
 import { money, num, todayISO, uid } from "./format";
 
 export type Capture = { label: string; icon: string; apply: (db: DB) => DB } | { error: string };
@@ -20,16 +21,32 @@ export function parseCapture(db: DB, input: string): Capture | null {
   const s = input.trim();
   if (!s) return null;
   const cur = db.settings.currency;
-  let m = s.match(/^fuel\s+([\d.]+)\s*l\s+([\d.]+)(?:\s+(\d+))?$/i);
-  if (m) {
-    const v = db.vehicles.find((x) => x.id === db.settings.defaultVehicleId) ?? db.vehicles[0];
-    if (!v) return { error: "Add a vehicle first" };
-    const litres = Number(m[1]), total = Number(m[2]);
-    const odo = m[3] ? Number(m[3]) : currentOdometer(db, v);
-    if (odo < currentOdometer(db, v)) return { error: `Odometer must be ≥ ${num(currentOdometer(db, v), 0)}` };
-    return { icon: "gas-station-outline", label: `Fuel · ${v.name} · ${litres} L · ${money(total, cur)} · ${num(odo, 0)} km`, apply: (d) => addFuel(d, { id: uid(), vehicleId: v.id, date: todayISO(), odometer: odo, litres, total, price: Number((total / litres).toFixed(2)) }) };
+  const fuel = parseFuelDraft(db, s);
+  if (fuel?.numbers) {
+    const { litres, total, rate } = fuel.numbers;
+    if (!fuel.vehicle) {
+      return {
+        icon: "arrow-up-bold-circle-outline",
+        label: `Expense · ${money(total, cur)} · Fuel`,
+        apply: (d) => addTxn(d, { id: uid(), type: "expense", amount: total, category: "Fuel", date: fuel.date || todayISO(), note: [litres ? `${litres} L` : "", fuel.station ?? ""].filter(Boolean).join(" · ") || undefined }),
+      };
+    }
+    const v = fuel.vehicle;
+    const known = fuel.odometer;
+    const floor = Math.max(v.initialOdometer, ...db.fuel.filter((row) => row.vehicleId === v.id && !row.odometerEstimated).map((row) => row.odometer));
+    if (known != null && known < floor) return { error: `Odometer must be ≥ ${num(floor, 0)}` };
+    const estimated = known == null;
+    const odo = known ?? estimateOdometer(db.fuel, v, fuel.date);
+    const date = fuel.date ?? "";
+    const stationBit = fuel.station ? ` · ${fuel.station}` : "";
+    const odoBit = estimated ? " · odometer estimated" : ` · ${num(odo, 0)} km`;
+    return {
+      icon: "gas-station-outline",
+      label: `Fuel · ${v.name} · ${litres} L · ${money(total, cur)} · ${num(rate, 2)}/L${odoBit}${stationBit}`,
+      apply: (d) => addFuel(d, { id: uid(), vehicleId: v.id, date, odometer: odo, odometerEstimated: estimated || undefined, ...(fuel.station ? { station: fuel.station } : {}), litres, total, price: rate }),
+    };
   }
-  m = s.match(/^(.+?)\s+([\d.]+)\s+(weekly|monthly|quarterly|yearly)$/i);
+  let m = s.match(/^(.+?)\s+([\d.]+)\s+(weekly|monthly|quarterly|yearly)$/i);
   if (m) {
     const name = m[1][0].toUpperCase() + m[1].slice(1), amount = Number(m[2]), cycle = m[3].toLowerCase() as any;
     return { icon: "autorenew", label: `Subscription · ${name} · ${money(amount, cur)} ${cycle}`, apply: (d) => upsertSubscription(d, { id: uid(), name, amount, cycle, nextRenewal: nextCycleDate(todayISO(), cycle), category: "Subscriptions", active: true }) };

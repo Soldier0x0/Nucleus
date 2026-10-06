@@ -13,7 +13,7 @@ import { aboutTitle } from "@/src/core/about";
 import { withoutSampleData, withSampleData } from "@/src/core/sample";
 import { BackupFile, decryptBackup, exportBackup, mergeDB, mergePreview, pickBackup } from "@/src/core/backup";
 import { passwordStrength, type PasswordEnvelope } from "@/src/core/crypto";
-import { biometricAvailable, clearFailures, clearPin, hasDecoyPin, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
+import { biometricAvailable, biometricUnlock, clearFailures, clearPin, hasDecoyPin, hasPin, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
 import { MODULES } from "@/src/core/modules";
 import { EXPORTS, exportData, timeline } from "@/src/core/exports";
 import { allowLockScreenChannel, notifyOnce, scheduledCount } from "@/src/core/notify";
@@ -98,6 +98,11 @@ export default function Settings() {
   const [restorePw, setRestorePw] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [eraseAuth, setEraseAuth] = useState(false);
+  const [eraseError, setEraseError] = useState("");
+  const [eraseReset, setEraseReset] = useState(0);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const currencies = [...CURRENCIES].sort((a, b) => a.localeCompare(b, "en"));
   const [cloudPassOpen, setCloudPassOpen] = useState(false);
   const [cloudPass, setCloudPass] = useState("");
   const [cloudMessage, setCloudMessage] = useState("");
@@ -239,12 +244,10 @@ export default function Settings() {
         </Section>
 
         <Section title="Defaults">
-          <View style={{ paddingVertical: 4 }}>
-            <ChipRow testID="settings-currency-row">
-              {CURRENCIES.map((c) => (
-                <Chip key={c} label={c} selected={s.currency === c} onPress={() => setSettings({ currency: c })} testID={`settings-currency-${c}`} />
-              ))}
-            </ChipRow>
+          <View style={{ padding: 12 }}>
+            <Press testID="settings-currency-row" onPress={() => setCurrencyOpen(true)} style={{ height: 46, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderStrong, paddingHorizontal: 16, justifyContent: "center", backgroundColor: colors.surfaceTertiary }}>
+              <T>{s.currency}</T>
+            </Press>
           </View>
           <View style={{ padding: 12, paddingTop: 4, gap: 10 }}>
             <Segmented testID="settings-distance" value={s.distanceUnit} onChange={(v) => setSettings({ distanceUnit: v })} options={[{ value: "km", label: "km" }, { value: "mi", label: "miles" }]} />
@@ -771,18 +774,65 @@ export default function Settings() {
         {cloudMessage ? <T testID="settings-cloud-message" style={{ fontSize: 12, marginTop: 8 }}>{cloudMessage}</T> : null}
       </Sheet>
 
-      <Sheet visible={confirmReset} onClose={() => setConfirmReset(false)} title="Erase everything?" testID="reset-sheet">
+      <Sheet visible={currencyOpen} onClose={() => setCurrencyOpen(false)} title="Currency" testID="settings-currency-sheet">
+        <ScrollView style={{ maxHeight: 360 }}>
+          {currencies.map((c) => (
+            <Press key={c} testID={`settings-currency-${c}`} onPress={() => (setSettings({ currency: c }), setCurrencyOpen(false))} style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.divider, opacity: s.currency === c ? 1 : 0.85 }}>
+              <T v="label">{c}</T>
+            </Press>
+          ))}
+        </ScrollView>
+      </Sheet>
+
+      <Sheet visible={confirmReset} onClose={() => (setConfirmReset(false), setEraseAuth(false), setEraseError(""))} title="Erase everything?" testID="reset-sheet">
         <T style={{ marginBottom: 16 }}>{session === "real" ? "This removes every profile on this device, including the PIN. Export a backup first if you might want it back." : "This removes the records in the workspace you have open. Export a backup first if you might want them back."}</T>
-        <Button
-          kind="danger"
-          icon="delete-forever-outline"
-          label="Erase all data"
-          testID="reset-confirm-button"
-          onPress={async () => {
-            await wipeVisible();
-            setConfirmReset(false);
-          }}
-        />
+        {eraseAuth ? (
+          <>
+            <T style={{ marginBottom: 12 }}>Enter the PIN or use biometrics. Being unlocked already is not enough.</T>
+            <PinPad
+              testID="reset-pin"
+              error={eraseError}
+              resetKey={eraseReset}
+              onBiometric={async () => {
+                const ok = await biometricUnlock("Confirm erase");
+                if (!ok) {
+                  setEraseError("Biometrics did not confirm.");
+                  return;
+                }
+                await wipeVisible();
+                setConfirmReset(false);
+                setEraseAuth(false);
+              }}
+              onComplete={async (pin) => {
+                const match = await verifyPin(pin);
+                if (match !== "primary") {
+                  setEraseError("That PIN does not erase this data.");
+                  setEraseReset((n) => n + 1);
+                  return;
+                }
+                await wipeVisible();
+                setConfirmReset(false);
+                setEraseAuth(false);
+              }}
+            />
+          </>
+        ) : (
+          <Button
+            kind="danger"
+            icon="delete-forever-outline"
+            label="Erase all data"
+            testID="reset-confirm-button"
+            onPress={async () => {
+              const [pin, bio] = await Promise.all([hasPin(), biometricAvailable()]);
+              if (!pin && !bio) {
+                toast("Add a PIN or biometrics before erasing", "lock-outline");
+                return;
+              }
+              setEraseError("");
+              setEraseAuth(true);
+            }}
+          />
+        )}
       </Sheet>
     </View>
   );

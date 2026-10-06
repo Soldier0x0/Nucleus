@@ -146,7 +146,7 @@ export async function syncCycleNotices(list: { id: string; title: string; at: Da
   if (!notificationsSupported) return;
   ensureHandler();
   await cancelMatching((key) => key.startsWith(CYCLE_PREFIX));
-  for (const id of ["cycle:period", "cycle:change"]) {
+  for (const id of ["cycle:period", "cycle:change", "cycle:rematch"]) {
     await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
   }
   const p = await permissionState();

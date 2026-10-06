@@ -6,10 +6,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity, getEntity, SERVICE_LABEL } from "@/src/core/actions";
+import { setFuelFacts } from "@/src/core/fuelCapture";
 import type { EntityKind } from "@/src/core/types";
 import { fmtDate, money, num } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Button, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
+import { DateField, Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
@@ -25,6 +27,10 @@ export default function RecordDetail() {
   const router = useRouter();
   const toast = useToast();
   const [del, setDel] = useState(false);
+  const [fuelEdit, setFuelEdit] = useState(false);
+  const [fuelDate, setFuelDate] = useState("");
+  const [fuelOdo, setFuelOdo] = useState("");
+  const [fuelStation, setFuelStation] = useState("");
   const e = getEntity(db, { kind, id });
   const s = db.settings;
   const cur = s.currency;
@@ -43,7 +49,7 @@ export default function RecordDetail() {
   let fields: [string, string][] = [];
   if (kind === "fuel") {
     headline = money(e.total, cur);
-    fields = [["Vehicle", vName(e.vehicleId)], ["Date", fmtDate(e.date)], ["Odometer", `${num(e.odometer, 0)} ${s.distanceUnit}`], ["Quantity", `${e.litres} ${s.volumeUnit}`], ["Price", `${num(e.price, 2)} / ${s.volumeUnit}`]];
+    fields = [["Vehicle", vName(e.vehicleId)], ["Date", fmtDate(e.date)], ["Odometer", `${num(e.odometer, 0)} ${s.distanceUnit}${e.odometerEstimated ? " · estimated" : ""}`], ...(e.station ? ([["Station", e.station]] as [string, string][]) : []), ["Quantity", `${e.litres} ${s.volumeUnit}`], ["Price", `${num(e.price, 2)} / ${s.volumeUnit}`]];
   } else if (kind === "service") {
     headline = SERVICE_LABEL[e.kind];
     fields = [["Vehicle", vName(e.vehicleId)], ["Date", fmtDate(e.date)], ["Odometer", `${num(e.odometer, 0)} ${s.distanceUnit}`], ["Cost", money(e.cost, cur)], ...(Object.entries(e.details) as [string, string][]).map(([k, v]) => [k[0].toUpperCase() + k.slice(1), v] as [string, string])];
@@ -74,9 +80,33 @@ export default function RecordDetail() {
             </View>
           ))}
         </View>
+        {kind === "fuel" ? (
+          <Button
+            kind="secondary"
+            label="Edit date, odometer, station"
+            testID="fuel-edit-open"
+            style={{ marginTop: 12 }}
+            onPress={() => {
+              setFuelDate(e.date);
+              setFuelOdo(e.odometerEstimated ? "" : String(e.odometer));
+              setFuelStation(e.station ?? "");
+              setFuelEdit(true);
+            }}
+          />
+        ) : null}
         {kind === "txn" && e.photo ? <Image source={{ uri: e.photo }} style={{ width: "100%", height: 180, borderRadius: radius.lg, marginTop: 12 }} contentFit="cover" /> : null}
         <LinkedSection refTo={{ kind, id }} />
       </ScrollView>
+      <Sheet visible={fuelEdit && kind === "fuel"} onClose={() => setFuelEdit(false)} title="Fill details" testID="fuel-edit-sheet" footer={<Button label="Save" testID="fuel-edit-save" onPress={() => {
+        const odometer = Number(fuelOdo);
+        update((d) => setFuelFacts(d, id, { date: fuelDate, station: fuelStation, ...(fuelOdo.trim() && Number.isFinite(odometer) ? { odometer } : {}) }));
+        setFuelEdit(false);
+        toast("Saved");
+      }} />}>
+        <DateField label="Date" optional value={fuelDate || undefined} onChange={(value) => setFuelDate(value ?? "")} testID="fuel-edit-date" />
+        <Field label="Odometer" numeric testID="fuel-edit-odometer" value={fuelOdo} onChangeText={setFuelOdo} />
+        <Field label="Station" testID="fuel-edit-station" value={fuelStation} onChangeText={setFuelStation} />
+      </Sheet>
       <Sheet visible={del} onClose={() => setDel(false)} title="Delete this record?" testID="record-delete-sheet">
         <T style={{ marginBottom: 16 }}>{kind === "fuel" || kind === "service" ? "The expense that was auto-created from it will be removed too." : "Its links to other records will be removed."}</T>
         <Button

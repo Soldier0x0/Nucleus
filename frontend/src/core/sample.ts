@@ -1,8 +1,9 @@
 /** Deterministic sample workspace so users (and testers) can explore insights immediately. */
-import type { Appliance, Budget, DB, FuelEntry, Note, Rule, ServiceEntry, Subscription, Trip, Txn, Vehicle } from "./types";
+import type { Appliance, Budget, CycleFlow, CycleState, CycleSymptom, DB, FuelEntry, Note, Rule, ServiceEntry, Subscription, Trip, Txn, Vehicle } from "./types";
 import { addDays, addMonths, monthKey, todayISO, uid } from "./format";
 import { addFuel, addService } from "./actions";
 import { addTripExpense, newDocs, packFromTemplate } from "./domains";
+import { markEnd, markStart, setBleeding, setFlowLevel, setSymptom } from "./cycle";
 
 export function withSampleData(db: DB): DB {
   const today = todayISO();
@@ -112,7 +113,60 @@ export function withSampleData(db: DB): DB {
     { id: uid(), name: "Renewals heads-up", trigger: { kind: "renewal", value: 5 }, actions: ["attention"], enabled: true, createdAt: nowISO },
     { id: uid(), name: "Big spend check", trigger: { kind: "bigExpense", value: 5000 }, actions: ["attention"], enabled: true, createdAt: nowISO },
   ] };
-  return stampSample(db, next);
+  const sampled = appendSampleCycle(next.cycle, today);
+  next = { ...next, cycle: sampled.cycle };
+  const stamped = stampSample(db, next);
+  if (!sampled.ids.length) return stamped;
+  return {
+    ...stamped,
+    settings: {
+      ...stamped.settings,
+      sampleIds: [...new Set([...(stamped.settings.sampleIds ?? []), ...sampled.ids])].slice(0, 800),
+    },
+  };
+}
+
+const SAMPLE_STASH: Record<CycleState["stash"][number]["kind"], { home: number; bag: number }> = {
+  pad: { home: 14, bag: 2 },
+  liner: { home: 20, bag: 4 },
+  tampon: { home: 8, bag: 2 },
+  cup: { home: 1, bag: 0 },
+  disc: { home: 1, bag: 1 },
+  underwear: { home: 1, bag: 1 },
+};
+
+/** Four recent periods, with flow and symptoms, so the guess can use her own length. */
+function appendSampleCycle(cycle: CycleState, today: string): { cycle: CycleState; ids: string[] } {
+  if (cycle.days.some((day) => day.id.startsWith("sample-cycle-"))) return { cycle, ids: [] };
+  const flows: CycleFlow[] = ["heavy", "heavy", "medium", "light", "light"];
+  const symptoms: (CycleSymptom | null)[] = ["cramps", "headache", null, "backache", null];
+  const offsets = [-90, -61, -32, -3];
+  let days = cycle.days;
+  for (const offset of offsets) {
+    const start = addDays(today, offset);
+    const length = offset === -3 ? 4 : 5;
+    for (let i = 0; i < length; i++) {
+      const date = addDays(start, i);
+      if (days.some((day) => day.date === date)) continue;
+      days = markStart(days, date);
+      days = setFlowLevel(days, date, flows[i] ?? "medium");
+      const symptom = symptoms[i];
+      if (symptom) days = setSymptom(days, date, symptom);
+      if (i === length - 1 && offset !== -3) days = markEnd(days, date);
+    }
+    if (offset === -61) {
+      const spot = addDays(start, 6);
+      if (!days.some((day) => day.date === spot)) days = setBleeding(days, spot, "spotting");
+    }
+  }
+  const prior = new Set(cycle.days.map((day) => day.date));
+  const tagged = days.map((day) => (prior.has(day.date) ? day : { ...day, id: `sample-cycle-${day.date}` }));
+  const ids = tagged.filter((day) => day.id.startsWith("sample-cycle-")).map((day) => day.id);
+  const stash = cycle.stash.map((item) => {
+    const demo = SAMPLE_STASH[item.kind];
+    return { ...item, count: item.count ?? demo.home, carry: item.carry ?? demo.bag };
+  });
+  return { cycle: { ...cycle, days: tagged, stash }, ids };
 }
 
 const SAMPLE_SERVICE_ODOS = [1000, 6100, 11500, 16400, 21600];
@@ -265,6 +319,7 @@ function dropSampleRows(db: DB, drop: Set<string>, restoreBudget: Budget | undef
     notes: db.notes.filter((row) => !drop.has(row.id)),
     rules: db.rules.filter((row) => !drop.has(row.id)),
     budget: restoreBudget ?? db.budget,
+    cycle: { ...db.cycle, days: db.cycle.days.filter((day) => !drop.has(day.id)) },
   };
 }
 
@@ -380,5 +435,8 @@ export function withoutSampleData(db: DB): DB {
   for (const service of db.services) if (drop.has(service.id)) sources.add(service.id);
   for (const id of linkedTxnIds(db, sources)) drop.add(id);
   for (const id of unnamedPairIds(db, drop)) drop.add(id);
+  for (const day of db.cycle.days) {
+    if (day.id.startsWith("sample-cycle-")) drop.add(day.id);
+  }
   return dropSampleRows(db, drop, budgetAfterDemo(db));
 }

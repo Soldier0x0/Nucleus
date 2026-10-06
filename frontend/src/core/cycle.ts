@@ -18,9 +18,39 @@ export const SYMPTOMS: { id: CycleSymptom; label: string }[] = [
 
 export const PRODUCTS: { id: CycleProduct; label: string }[] = [
   { id: "pad", label: "Pads" },
+  { id: "liner", label: "Liners" },
   { id: "tampon", label: "Tampons" },
   { id: "cup", label: "Cups" },
+  { id: "disc", label: "Discs" },
+  { id: "underwear", label: "Period underwear" },
 ];
+
+export const SAMPLE_BUDDY_NOTE = "Hey. This is a guess from the dates you logged, not a promise. Change the words if you want.";
+
+type ProductWindow = { min: number; max: number; usual: number; line: string };
+
+export function productWindow(kind: CycleProduct): ProductWindow {
+  switch (kind) {
+    case "pad":
+    case "liner":
+      return { min: 4, max: 6, usual: 5, line: "Pads and liners are often changed about every 4–6 hours." };
+    case "tampon":
+      return { min: 4, max: 8, usual: 6, line: "A tampon should not stay in past 8 hours. About 4–8 hours is the usual range." };
+    case "cup":
+    case "disc":
+      return { min: 8, max: 12, usual: 10, line: "Rinse a cup or disc on your schedule, often about 8–12 hours. Boil it between cycles." };
+    case "underwear":
+      return { min: 8, max: 24, usual: 12, line: "Period underwear is changed when it is wet, or about daily on a light day." };
+    default: {
+      const unknown: never = kind;
+      return unknown;
+    }
+  }
+}
+
+function stashRow(kind: CycleProduct, pack: number): CycleState["stash"][number] {
+  return { kind, count: null, carry: null, lowAt: 1, pack };
+}
 
 export const PHASES: { id: "menstrual" | "follicular" | "ovulation" | "luteal"; title: string; line: string }[] = [
   { id: "menstrual", title: "Bleeding", line: "Some people notice cramps, tiredness, or a heavier flow in the first days of bleeding." },
@@ -55,13 +85,9 @@ export function emptyCycle(): CycleState {
     periodNudge: false,
     changeNudge: false,
     changeKind: "pad",
-    changeHours: 6,
+    changeHours: 5,
     paused: false,
-    stash: [
-      { kind: "pad", count: null, lowAt: 2 },
-      { kind: "tampon", count: null, lowAt: 2 },
-      { kind: "cup", count: null, lowAt: 1 },
-    ],
+    stash: [stashRow("pad", 10), stashRow("liner", 30), stashRow("tampon", 18), stashRow("cup", 1), stashRow("disc", 1), stashRow("underwear", 5)],
     customSymptoms: [],
     reportName: "private",
     pinkCalendar: false,
@@ -77,36 +103,34 @@ export function cleanBuddyName(raw: string): string {
     .slice(0, 24);
 }
 
-/** Pad and tampon stay in the 4–8 hour range. A tampon never goes past 8. A cup can run to 12. */
+/** Each product has its own range. A tampon never goes past 8. A cup or disc can run to 12. */
 export function clampChangeHours(kind: CycleProduct, hours: number): number {
-  const rounded = Math.round(hours);
-  if (kind === "cup") return Math.min(12, Math.max(4, rounded));
-  return Math.min(8, Math.max(4, rounded));
+  const window = productWindow(kind);
+  return Math.min(window.max, Math.max(window.min, Math.round(hours)));
+}
+
+export function defaultChangeHours(kind: CycleProduct): number {
+  return productWindow(kind).usual;
 }
 
 export function timerCopy(kind: CycleProduct): string {
-  switch (kind) {
-    case "pad":
-      return "A pad is often changed about every 4–8 hours.";
-    case "tampon":
-      return "A tampon should not stay in past 8 hours. About 4–8 hours is the usual range.";
-    case "cup":
-      return "Rinse a cup on your schedule, often up to 12 hours. Boil it between cycles.";
-    default: {
-      const unknown: never = kind;
-      return unknown;
-    }
-  }
+  return productWindow(kind).line;
 }
 
 export function productLabel(kind: CycleProduct): string {
   switch (kind) {
     case "pad":
       return "Pads";
+    case "liner":
+      return "Liners";
     case "tampon":
       return "Tampons";
     case "cup":
       return "Cups";
+    case "disc":
+      return "Discs";
+    case "underwear":
+      return "Period underwear";
     default: {
       const unknown: never = kind;
       return unknown;
@@ -114,19 +138,9 @@ export function productLabel(kind: CycleProduct): string {
   }
 }
 
-export function lowStashLine(kind: CycleProduct): string {
-  switch (kind) {
-    case "pad":
-      return "Pads are low.";
-    case "tampon":
-      return "Tampons are low.";
-    case "cup":
-      return "Cups are low.";
-    default: {
-      const unknown: never = kind;
-      return unknown;
-    }
-  }
+export function lowStashLine(kind: CycleProduct, count = 1): string {
+  const n = Number.isFinite(count) ? Math.max(0, Math.round(count)) : 1;
+  return `${productLabel(kind)} are down to ${n}.`;
 }
 
 export function normalizeCycle(raw: unknown): CycleState {
@@ -158,19 +172,22 @@ export function normalizeCycle(raw: unknown): CycleState {
   }
   days.sort((a, b) => a.date.localeCompare(b.date));
 
-  const changeKind: CycleProduct = src.changeKind === "tampon" || src.changeKind === "cup" ? src.changeKind : "pad";
+  const changeKind = parseProduct(src.changeKind);
   const stash = base.stash.map((item) => {
     const found = Array.isArray(src.stash)
       ? src.stash.find((entry) => entry && typeof entry === "object" && (entry as { kind?: string }).kind === item.kind)
       : undefined;
     if (!found || typeof found !== "object") return item;
-    const row = found as { count?: unknown; lowAt?: unknown };
-    const count = typeof row.count === "number" && Number.isFinite(row.count) ? Math.max(0, Math.min(999, Math.round(row.count))) : null;
+    const row = found as { count?: unknown; carry?: unknown; lowAt?: unknown; pack?: unknown };
+    const count = countOrNull(row.count);
+    const carry = countOrNull(row.carry);
     const lowAt = typeof row.lowAt === "number" && Number.isFinite(row.lowAt) ? Math.max(0, Math.min(99, Math.round(row.lowAt))) : item.lowAt;
-    return { kind: item.kind, count, lowAt };
+    const pack = typeof row.pack === "number" && Number.isFinite(row.pack) ? Math.max(1, Math.min(99, Math.round(row.pack))) : item.pack;
+    return { kind: item.kind, count, carry, lowAt, pack };
   });
   const emoji = typeof src.buddyEmoji === "string" && (BUDDY_EMOJIS as readonly string[]).includes(src.buddyEmoji) ? src.buddyEmoji : "";
   const changeEndsAt = typeof src.changeEndsAt === "string" && !Number.isNaN(Date.parse(src.changeEndsAt)) ? src.changeEndsAt : undefined;
+  const changeRematchAt = typeof src.changeRematchAt === "string" && !Number.isNaN(Date.parse(src.changeRematchAt)) ? src.changeRematchAt : undefined;
   const packedFor = typeof src.packedFor === "string" && DATE.test(src.packedFor) ? src.packedFor : undefined;
   const absorbencySeenFor = typeof src.absorbencySeenFor === "string" && DATE.test(src.absorbencySeenFor) ? src.absorbencySeenFor : undefined;
 
@@ -178,11 +195,14 @@ export function normalizeCycle(raw: unknown): CycleState {
     days,
     buddyName: cleanBuddyName(typeof src.buddyName === "string" ? src.buddyName : ""),
     buddyEmoji: emoji,
+    ...(src.buddyIntroSeen === true ? { buddyIntroSeen: true } : {}),
+    ...(typeof src.buddyNote === "string" && src.buddyNote.trim() ? { buddyNote: src.buddyNote.trim().slice(0, 160) } : {}),
     periodNudge: src.periodNudge === true,
     changeNudge: src.changeNudge === true,
     changeKind,
-    changeHours: clampChangeHours(changeKind, typeof src.changeHours === "number" ? src.changeHours : 6),
+    changeHours: clampChangeHours(changeKind, typeof src.changeHours === "number" ? src.changeHours : defaultChangeHours(changeKind)),
     ...(changeEndsAt ? { changeEndsAt } : {}),
+    ...(changeRematchAt ? { changeRematchAt } : {}),
     paused: src.paused === true,
     ...(packedFor ? { packedFor } : {}),
     ...(absorbencySeenFor ? { absorbencySeenFor } : {}),
@@ -191,6 +211,25 @@ export function normalizeCycle(raw: unknown): CycleState {
     reportName: src.reportName === "normal" ? "normal" : "private",
     pinkCalendar: src.pinkCalendar === true,
   };
+}
+
+function countOrNull(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return null;
+  return Math.max(0, Math.min(999, Math.round(raw)));
+}
+
+function parseProduct(raw: unknown): CycleProduct {
+  switch (raw) {
+    case "pad":
+    case "liner":
+    case "tampon":
+    case "cup":
+    case "disc":
+    case "underwear":
+      return raw;
+    default:
+      return "pad";
+  }
 }
 
 function cleanLabel(raw: string): string {
@@ -566,8 +605,18 @@ export function setBuddy(cycle: CycleState, name: string, emoji: string): CycleS
   return { ...cycle, buddyName: cleanBuddyName(name), buddyEmoji };
 }
 
+export function saveBuddyIntro(cycle: CycleState, name: string, emoji: string, note: string): CycleState {
+  const next = setBuddy(cycle, name, emoji);
+  const buddyNote = note.replace(/\s+/g, " ").trim().slice(0, 160);
+  return { ...next, buddyIntroSeen: true, ...(buddyNote ? { buddyNote } : {}) };
+}
+
+export function skipBuddyIntro(cycle: CycleState): CycleState {
+  return { ...cycle, buddyIntroSeen: true };
+}
+
 export function setChangeKind(cycle: CycleState, kind: CycleProduct): CycleState {
-  return { ...cycle, changeKind: kind, changeHours: clampChangeHours(kind, cycle.changeHours) };
+  return { ...cycle, changeKind: kind, changeHours: defaultChangeHours(kind) };
 }
 
 export function setChangeHours(cycle: CycleState, hours: number): CycleState {
@@ -576,12 +625,20 @@ export function setChangeHours(cycle: CycleState, hours: number): CycleState {
 
 export function startChangeTimer(cycle: CycleState, now: Date): CycleState {
   const changeHours = clampChangeHours(cycle.changeKind, cycle.changeHours);
-  return { ...cycle, changeHours, changeEndsAt: new Date(now.getTime() + changeHours * 60 * 60 * 1000).toISOString() };
+  const window = productWindow(cycle.changeKind);
+  const underMax = Math.max(window.min, window.max - 1);
+  const changeEndsAt = new Date(now.getTime() + changeHours * 60 * 60 * 1000).toISOString();
+  const changeRematchAt = underMax < changeHours ? new Date(now.getTime() + underMax * 60 * 60 * 1000).toISOString() : undefined;
+  const next: CycleState = { ...cycle, changeHours, changeEndsAt };
+  if (changeRematchAt) next.changeRematchAt = changeRematchAt;
+  else delete next.changeRematchAt;
+  return next;
 }
 
 export function stopChangeTimer(cycle: CycleState): CycleState {
   const next = { ...cycle };
   delete next.changeEndsAt;
+  delete next.changeRematchAt;
   return next;
 }
 
@@ -590,13 +647,56 @@ export function setStashCount(cycle: CycleState, kind: CycleProduct, count: numb
   return { ...cycle, stash: cycle.stash.map((item) => (item.kind === kind ? { ...item, count: next } : item)) };
 }
 
+export function setStashCarry(cycle: CycleState, kind: CycleProduct, carry: number): CycleState {
+  const next = Math.max(0, Math.min(999, Math.round(carry)));
+  return { ...cycle, stash: cycle.stash.map((item) => (item.kind === kind ? { ...item, carry: next } : item)) };
+}
+
+export function setStashPack(cycle: CycleState, kind: CycleProduct, pack: number): CycleState {
+  const next = Math.max(1, Math.min(99, Math.round(pack)));
+  return { ...cycle, stash: cycle.stash.map((item) => (item.kind === kind ? { ...item, pack: next } : item)) };
+}
+
+export function restockPack(cycle: CycleState, kind: CycleProduct): CycleState {
+  const item = cycle.stash.find((row) => row.kind === kind);
+  const pack = item?.pack ?? 1;
+  return setStashCount(cycle, kind, (item?.count ?? 0) + pack);
+}
+
 export function setStashLow(cycle: CycleState, kind: CycleProduct, lowAt: number): CycleState {
   const next = Math.max(0, Math.min(99, Math.round(lowAt)));
   return { ...cycle, stash: cycle.stash.map((item) => (item.kind === kind ? { ...item, lowAt: next } : item)) };
 }
 
 export function lowStash(cycle: CycleState): CycleStashKind[] {
-  return cycle.stash.flatMap((item) => (item.count !== null && item.count <= item.lowAt ? [{ kind: item.kind, count: item.count }] : []));
+  return cycle.stash.flatMap((item) => {
+    const homeLow = item.count !== null && item.count <= item.lowAt;
+    const bagLow = item.carry !== null && item.carry <= item.lowAt;
+    if (!homeLow && !bagLow) return [];
+    return [{ kind: item.kind, count: homeLow ? (item.count as number) : (item.carry as number) }];
+  });
+}
+
+/** Soft line when the timer is past its usual time and the bag is empty. Home stock does not cancel it. */
+export function changeOvertimeLine(cycle: CycleState, now = new Date()): string | null {
+  if (!cycle.changeEndsAt) return null;
+  const end = Date.parse(cycle.changeEndsAt);
+  if (Number.isNaN(end) || now.getTime() <= end) return null;
+  const item = cycle.stash.find((row) => row.kind === cycle.changeKind);
+  const bagEmpty = item?.carry == null || item.carry <= 0;
+  if (!bagEmpty) return null;
+  const home = item?.count;
+  const homeLine = home != null && home > 0 ? ` Home still has ${home}.` : "";
+  return `The change timer is past the usual time, and the bag is empty.${homeLine}`;
+}
+
+export function rematchLine(cycle: CycleState, now = new Date()): string | null {
+  if (!cycle.changeRematchAt || !cycle.changeEndsAt) return null;
+  const at = Date.parse(cycle.changeRematchAt);
+  const end = Date.parse(cycle.changeEndsAt);
+  if (Number.isNaN(at) || Number.isNaN(end)) return null;
+  if (now.getTime() < at || now.getTime() >= end) return null;
+  return "One quiet reminder before the usual maximum.";
 }
 
 type CycleStashKind = { kind: CycleProduct; count: number };
@@ -612,7 +712,7 @@ export function buddyShareLine(name: string): string {
   return buddyTitle(name);
 }
 
-export type CycleNotice = { id: "cycle:period" | "cycle:change"; title: string; body: ""; at: string };
+export type CycleNotice = { id: "cycle:period" | "cycle:change" | "cycle:rematch"; title: string; body: ""; at: string };
 
 function atMorning(iso: string, quiet: { enabled: boolean; from: number; to: number }): Date {
   const [year, month, day] = iso.split("-").map(Number);
@@ -636,6 +736,10 @@ export function cycleNotices(cycle: CycleState, quiet: { enabled: boolean; from:
   if (cycle.periodNudge && next && !next.paused) {
     const at = atMorning(next.from, quiet);
     if (at.getTime() > now.getTime()) notices.push({ id: "cycle:period", title, body: "", at: at.toISOString() });
+  }
+  if (cycle.changeNudge && cycle.changeRematchAt) {
+    const at = new Date(cycle.changeRematchAt);
+    if (!Number.isNaN(at.getTime()) && at.getTime() > now.getTime()) notices.push({ id: "cycle:rematch", title, body: "", at: at.toISOString() });
   }
   if (cycle.changeNudge && cycle.changeEndsAt) {
     const at = new Date(cycle.changeEndsAt);

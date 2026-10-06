@@ -57,14 +57,14 @@ export const LOOK_CHOICES: Record<LookId, LookChoices> = {
 };
 
 export const LOOK_LIST: { id: LookId; name: string; line: string }[] = [
-  { id: "current", name: "Current", line: "The look this app already uses." },
-  { id: "soft", name: "Soft", line: "Rounder corners, slightly larger type, more air between rows." },
-  { id: "tight", name: "Tight", line: "Sharper corners and closer rows." },
-  { id: "plain", name: "Plain", line: "Big type, and very little decoration." },
-  { id: "cards", name: "Cards", line: "The same shapes, with a soft shadow under each card." },
-  { id: "ink", name: "Ink", line: "Strong edges and a heavier mark." },
-  { id: "signal", name: "Signal", line: "Quiet pages, with the accent on buttons and marks." },
-  { id: "poster", name: "Poster", line: "Large titles and one accent, with room around them." },
+  { id: "current", name: "Current", line: "The shapes you already have, on the color set you picked." },
+  { id: "soft", name: "Soft", line: "Warm surfaces, rounder corners, and a little more air." },
+  { id: "tight", name: "Tight", line: "Cooler surfaces, sharper corners, and closer rows." },
+  { id: "plain", name: "Plain", line: "Flat surfaces and big type, with very little decoration." },
+  { id: "cards", name: "Cards", line: "Lifted cards and pills on the same page color." },
+  { id: "ink", name: "Ink", line: "Paper and ink. Strong edges on cards and pills." },
+  { id: "signal", name: "Signal", line: "Quiet surfaces, with the accent kept for marks." },
+  { id: "poster", name: "Poster", line: "Warm blocks, a strong accent, and large titles." },
   { id: "blush", name: "Blush", line: "A soft pink skin for pills, tiles, and sheets." },
 ];
 
@@ -191,6 +191,98 @@ function mix(from: string, to: string, t: number): string {
 /** Second color for type, buttons, and marks. The background stays the color set. */
 export function dualToneInk(mode: "light" | "dark"): string {
   return mode === "light" ? "#2A1C12" : "#F4E4D0";
+}
+
+type Paintable = {
+  surface: string;
+  onSurface: string;
+  surfaceSecondary: string;
+  surfaceTertiary: string;
+  border: string;
+  borderStrong: string;
+  divider: string;
+  brand: string;
+  brandPrimary: string;
+  brandSecondary: string;
+  brandTertiary: string;
+  onBrandTertiary: string;
+  muted: string;
+};
+
+function wash<T extends Paintable>(colors: T, mode: "light" | "dark", hue: string, amount: number, accent = 0): T {
+  const lift = mode === "light" ? "#FFFCF8" : "#000000";
+  return {
+    ...colors,
+    surface: mix(colors.surface, hue, amount),
+    surfaceSecondary: mix(mix(colors.surface, hue, amount * 0.65), lift, mode === "light" ? 0.5 : 0.08),
+    surfaceTertiary: mix(colors.surfaceTertiary, hue, Math.min(0.75, amount + 0.2)),
+    border: mix(colors.border, hue, 0.5),
+    divider: mix(colors.divider, hue, 0.4),
+    borderStrong: mix(colors.borderStrong, hue, 0.45),
+    brandTertiary: mix(colors.brandTertiary, hue, 0.45),
+    muted: mix(colors.muted, hue, 0.18),
+    ...(accent > 0
+      ? {
+          brand: mix(colors.brand, hue, accent),
+          brandPrimary: mix(colors.brandPrimary, hue, accent),
+          brandSecondary: mix(colors.brandSecondary, hue, accent),
+        }
+      : {}),
+  };
+}
+
+/**
+ * A look paints surfaces, cards, pills, and a little of the accent.
+ * Current leaves the color set alone. Blush already replaced the whole palette.
+ * Cards keeps the page color so Paper stays Paper.
+ */
+export function paintLook<T extends Paintable>(colors: T, lookId: LookId, mode: "light" | "dark"): T {
+  switch (lookId) {
+    case "current":
+    case "blush":
+      return colors;
+    case "soft":
+      return wash(colors, mode, mode === "light" ? "#E7D3C1" : "#3A2C22", mode === "light" ? 0.42 : 0.34, 0.22);
+    case "tight":
+      return wash(colors, mode, mode === "light" ? "#C5CDD6" : "#8AA0B4", mode === "light" ? 0.28 : 0.22, 0.12);
+    case "plain":
+      return {
+        ...colors,
+        surfaceSecondary: colors.surface,
+        surfaceTertiary: mix(colors.surface, mode === "light" ? "#000000" : "#FFFFFF", mode === "light" ? 0.04 : 0.06),
+        border: mix(colors.surface, colors.onSurface, 0.12),
+        divider: mix(colors.surface, colors.onSurface, 0.08),
+        brandTertiary: mix(colors.surface, colors.brandTertiary, 0.2),
+      };
+    case "cards":
+      return {
+        ...colors,
+        surfaceSecondary: mode === "light" ? mix(colors.surface, "#FFFFFF", 0.82) : mix(colors.surface, "#FFFFFF", 0.07),
+        surfaceTertiary: mode === "light" ? mix(colors.surface, "#E6DDD0", 0.45) : mix(colors.surface, "#FFFFFF", 0.12),
+        border: mix(colors.border, mode === "light" ? "#D4CBBE" : "#FFFFFF", mode === "light" ? 0.35 : 0.12),
+        brandTertiary: mix(colors.brandTertiary, mode === "light" ? "#F4E7D4" : colors.brandPrimary, mode === "light" ? 0.35 : 0.2),
+      };
+    case "ink":
+      return {
+        ...colors,
+        surface: mode === "light" ? mix(colors.surface, "#F4F1EA", 0.55) : mix(colors.surface, "#000000", 0.4),
+        surfaceSecondary: mode === "light" ? "#FFFCF6" : mix(colors.surface, "#FFFFFF", 0.05),
+        surfaceTertiary: mode === "light" ? "#E7E2D8" : "#161616",
+        border: mode === "light" ? "#1C1A17" : "#F4F1EA",
+        borderStrong: mode === "light" ? "#1C1A17" : "#F4F1EA",
+        divider: mode === "light" ? "#1C1A17" : "#3A3834",
+        brandTertiary: mode === "light" ? "#1C1A17" : "#F4F1EA",
+        onBrandTertiary: mode === "light" ? "#FFFCF6" : "#1C1A17",
+      };
+    case "signal":
+      return wash(colors, mode, mode === "light" ? "#D5D8DE" : "#1C2430", mode === "light" ? 0.2 : 0.28, 0);
+    case "poster":
+      return wash(colors, mode, mode === "light" ? "#F0D7B8" : "#4A3018", mode === "light" ? 0.48 : 0.36, 0.28);
+    default: {
+      const unknown: never = lookId;
+      return unknown;
+    }
+  }
 }
 
 export function dualTonePatch(surface: string, mode: "light" | "dark") {

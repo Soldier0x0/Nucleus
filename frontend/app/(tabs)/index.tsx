@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { presentHome } from "@/src/core/layouts";
-import { radius, useTheme, bindLookStyles } from "@/src/theme";
+import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { morningLine } from "@/src/core/life";
@@ -14,11 +14,11 @@ import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
 import { TILE_META } from "@/src/core/modules";
-import { PRESET_CHOICES, presetBoard, showsCustomizeHome, tilePlaceholder, withTileSizes } from "@/src/core/presets";
+import { openBoards, PRESET_CHOICES, presetBoard, presetTileTitle, showsCustomizeHome, tilePlaceholder, widenLongLabels, withTileSizes } from "@/src/core/presets";
 import { HeadsUpCard, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
-import type { Board } from "@/src/core/types";
+import type { Board, HomePresetId } from "@/src/core/types";
 import { homeLine, oneDueToday } from "@/src/core/dueGreeting";
 import { repeatingBills } from "@/src/core/moneyDesk";
 import { choreDueDate } from "@/src/core/domains";
@@ -41,12 +41,23 @@ export default function Today() {
   const greeting = homeLine(hour, session === "real" ? db.settings.givenName : undefined, oneDueToday(dues, today)?.title ?? null);
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
-  const preset = db.settings.homePreset;
-  const presetIndex = PRESET_CHOICES.findIndex((choice) => choice.id === preset);
+  const visibleBoards = openBoards(db);
+  const preset = visibleBoards.includes(db.settings.homePreset) ? db.settings.homePreset : visibleBoards[0];
+  const presetIndex = Math.max(0, visibleBoards.indexOf(preset));
+  const openKey = visibleBoards.join(",");
+  useEffect(() => {
+    const ids = openKey.split(",");
+    if (ids.includes(db.settings.homePreset)) return;
+    const next = ids[0] as HomePresetId;
+    if (next) setSettings({ homePreset: next });
+  }, [db.settings.homePreset, openKey, setSettings]);
   const boardIndex = activeBoard ? boards.findIndex((board) => board.id === activeBoard.id) + 1 : 0;
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
   const [arrange, setArrange] = useState(false);
+  const [finder, setFinder] = useState(false);
+  const [finderText, setFinderText] = useState("");
+  const dated = morningLine(db, today);
   useReminderSync();
 
   return (
@@ -56,24 +67,53 @@ export default function Today() {
           <View style={{ flex: 1 }}>
             <Eyebrow>{d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short" })}</Eyebrow>
             <T v="title" testID="today-title">{greeting}</T>
-            <Press testID="today-morning" onPress={() => router.push("/calendar")}>
-              <T muted style={{ fontSize: 13, marginTop: 2 }} numberOfLines={2}>{morningLine(db, today)}</T>
-            </Press>
+            {dated ? (
+              <Press testID="today-morning" onPress={() => router.push("/calendar")}>
+                <T muted style={{ fontSize: 13, marginTop: 2 }} numberOfLines={2}>{dated}</T>
+              </Press>
+            ) : null}
           </View>
           <Press testID="today-online-toggle" accessibilityState={{ checked: db.settings.online }} onPress={() => setSettings({ online: !db.settings.online })} style={[styles.lockChip, { borderColor: db.settings.online ? colors.success : colors.border }]}>
             <Icon name={db.settings.online ? "web" : "wifi-off"} size={14} color={db.settings.online ? colors.success : colors.muted} />
             <T v="caption" muted={!db.settings.online} color={db.settings.online ? colors.success : undefined}>{db.settings.online ? "Online" : "Offline"}</T>
           </Press>
         </View>
-        <Press testID="today-search-bar" onPress={() => router.push("/search")} style={[styles.search, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
-          <Icon name="magnify" size={20} color={colors.muted} />
-          <T muted style={{ flex: 1 }} numberOfLines={1}>Search everything — vehicles, trips, spends</T>
-        </Press>
-        <CaptureBar />
+        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 12 }}>
+          <View style={{ flex: 1, maxWidth: finder ? undefined : "25%" }}>
+            {finder ? (
+              <View style={[styles.search, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
+                <Icon name="magnify" size={18} color={colors.muted} />
+                <TextInput
+                  testID="today-search-bar"
+                  autoFocus
+                  value={finderText}
+                  onChangeText={setFinderText}
+                  onBlur={() => setFinder(false)}
+                  onSubmitEditing={() => {
+                    const q = finderText.trim();
+                    setFinder(false);
+                    router.push(q ? { pathname: "/search", params: { q } } : "/search");
+                  }}
+                  placeholder="Search"
+                  placeholderTextColor={colors.muted}
+                  returnKeyType="search"
+                  style={{ flex: 1, height: 46, color: colors.onSurface, fontFamily: fonts.text, fontSize: 15 }}
+                />
+              </View>
+            ) : (
+              <Press testID="today-search-bar" onPress={() => setFinder(true)} accessibilityLabel="Search" style={[styles.search, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong, justifyContent: "center" }]}>
+                <Icon name="magnify" size={20} color={colors.muted} />
+              </Press>
+            )}
+          </View>
+          <View style={{ flex: finder ? 0 : 3, width: finder ? 0 : undefined, overflow: "hidden" }} pointerEvents={finder ? "none" : "auto"}>
+            <CaptureBar />
+          </View>
+        </View>
       </View>
       <View style={{ marginHorizontal: -4 }}>
           <ChipRow testID="today-preset-row" activeIndex={presetIndex}>
-            {PRESET_CHOICES.map((choice) => (
+            {PRESET_CHOICES.filter((choice) => visibleBoards.includes(choice.id)).map((choice) => (
               <Chip key={choice.id} label={choice.name} icon={choice.icon} selected={preset === choice.id} testID={`today-preset-${choice.id}`} onPress={() => setSettings({ homePreset: choice.id })} />
             ))}
           </ChipRow>
@@ -93,7 +133,7 @@ export default function Today() {
       ) : (
         <SwipeHome
           preset={preset}
-          layoutFor={(page) => presentHome(layout.layout, withTileSizes(db, presetBoard(db, page, session)))}
+          layoutFor={(page) => presentHome(layout.layout, widenLongLabels(withTileSizes(db, presetBoard(db, page, session)), presetTileTitle))}
           emptyCopy={(id) => tilePlaceholder(id)}
           below={(page) => (
             <>
@@ -143,7 +183,7 @@ export default function Today() {
 }
 
 const styles = bindLookStyles(() => StyleSheet.create({
-  search: { flexDirection: "row", alignItems: "center", gap: 10, height: 48, borderRadius: radius.md, borderWidth: 1, paddingHorizontal: 14, marginTop: 12 },
+  search: { flexDirection: "row", alignItems: "center", gap: 8, height: 46, borderRadius: radius.pill, borderWidth: 1, paddingHorizontal: 14 },
   pill: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 8, height: 26 },
   daybox: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   toolBtn: { flex: 1, height: 68, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
