@@ -1,3 +1,5 @@
+import { billCardCopy } from "./bills";
+import { documentCardCopy } from "./documents";
 import { money, monthKey, todayISO } from "./format";
 import { attentionItems } from "./intelligence";
 import { balanceOverTime, monthFlow, repeatingBills } from "./moneyDesk";
@@ -54,6 +56,16 @@ const ICONS: Record<string, string> = {
   lab: "flask-outline",
   net: "lan",
   home: "home-outline",
+  docgaps: "file-document-alert-outline",
+  docids: "card-account-details-outline",
+  docinsurance: "shield-check-outline",
+  doctrips: "bag-suitcase-outline",
+  docfiles: "file-document-outline",
+  billdue: "calendar-clock",
+  rent: "home-outline",
+  emi: "bank-outline",
+  subs: "autorenew",
+  billpaid: "check-circle-outline",
 };
 
 function card(title: string, id: string, lines: string[], route: string): HomeCard {
@@ -185,6 +197,22 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
       return card("Lab", id, ["0"], "/lab");
     case "net":
       return card("Network", id, [String(db.netlog.length)], "/net");
+    case "docgaps":
+    case "docids":
+    case "docinsurance":
+    case "doctrips":
+    case "docfiles": {
+      const copy = documentCardCopy(db, id);
+      return card(copy.title, id, copy.lines, "/papers");
+    }
+    case "billdue":
+    case "rent":
+    case "emi":
+    case "subs":
+    case "billpaid": {
+      const copy = billCardCopy(db, id);
+      return card(copy.title, id, copy.lines, "/bills");
+    }
     default:
       return card(id.charAt(0).toUpperCase() + id.slice(1), id, ["0"], "/");
   }

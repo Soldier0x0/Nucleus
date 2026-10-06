@@ -147,7 +147,7 @@ export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rul
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
-export type HomePresetId = "custom" | "money" | "travel" | "home" | "desk" | "workshop" | "adhd";
+export type HomePresetId = "custom" | "money" | "travel" | "home" | "documents" | "bills" | "desk" | "workshop" | "adhd";
 export type AdhdKind = "money" | "trip" | "log";
 export type AdhdTask = {
   id: string;

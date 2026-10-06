@@ -46,6 +46,8 @@ import { Ring } from "./charts";
 import { Sheet } from "./Sheet";
 import { WeatherCard } from "./WeatherCard";
 
+const NAMED_TILES = new Set(["docgaps", "docids", "docinsurance", "doctrips", "docfiles", "billdue", "rent", "emi", "subs", "billpaid"]);
+
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -185,6 +187,12 @@ export function PresetGrid({
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
                         <Ring value={face.meter ?? 0} size={72} stroke={8} />
                         <T v="monoXl">{face.figure}</T>
+                      </View>
+                    ) : NAMED_TILES.has(item.id) ? (
+                      <View style={{ gap: 6, marginTop: 8 }}>
+                        {shown.lines.map((line, index) => (
+                          <T key={`${item.id}-${index}`}>{line}</T>
+                        ))}
                       </View>
                     ) : (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>

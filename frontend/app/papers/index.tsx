@@ -3,6 +3,7 @@ import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
+import { missingDocumentNames } from "@/src/core/documents";
 import { PAPER_KINDS } from "@/src/core/life";
 import type { Paper, Person } from "@/src/core/types";
 import { daysBetween, fmtDate, todayISO, uid } from "@/src/core/format";
@@ -21,10 +22,11 @@ export default function Papers() {
   const [edit, setEdit] = useState<Paper | "new" | null>(null);
   const [person, setPerson] = useState<Person | "new" | null>(null);
   const today = todayISO();
+  const missing = missingDocumentNames(db);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Papers" testID="papers-header" right={<IconButton icon="plus" label="Add paper" testID="papers-add" onPress={() => setEdit("new")} />} />
+      <Header title="Documents" testID="papers-header" right={<IconButton icon="plus" label="Add paper" testID="papers-add" onPress={() => setEdit("new")} />} />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 24, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <Card testID="papers-people">
           <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -40,6 +42,14 @@ export default function Papers() {
             </View>
           )}
         </Card>
+        {missing.length ? (
+          <Card testID="documents-missing">
+            <Eyebrow>Missing</Eyebrow>
+            {missing.map((name, index) => (
+              <T key={`${name}-${index}`}>{name}</T>
+            ))}
+          </Card>
+        ) : null}
         {db.papers.length === 0 ? (
           <EmptyState testID="papers-empty" icon="file-document-outline" title="No papers yet" body="A driving licence, RC, insurance page or passport. The date feeds Attention. The photo stays on this phone." action={<Button label="Add a paper" icon="plus" testID="papers-empty-add" onPress={() => setEdit("new")} />} />
         ) : (
@@ -63,7 +73,7 @@ export default function Papers() {
       </ScrollView>
       {edit ? <PaperSheet paper={edit === "new" ? undefined : edit} onClose={() => setEdit(null)} /> : null}
       {person ? <PersonSheet person={person === "new" ? undefined : person} onClose={() => setPerson(null)} /> : null}
-      <ModuleGate id="papers" name="Papers" icon="file-document-outline" />
+      <ModuleGate id="papers" name="Documents" icon="file-document-outline" />
     </View>
   );
 }

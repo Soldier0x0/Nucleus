@@ -339,12 +339,12 @@ test("money and travel show different tiles, and each title names that tile", ()
 });
 
 test("every board is one circle and the last wraps to the first", () => {
-  const circle = ["custom", "money", "travel", "home", "desk", "workshop", "adhd"] as const;
+  const circle = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"] as const;
   for (const preset of circle) assert.deepEqual(swipeScreens(preset), [...circle]);
   assert.equal(swipeStartIndex("custom"), 0);
   assert.equal(swipeStartIndex("money"), 1);
   assert.equal(swipeStartIndex("travel"), 2);
-  assert.equal(swipeStartIndex("adhd"), 6);
+  assert.equal(swipeStartIndex("adhd"), 8);
   assert.equal(swipeWrap(circle.length, circle.length), 0);
   assert.equal(swipeScreens("adhd")[swipeWrap(swipeScreens("adhd").length, swipeScreens("adhd").length)], "custom");
   assert.equal(swipePages("home").at(-1), "custom");
