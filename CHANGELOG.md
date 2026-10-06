@@ -8,6 +8,13 @@ One pull request publishes one version. That version is the only one it may docu
 
 A republished app is allowed only when the points name the file, say that nothing in the app changed, and say why the release exists.
 
+From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
+
+## v0.8.3
+
+- Fixed the home pills so the selected one scrolls into view when you swipe boards.
+- Changed release notes to plain Fixed, Added, and Changed lines.
+
 ## v0.8.2
 
 Phone Lab and Tools fixes, a softer cycle, a Blush skin, and water reminders.

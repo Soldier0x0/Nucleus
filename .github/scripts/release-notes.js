@@ -12,6 +12,8 @@ const path = require("node:path");
  * without those points, is an error.
  * One pull request publishes one version. A changelog section for any other
  * unpublished version is an error, so the next release cannot be pre-seeded.
+ * From v0.8.3 on, each bullet starts with Fixed, Added, Changed, I fixed,
+ * I added, or I changed.
  */
 function sectionBody(changelog, tag) {
   const heading = `## ${tag}`;
@@ -84,9 +86,25 @@ function describesHonestRepublish(points) {
   );
 }
 
+function developerVoice(point) {
+  return /^(Fixed|Added|Changed|I fixed|I added|I changed)\b/.test(pointBody(point));
+}
+
+function assertDeveloperVoice(points, tag) {
+  if (!versionRank(tag) || compareVersions(tag, "v0.8.3") < 0 || describesHonestRepublish(points)) return;
+  const real = points.filter((point) => !isSameAsPoint(point) && !isFilePoint(point) && !isWhyPoint(point));
+  if (real.length === 0 || real.every(developerVoice)) return;
+  throw new Error(
+    `CHANGELOG.md section for ${tag} needs bullets that start with Fixed, Added, Changed, I fixed, I added, or I changed.`,
+  );
+}
+
 function assertChangePoints(text, tag) {
   const points = bulletPoints(text);
-  if (points.some((point) => !isSameAsPoint(point) && !isFilePoint(point) && !isWhyPoint(point))) return;
+  if (points.some((point) => !isSameAsPoint(point) && !isFilePoint(point) && !isWhyPoint(point))) {
+    assertDeveloperVoice(points, tag);
+    return;
+  }
   if (points.length > 0 && describesHonestRepublish(points)) return;
   throw new Error(
     `CHANGELOG.md section for ${tag} needs short bullet points of what was added or changed. A note that only says the app is the same as the previous one is not enough.`,

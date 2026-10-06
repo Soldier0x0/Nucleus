@@ -42,6 +42,8 @@ export default function Today() {
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
   const preset = db.settings.homePreset;
+  const presetIndex = PRESET_CHOICES.findIndex((choice) => choice.id === preset);
+  const boardIndex = activeBoard ? boards.findIndex((board) => board.id === activeBoard.id) + 1 : 0;
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
   const [arrange, setArrange] = useState(false);
@@ -70,12 +72,12 @@ export default function Today() {
         <CaptureBar />
       </View>
       <View style={{ marginHorizontal: -4 }}>
-          <ChipRow testID="today-preset-row">
+          <ChipRow testID="today-preset-row" activeIndex={presetIndex}>
             {PRESET_CHOICES.map((choice) => (
               <Chip key={choice.id} label={choice.name} icon={choice.icon} selected={preset === choice.id} testID={`today-preset-${choice.id}`} onPress={() => setSettings({ homePreset: choice.id })} />
             ))}
           </ChipRow>
-          {preset === "custom" ? <ChipRow testID="today-board-row">
+          {preset === "custom" ? <ChipRow testID="today-board-row" activeIndex={boardIndex}>
             <Chip label="Home" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
             {boards.map((b) => (
               <Chip key={b.id} label={b.name} icon={b.icon} selected={activeBoard?.id === b.id} testID={`today-board-${b.id}`} onPress={() => setSettings({ activeBoardId: b.id })} />
