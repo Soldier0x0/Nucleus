@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
-import android.os.Build
 import android.os.PowerManager
 import org.json.JSONObject
 
@@ -19,7 +18,7 @@ object PhoneBattery {
     if (level >= 0 && scale > 0) json.put("level", level.toDouble() / scale.toDouble())
     json.put("state", chargeState(status))
     json.put("saver", ctx.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true)
-    cycleCount(ctx, intent)?.let { json.put("cycleCount", it) }
+    cycleCount(intent)?.let { json.put("cycleCount", it) }
     healthLabel(intent.getIntExtra(BatteryManager.EXTRA_HEALTH, BatteryManager.BATTERY_HEALTH_UNKNOWN))?.let { json.put("health", it) }
     if (intent.hasExtra(BatteryManager.EXTRA_TEMPERATURE)) {
       json.put("temperatureC", intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10.0)
@@ -55,15 +54,9 @@ object PhoneBattery {
     else -> null
   }
 
-  private fun cycleCount(ctx: Context, intent: Intent): Int? {
-    if (Build.VERSION.SDK_INT < 34) return null
-    if (intent.hasExtra(BatteryManager.EXTRA_CYCLE_COUNT)) {
-      val extra = intent.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1)
-      if (extra >= 0) return extra
-    }
-    val property = ctx.getSystemService(BatteryManager::class.java)
-      ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CYCLE_COUNT)
-      ?: Int.MIN_VALUE
-    return if (property >= 0) property else null
+  private fun cycleCount(intent: Intent): Int? {
+    if (!intent.hasExtra(BatteryManager.EXTRA_CYCLE_COUNT)) return null
+    val extra = intent.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1)
+    return if (extra >= 0) extra else null
   }
 }

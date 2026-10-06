@@ -4,8 +4,9 @@ const fs = require("node:fs");
  * Next Nucleus release name. Tags look like v0.1, v0.2, or a patch such as v0.6.1.
  * The result always stays below 1.
  * With no changelog, the next name is the next minor: v0.6 becomes 0.7.
- * One unpublished changelog heading can select that next minor, or the next
- * patch of the highest published minor. Two unpublished headings stay on the
+ * One unpublished changelog heading can select that next minor, or a later
+ * patch of the highest published minor. A skipped patch is allowed when it
+ * is the only unpublished heading. Two unpublished headings stay on the
  * next minor so a pre-seeded later version is refused.
  */
 const VERSION_NAME = /^0\.[1-9]\d*(?:\.\d+)?$/;
@@ -46,18 +47,19 @@ function unpublished(changelog, tags) {
   return extra;
 }
 
-function nextPatch(tags) {
-  const minor = highestPublishedMinor(tags);
-  if (minor < 1) return null;
-  let patch = 0;
-  const re = new RegExp(`^v0\\.${minor}(?:\\.(\\d+))?$`);
+function patchNumber(tag, minor) {
+  const match = new RegExp(`^v0\\.${minor}(?:\\.(\\d+))?$`).exec(String(tag).trim());
+  if (!match) return null;
+  return match[1] === undefined ? 0 : Number(match[1]);
+}
+
+function highestPatch(tags, minor) {
+  let patch = -1;
   for (const tag of tags) {
-    const match = re.exec(String(tag).trim());
-    if (!match) continue;
-    const value = match[1] === undefined ? 0 : Number(match[1]);
-    if (value > patch) patch = value;
+    const value = patchNumber(tag, minor);
+    if (value !== null && value > patch) patch = value;
   }
-  return `v0.${minor}.${patch + 1}`;
+  return patch;
 }
 
 function nextAndroidVersion(tags, changelog) {
@@ -67,8 +69,10 @@ function nextAndroidVersion(tags, changelog) {
   if (extra.length !== 1) return minor;
   const only = extra[0];
   if (only === `v${minor}`) return minor;
-  const patch = nextPatch(tags);
-  if (patch && only === patch) return only.slice(1);
+  const minorNumber = highestPublishedMinor(tags);
+  const chosen = patchNumber(only, minorNumber);
+  const published = highestPatch(tags, minorNumber);
+  if (chosen !== null && chosen > published) return only.slice(1);
   return minor;
 }
 
