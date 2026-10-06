@@ -53,6 +53,7 @@ export const LOOK_CHOICES: Record<LookId, LookChoices> = {
   ink: { shape: "sharp", space: "standard", type: "standard", cards: "flat", pop: "ink" },
   signal: { shape: "round", space: "standard", type: "standard", cards: "flat", pop: "signal" },
   poster: { shape: "round", space: "roomy", type: "soft", cards: "flat", pop: "poster" },
+  blush: { shape: "round", space: "roomy", type: "soft", cards: "shadow", pop: "none" },
 };
 
 export const LOOK_LIST: { id: LookId; name: string; line: string }[] = [
@@ -64,6 +65,7 @@ export const LOOK_LIST: { id: LookId; name: string; line: string }[] = [
   { id: "ink", name: "Ink", line: "Strong edges and a heavier mark." },
   { id: "signal", name: "Signal", line: "Quiet pages, with the accent on buttons and marks." },
   { id: "poster", name: "Poster", line: "Large titles and one accent, with room around them." },
+  { id: "blush", name: "Blush", line: "A soft pink skin for pills, tiles, and sheets." },
 ];
 
 function choicesFor(id: LookId): LookChoices {
@@ -76,6 +78,7 @@ function choicesFor(id: LookId): LookChoices {
     case "ink":
     case "signal":
     case "poster":
+    case "blush":
       return LOOK_CHOICES[id];
     default: {
       const unknown: never = id;
@@ -166,6 +169,7 @@ export function parseLook(value: unknown): LookId {
     case "ink":
     case "signal":
     case "poster":
+    case "blush":
       return value;
     default:
       return "current";

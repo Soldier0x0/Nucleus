@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { Header } from "@/src/components/Header";
-import { Chip, ChipRow, Eyebrow, Icon, IconButton, T } from "@/src/components/ui";
+import { Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
 import { DatesTool, EmiTool, PercentTool, SplitTool, UnitsTool } from "@/src/components/tools";
 import { CookingTool, CustomToolRunner, GrowthTool, RandomTool, RoadTripTool, TimeTool } from "@/src/components/tools2";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -24,6 +24,19 @@ const TOOLS = [
   { id: "random", label: "Decide", icon: "dice-multiple-outline", C: RandomTool },
 ] as const;
 
+const TILE_TEST_ID: Record<(typeof TOOLS)[number]["id"], string> = {
+  units: "tools-tile-units",
+  percent: "tools-tile-percent",
+  split: "tools-tile-split",
+  dates: "tools-tile-dates",
+  emi: "tools-tile-emi",
+  growth: "tools-tile-growth",
+  cooking: "tools-tile-cooking",
+  time: "tools-tile-time",
+  roadtrip: "tools-tile-roadtrip",
+  random: "tools-tile-random",
+};
+
 export default function Tools() {
   const params = useLocalSearchParams<{ tool?: string }>();
   const { db, update } = useStore();
@@ -37,15 +50,40 @@ export default function Tools() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <Header title="Tools" testID="tools-header" />
-      <ChipRow testID="tools-chip-row">
-        {TOOLS.map((t) => (
-          <Chip key={t.id} label={t.label} icon={t.icon} selected={tool === t.id} onPress={() => setTool(t.id)} testID={`tools-chip-${t.id}`} />
-        ))}
-        {db.customTools.map((t) => (
-          <Chip key={t.id} label={t.name} icon={t.icon} selected={tool === `custom:${t.id}`} onPress={() => setTool(`custom:${t.id}`)} testID={`tools-chip-custom-${t.id}`} />
-        ))}
-      </ChipRow>
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: sp.lg, paddingTop: 4, paddingBottom: insets.bottom + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
+        <View testID="tools-grid" style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+          {TOOLS.map((t) => {
+            const selected = tool === t.id;
+            return (
+              <Press
+                key={t.id}
+                testID={TILE_TEST_ID[t.id]}
+                accessibilityState={{ selected }}
+                onPress={() => setTool(t.id)}
+                style={{ flexBasis: "30%", flexGrow: 1, minWidth: 96, minHeight: 88, borderRadius: radius.lg, borderWidth: 1, borderColor: selected ? colors.onSurface : colors.border, backgroundColor: selected ? colors.surfaceInverse : colors.surfaceSecondary, padding: 12, gap: 8 }}
+              >
+                <Icon name={t.icon} size={22} color={selected ? colors.onSurfaceInverse : colors.onSurface} />
+                <T v="label" numberOfLines={2} color={selected ? colors.onSurfaceInverse : colors.onSurface}>{t.label}</T>
+              </Press>
+            );
+          })}
+          {db.customTools.map((t) => {
+            const id = `custom:${t.id}`;
+            const selected = tool === id;
+            return (
+              <Press
+                key={t.id}
+                testID={`tools-tile-custom-${t.id}`}
+                accessibilityState={{ selected }}
+                onPress={() => setTool(id)}
+                style={{ flexBasis: "30%", flexGrow: 1, minWidth: 96, minHeight: 88, borderRadius: radius.lg, borderWidth: 1, borderColor: selected ? colors.onSurface : colors.border, backgroundColor: selected ? colors.surfaceInverse : colors.surfaceSecondary, padding: 12, gap: 8 }}
+              >
+                <Icon name={t.icon} size={22} color={selected ? colors.onSurfaceInverse : colors.onSurface} />
+                <T v="label" numberOfLines={2} color={selected ? colors.onSurfaceInverse : colors.onSurface}>{t.name}</T>
+              </Press>
+            );
+          })}
+        </View>
         <View key={tool} testID={`tool-${tool}`}>
           {customId ? <CustomToolRunner toolId={customId} /> : active ? <active.C /> : null}
         </View>

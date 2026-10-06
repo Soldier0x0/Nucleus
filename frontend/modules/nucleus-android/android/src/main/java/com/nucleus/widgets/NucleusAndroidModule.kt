@@ -202,6 +202,11 @@ class NucleusAndroidModule : Module() {
       BankNotices.drain(ctx)
     }
 
+    Function("readBattery") {
+      val ctx = appContext.reactContext ?: return@Function ""
+      PhoneBattery.read(ctx)
+    }
+
     Function("notificationAccess") {
       val ctx = appContext.reactContext ?: return@Function false
       bankListenerEnabled(ctx)

@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addTxn } from "@/src/core/actions";
 import { money, num, parseNum, todayISO, uid } from "@/src/core/format";
+import { chanceFrames } from "@/src/core/chance";
 import { evaluateFormula } from "@/src/core/formula";
-import { Field } from "./inputs";
+import { Field, OptionSheet } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, IconButton, Segmented, T } from "./ui";
 import { Bar } from "./charts";
 import { Result } from "./tools";
@@ -22,6 +23,7 @@ export function CookingTool() {
   const [from, setFrom] = useState("cup");
   const [to, setTo] = useState("ml");
   const [ing, setIng] = useState("Flour (plain)");
+  const [unitOpen, setUnitOpen] = useState(false);
   const [servFrom, setServFrom] = useState("4");
   const [servTo, setServTo] = useState("6");
   const v = parseNum(val);
@@ -52,7 +54,7 @@ export function CookingTool() {
         </View>
       ) : (
         <>
-          <Field numeric label="Amount" unit={from} onUnitPress={() => setFrom(nextKey(KITCHEN, from))} testID="cooking-input" value={val} onChangeText={setVal} hint="Tap the unit to change it" />
+          <Field numeric label="Amount" unit={from} onUnitPress={() => setUnitOpen(true)} testID="cooking-input" value={val} onChangeText={setVal} hint="Opens the unit list" />
           {mode === "volume" ? (
             <View style={{ marginHorizontal: -16 }}>
               <ChipRow testID="cooking-to-row">
@@ -73,15 +75,11 @@ export function CookingTool() {
         </>
       )}
       <Result tool="cooking" label={mode === "scale" ? "Multiply everything by" : mode === "weight" ? `${val} ${from} of ${ing}` : `${val} ${from} in ${to}`} value={value} breakdown={bd.length ? bd : undefined} />
+      <OptionSheet testID="cooking-unit" visible={unitOpen} onClose={() => setUnitOpen(false)} title="Unit" value={from} options={Object.keys(KITCHEN).map((unit) => ({ value: unit, label: unit }))} onPick={setFrom} />
       <T muted style={{ fontSize: 12, marginTop: 8 }}>Cup = 236.6 ml (US). Weights are standard kitchen averages, not lab values.</T>
     </View>
   );
 }
-
-const nextKey = (o: Record<string, number>, cur: string) => {
-  const k = Object.keys(o);
-  return k[(k.indexOf(cur) + 1) % k.length];
-};
 
 // ---------- Time ----------
 const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, "0");
@@ -189,7 +187,7 @@ const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 export function RandomTool() {
-  const { colors } = useTheme();
+  const { colors, a11y } = useTheme();
   const [mode, setMode] = useState<"dice" | "coin" | "number" | "card" | "teams" | "wheel">("dice");
   const [sides, setSides] = useState("6");
   const [count, setCount] = useState(2);
@@ -199,15 +197,41 @@ export function RandomTool() {
   const [teams, setTeams] = useState(2);
   const [out, setOut] = useState<string[]>([]);
   const [spin, setSpin] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   const roll = () => {
     const r = (n: number) => Math.floor(Math.random() * n);
-    if (mode === "dice") setOut(Array.from({ length: count }, () => String(r(Math.max(2, parseNum(sides) || 6)) + 1)));
-    else if (mode === "coin") setOut(Array.from({ length: count }, () => (r(2) ? "Heads" : "Tails")));
-    else if (mode === "number") {
-      const L = parseNum(lo) || 0, H = parseNum(hi) || 100;
-      setOut([String(Math.min(L, H) + r(Math.abs(H - L) + 1))]);
-    } else if (mode === "card") {
+    if (timer.current) clearTimeout(timer.current);
+    if (mode === "dice" || mode === "coin" || mode === "number") {
+      const played = chanceFrames(mode, {
+        sides: Math.max(2, parseNum(sides) || 6),
+        count: mode === "number" ? 1 : count,
+        lo: parseNum(lo) || 0,
+        hi: parseNum(hi) || 100,
+      }, Math.random, 5);
+      setSpin(null);
+      if (a11y.reducedMotion) {
+        setOut(played.final);
+        return;
+      }
+      let step = 0;
+      const show = () => {
+        if (step < played.frames.length) {
+          setOut(played.frames[step] ?? played.final);
+          step += 1;
+          timer.current = setTimeout(show, 70);
+          return;
+        }
+        setOut(played.final);
+        timer.current = null;
+      };
+      show();
+      return;
+    }
+    if (mode === "card") {
       const deck = RANKS.flatMap((x) => SUITS.map((s) => x + s));
       setOut(Array.from({ length: Math.min(count, 5) }, () => deck.splice(r(deck.length), 1)[0]));
     } else {
@@ -231,7 +255,12 @@ export function RandomTool() {
       <View style={{ marginHorizontal: -16 }}>
         <ChipRow testID="random-mode-row">
           {([["dice", "Dice", "dice-5-outline"], ["coin", "Coin", "circle-outline"], ["number", "Number", "numeric"], ["card", "Cards", "cards-outline"], ["teams", "Teams", "account-group-outline"], ["wheel", "Decide", "chart-donut"]] as const).map(([k, l, ic]) => (
-            <Chip key={k} label={l} icon={ic} selected={mode === k} testID={`random-mode-${k}`} onPress={() => (setMode(k), setOut([]), setSpin(null))} />
+            <Chip key={k} label={l} icon={ic} selected={mode === k} testID={`random-mode-${k}`} onPress={() => {
+              if (timer.current) clearTimeout(timer.current);
+              setMode(k);
+              setOut([]);
+              setSpin(null);
+            }} />
           ))}
         </ChipRow>
       </View>

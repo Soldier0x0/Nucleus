@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, ScrollView, Share, StyleSheet, Switch, TextInput, View } from "react-native";
+import { captureRef } from "react-native-view-shot";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
@@ -7,7 +8,7 @@ import { File, Paths } from "expo-file-system";
 import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addDays, fmtDate, todayISO } from "@/src/core/format";
-import type { CycleFlow, CycleProduct, CycleState, CycleSymptom } from "@/src/core/types";
+import type { CycleFlow, CycleProduct, CycleState } from "@/src/core/types";
 import {
   ABSORBENCY_NOTE,
   DOCTOR_NOTE,
@@ -15,15 +16,19 @@ import {
   PHASES,
   PRODUCTS,
   SYMPTOMS,
+  addCustomSymptom,
   buddyShareLine,
   cycleCsv,
   dismissAbsorbency,
+  estimateLine,
   forecast,
   forecastDetail,
   guessPhase,
+  listedSymptoms,
   lowStash,
   lowStashLine,
   ovulationLine,
+  removeCustomSymptom,
   searchCycleDays,
   clearDay,
   setBleeding,
@@ -32,12 +37,14 @@ import {
   setFlowLevel,
   setStashCount,
   setStashLow,
-  setSymptom,
+  symptomLabel,
   showAbsorbency,
   startChangeTimer,
   stopChangeTimer,
   timerCopy,
+  toggleSymptom,
 } from "@/src/core/cycle";
+import { doctorParagraphs, doctorReport, textPdf } from "@/src/core/cycleReport";
 import { requestPermission } from "@/src/core/notify";
 import { copyTemporary } from "@/src/core/clipboard";
 import { Header } from "@/src/components/Header";
@@ -71,6 +78,8 @@ export default function CycleDetails() {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : today;
   const on = db.settings.modules.find((m) => m.id === "cycle")?.enabled !== false;
   const [query, setQuery] = useState("");
+  const [custom, setCustom] = useState("");
+  const reportRef = useRef<View>(null);
 
   useEffect(() => {
     if (real && !on) router.replace("/");
@@ -82,6 +91,10 @@ export default function CycleDetails() {
   const found = useMemo(() => searchCycleDays(db.cycle.days, query), [db.cycle.days, query]);
   const lows = lowStash(db.cycle);
   const shareLine = buddyShareLine(db.cycle.buddyName);
+  const pinkOn = db.cycle.pinkCalendar;
+  const wash = pinkOn ? "#F8F1F3" : colors.surface;
+  const chosen = log ? listedSymptoms(log) : [];
+  const report = doctorReport(db.cycle, today);
   const sw = { trackColor: { true: colors.brandPrimary, false: colors.surfaceTertiary }, thumbColor: colors.surfaceSecondary };
 
   if (!real || !on) return <View style={{ flex: 1, backgroundColor: colors.surface }} />;
@@ -98,11 +111,9 @@ export default function CycleDetails() {
     return true;
   };
 
-  const saveFile = async () => {
-    const csv = cycleCsv(db.cycle.days);
-    const name = `nucleus-private-${today}.csv`;
+  const saveNamed = async (name: string, body: string, mimeType: string) => {
     if (Platform.OS === "web") {
-      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      const url = URL.createObjectURL(new Blob([body], { type: mimeType }));
       const a = (globalThis as { document: { createElement: (tag: string) => { href: string; download: string; click: () => void } } }).document.createElement("a");
       a.href = url;
       a.download = name;
@@ -113,8 +124,22 @@ export default function CycleDetails() {
     const file = new File(Paths.cache, name);
     if (file.exists) file.delete();
     file.create();
-    file.write(csv);
-    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Save on this phone" });
+    file.write(body);
+    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType, dialogTitle: "Save on this phone" });
+  };
+
+  const saveFile = async () => {
+    await saveNamed(`nucleus-private-${today}.csv`, cycleCsv(db.cycle.days), "text/csv");
+  };
+
+  const savePdf = async () => {
+    await saveNamed(`nucleus-visit-${today}.pdf`, textPdf(doctorParagraphs(db.cycle, today)), "application/pdf");
+  };
+
+  const saveImage = async () => {
+    if (!reportRef.current) return;
+    const uri = await captureRef(reportRef, { format: "png", quality: 1 });
+    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Save on this phone" });
   };
 
   const shareBuddy = async () => {
@@ -132,7 +157,7 @@ export default function CycleDetails() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surface }}>
+    <View style={{ flex: 1, backgroundColor: wash }}>
       <Header title="Details" testID="cycle-details-header" />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 28, gap: 14, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -161,12 +186,43 @@ export default function CycleDetails() {
               <Chip
                 key={item.id}
                 label={item.label}
-                selected={log?.symptom === item.id}
+                selected={chosen.includes(item.id)}
                 testID={`cycle-symptom-${item.id}`}
-                onPress={() => setCycle({ ...db.cycle, days: setSymptom(db.cycle.days, date, log?.symptom === item.id ? null : (item.id as CycleSymptom)) })}
+                onPress={() => setCycle({ ...db.cycle, days: toggleSymptom(db.cycle.days, date, item.id) })}
+              />
+            ))}
+            {db.cycle.customSymptoms.map((name) => (
+              <Chip
+                key={name}
+                label={name}
+                selected={chosen.includes(name)}
+                testID={`cycle-symptom-custom-${name}`}
+                onPress={() => setCycle({ ...db.cycle, days: toggleSymptom(db.cycle.days, date, name) })}
               />
             ))}
           </View>
+          <View style={[styles.search, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong, marginTop: 10 }]}>
+            <TextInput
+              testID="cycle-custom-symptom"
+              value={custom}
+              onChangeText={setCustom}
+              placeholder="Add a symptom"
+              placeholderTextColor={colors.muted}
+              style={{ flex: 1, color: colors.onSurface, fontFamily: fonts.text, fontSize: 16, height: 48 }}
+            />
+          </View>
+          <Button
+            label="Add symptom"
+            kind="secondary"
+            testID="cycle-custom-add"
+            style={{ marginTop: 8 }}
+            onPress={() => {
+              const next = addCustomSymptom(db.cycle, custom);
+              if (next === db.cycle) return;
+              setCycle({ ...next, days: toggleSymptom(next.days, date, next.customSymptoms.at(-1) ?? custom.trim()) });
+              setCustom("");
+            }}
+          />
         </View>
 
         <Card testID="cycle-timer">
@@ -221,7 +277,7 @@ export default function CycleDetails() {
           {found.slice(0, 12).map((day) => (
             <Press key={day.id} testID={`cycle-hit-${day.date}`} onPress={() => go(day.date)} style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider }}>
               <T>{fmtDate(day.date)}</T>
-              <T muted>{[day.bleeding, day.flow, SYMPTOMS.find((s) => s.id === day.symptom)?.label].filter(Boolean).join(" · ") || "Noted"}</T>
+              <T muted>{[day.bleeding, day.flow, ...listedSymptoms(day).map(symptomLabel)].filter(Boolean).join(" · ") || "Noted"}</T>
             </Press>
           ))}
           {query && found.length === 0 ? <T muted style={{ marginTop: 8 }}>Nothing in your logs.</T> : null}
@@ -229,7 +285,8 @@ export default function CycleDetails() {
 
         <View>
           <Eyebrow style={{ marginBottom: 8 }}>What some people notice</Eyebrow>
-          {next ? <T style={{ marginBottom: 8 }}>{forecastDetail(next)}</T> : <T muted style={{ marginBottom: 8 }}>Log a period to see a guess.</T>}
+          {next ? <T testID="cycle-detail-estimate" style={{ marginBottom: 8 }}>{estimateLine(next)}</T> : <T muted style={{ marginBottom: 8 }}>Log a period to see a guess.</T>}
+          {next ? <T style={{ marginBottom: 8 }}>{forecastDetail(next)}</T> : null}
           {next && !next.paused ? <T style={{ marginBottom: 8 }}>{ovulationLine(next)}</T> : null}
           {PHASES.map((item) => (
             <Card key={item.id} style={{ marginBottom: 8 }} tone={phase === item.id ? "tint" : "default"}>
@@ -261,6 +318,23 @@ export default function CycleDetails() {
             setCycle({ ...db.cycle, changeNudge: value });
           }} />
           <Row label="Pause guesses" sub="A gap longer than 90 days is already left out." value={db.cycle.paused} testID="cycle-pause" sw={sw} onChange={(value) => setCycle({ ...db.cycle, paused: value })} />
+          <Row label="Pink calendar" sub="A soft pink tint on this calendar and on cycle reminders." value={db.cycle.pinkCalendar} testID="cycle-pink" sw={sw} onChange={(value) => setCycle({ ...db.cycle, pinkCalendar: value })} />
+        </Card>
+
+        <Card>
+          <View ref={reportRef} collapsable={false} testID="cycle-report" style={{ backgroundColor: pinkOn ? "#F8F1F3" : colors.surfaceSecondary }}>
+            <Eyebrow>Doctor report</Eyebrow>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              <Chip label="Initials" selected={db.cycle.reportName === "private"} testID="cycle-name-private" onPress={() => setCycle({ ...db.cycle, reportName: "private" })} />
+              <Chip label="Full name" selected={db.cycle.reportName === "normal"} testID="cycle-name-normal" onPress={() => setCycle({ ...db.cycle, reportName: "normal" })} />
+            </View>
+            <T style={{ marginTop: 10 }}>{report}</T>
+          </View>
+          <Button label="Save PDF" kind="secondary" testID="cycle-report-pdf" style={{ marginTop: 10 }} onPress={() => savePdf().catch(() => toast("Could not save the file"))} />
+          <Button label="Save long image" kind="ghost" testID="cycle-report-image" style={{ marginTop: 8 }} onPress={() => saveImage().catch(() => toast("Could not save the file"))} />
+          {db.cycle.customSymptoms.map((name) => (
+            <Button key={name} label={`Remove ${name}`} kind="ghost" testID={`cycle-custom-remove-${name}`} onPress={() => setCycle(removeCustomSymptom(db.cycle, name))} />
+          ))}
         </Card>
 
         <Button label="Save a private file" kind="secondary" testID="cycle-export" onPress={() => saveFile().catch(() => toast("Could not save the file"))} />

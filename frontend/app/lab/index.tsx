@@ -1,16 +1,17 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Platform, ScrollView, StyleSheet, View } from "react-native";
+import React, { memo, useEffect, useRef, useState } from "react";
+import { Platform, Pressable, ScrollView, StyleSheet, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import * as Device from "expo-device";
 import * as Battery from "expo-battery";
 import { Accelerometer, Barometer, Gyroscope, LightSensor, Magnetometer } from "expo-sensors";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { exportData } from "@/src/core/exports";
+import { batterySummary, parsePhoneBattery, phoneBatteryReported } from "@/src/core/batteryFacts";
+import { deviceMakeModel } from "@/src/core/deviceLabel";
 import { num, todayISO } from "@/src/core/format";
+import { readPhoneBattery } from "@/src/native/android";
 import { Header } from "@/src/components/Header";
-import { Button, Card, Chip, ChipRow, Eyebrow, Icon, Press, T } from "@/src/components/ui";
+import { Button, Card, Chip, ChipRow, Eyebrow, Press, T } from "@/src/components/ui";
 import { LineChart } from "@/src/components/charts";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -21,6 +22,45 @@ const SENSORS: { id: SensorId; label: string; icon: string; unit: string; mod: a
   { id: "gyroscope", label: "Gyroscope", icon: "rotate-3d-variant", icon2: "", unit: "rad/s", mod: Gyroscope } as any,
   { id: "magnetometer", label: "Magnetometer", icon: "magnet", unit: "µT", mod: Magnetometer },
 ];
+
+const styles = bindLookStyles(() => StyleSheet.create({
+  touch: { height: 160, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", marginTop: 10, overflow: "hidden" },
+}));
+
+const TouchPad = memo(function TouchPad() {
+  const { colors } = useTheme();
+  const toast = useToast();
+  const [touches, setTouches] = useState<{ x: number; y: number }[]>([]);
+  const buzz = () => {
+    try {
+      Vibration.vibrate([0, 220, 80, 220]);
+    } catch (error) {
+      const message = error instanceof Error && error.message.trim() ? error.message.trim() : "This phone could not vibrate";
+      toast(message, "vibrate");
+    }
+  };
+  return (
+    <Card testID="lab-touch-card">
+      <Eyebrow>Touch test</Eyebrow>
+      <Pressable
+        testID="lab-touch-area"
+        onPress={(event) => {
+          const point = event.nativeEvent;
+          setTouches((current) => [...current.slice(-60), { x: point.locationX, y: point.locationY }]);
+        }}
+        style={[styles.touch, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceTertiary }]}
+      >
+        {touches.map((point, index) => (
+          <View key={index} style={{ position: "absolute", left: point.x - 4, top: point.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brandPrimary }} />
+        ))}
+      </Pressable>
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <Button small kind="secondary" label={`Clear (${touches.length})`} icon="eraser" testID="lab-touch-clear" onPress={() => setTouches([])} />
+        <Button small kind="secondary" label="Vibrate" icon="vibrate" haptic={false} testID="lab-vibrate-button" onPress={buzz} />
+      </View>
+    </Card>
+  );
+});
 
 export default function Lab() {
   const { db } = useStore();
@@ -37,8 +77,7 @@ export default function Lab() {
   const [hpa, setHpa] = useState<number | null>(null);
   const [lightOk, setLightOk] = useState<boolean | null>(null);
   const [baroOk, setBaroOk] = useState<boolean | null>(null);
-  const [battery, setBattery] = useState<{ level: number; state: number; saver: boolean } | null>(null);
-  const [touches, setTouches] = useState<{ x: number; y: number }[]>([]);
+  const [battery, setBattery] = useState<ReturnType<typeof batterySummary> | null>(null);
   const [fill, setFill] = useState<string | null>(null);
   const started = useRef(false);
 
@@ -108,14 +147,37 @@ export default function Lab() {
   useEffect(() => {
     if (Platform.OS === "web") return;
     let alive = true;
-    (async () => {
-      const [level, state, saver] = await Promise.all([Battery.getBatteryLevelAsync(), Battery.getBatteryStateAsync(), Battery.isLowPowerModeEnabledAsync()]);
-      if (alive) setBattery({ level, state, saver });
-    })().catch(() => {});
-    const sub = Battery.addBatteryLevelListener(({ batteryLevel }) => alive && setBattery((b) => (b ? { ...b, level: batteryLevel } : b)));
+    const pull = async () => {
+      const facts = parsePhoneBattery(readPhoneBattery());
+      if (phoneBatteryReported(facts)) {
+        if (alive) setBattery(batterySummary(facts));
+        return;
+      }
+      try {
+        const [level, state, saver] = await Promise.all([Battery.getBatteryLevelAsync(), Battery.getBatteryStateAsync(), Battery.isLowPowerModeEnabledAsync()]);
+        if (!alive) return;
+        const word = ["unknown", "unplugged", "charging", "full", "not charging"][state] ?? "unknown";
+        setBattery(batterySummary({
+          level: level < 0 ? null : level,
+          state: word,
+          saver,
+          cycleCount: null,
+          health: null,
+          temperatureC: null,
+          voltageV: null,
+          technology: null,
+        }));
+      } catch {
+        if (alive) setBattery(null);
+      }
+    };
+    pull();
+    const id = setInterval(() => {
+      pull();
+    }, 15000);
     return () => {
       alive = false;
-      sub.remove();
+      clearInterval(id);
     };
   }, []);
 
@@ -134,11 +196,10 @@ export default function Lab() {
           <Eyebrow>This device</Eyebrow>
           {(
             [
-              ["Make & model", [Device.brand, Device.modelName].filter(Boolean).join(" ") || "—"],
+              ["Make & model", deviceMakeModel(Device.manufacturer, Device.modelName)],
               ["System", `${Device.osName ?? Platform.OS} ${Device.osVersion ?? ""}`.trim()],
               ["Device type", Device.deviceType !== null ? ["unknown", "phone", "tablet", "desktop", "TV"][Device.deviceType] ?? "—" : "—"],
               ["Memory", Device.totalMemory ? `${num(Device.totalMemory / 1024 ** 3, 1)} GB` : "—"],
-              ["Real device", Device.isDevice ? "yes" : "no (emulator or browser)"],
             ] as [string, string][]
           ).map(([k, v]) => (
             <View key={k} style={{ flexDirection: "row", marginTop: 8 }}>
@@ -157,12 +218,13 @@ export default function Lab() {
           {battery ? (
             <>
               <T v="display" style={{ marginTop: 6 }} testID="lab-battery-level">
-                {num(battery.level * 100, 0)}%
+                {battery.figure}
               </T>
-              <T muted>
-                {[undefined, "unknown", "unplugged", "charging", "full"][battery.state + 1] ?? "unknown"}
-                {battery.saver ? " · battery saver on" : ""}
-              </T>
+              {battery.lines.map((line, index) => (
+                <T key={`${line}-${index}`} muted>
+                  {line}
+                </T>
+              ))}
             </>
           ) : (
             <T muted style={{ marginTop: 6 }}>Battery details need the installed app.</T>
@@ -185,7 +247,7 @@ export default function Lab() {
         </Card>
 
         <Card testID="lab-sensor-card">
-          <Eyebrow>Sensors · live only while this screen is open</Eyebrow>
+          <Eyebrow>Sensors</Eyebrow>
           <View style={{ marginHorizontal: -16, marginTop: 4 }}>
             <ChipRow testID="lab-sensor-row">
               {SENSORS.map((s) => (
@@ -246,32 +308,16 @@ export default function Lab() {
           )}
         </Card>
 
-        <Card testID="lab-touch-card">
-          <Eyebrow>Touch test · tap anywhere in the box</Eyebrow>
-          <Press
-            testID="lab-touch-area"
-            haptic={false}
-            onPress={(e: any) => setTouches((t) => [...t.slice(-60), { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY }])}
-            style={[styles.touch, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceTertiary }]}
-          >
-            {touches.map((p, i) => (
-              <View key={i} style={{ position: "absolute", left: p.x - 4, top: p.y - 4, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brandPrimary }} />
-            ))}
-          </Press>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <Button small kind="secondary" label={`Clear (${touches.length})`} icon="eraser" testID="lab-touch-clear" onPress={() => setTouches([])} />
-            <Button small kind="secondary" label="Vibrate" icon="vibrate" testID="lab-vibrate-button" onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})} />
-          </View>
-        </Card>
+        <TouchPad />
 
         <Card testID="lab-display-card">
-          <Eyebrow>Display test · a flat colour finds dead pixels</Eyebrow>
+          <Eyebrow>Display test</Eyebrow>
           <View style={{ flexDirection: "row", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
             {["#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF"].map((c) => (
               <Press key={c} testID={`lab-fill-${c.slice(1)}`} onPress={() => setFill(c)} style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: c, borderWidth: 1, borderColor: colors.borderStrong }} />
             ))}
           </View>
-          <T muted style={{ fontSize: 12, marginTop: 8 }}>Tap a swatch to fill the screen, then tap again to come back.</T>
+          <T muted style={{ fontSize: 12, marginTop: 8 }}>Dead pixels. Tap a colour to fill the screen, then tap to come back.</T>
         </Card>
 
         <T muted style={{ fontSize: 12 }}>Nothing here is stored or sent. Sensors stop the moment you leave this screen, so Phone Lab costs no battery in the background.</T>
@@ -287,7 +333,3 @@ export default function Lab() {
     </View>
   );
 }
-
-const styles = bindLookStyles(() => StyleSheet.create({
-  touch: { height: 160, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed", marginTop: 10, overflow: "hidden" },
-}));

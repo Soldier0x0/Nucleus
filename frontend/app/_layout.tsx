@@ -24,6 +24,7 @@ import { HomeSurface } from "@/src/components/HomeSurface";
 import { BankTextSync } from "@/src/components/BankTextSync";
 import { QuietSync } from "@/src/components/QuietSync";
 import { useCycleNotify } from "@/src/core/useCycleNotify";
+import { useWaterNotify } from "@/src/core/useWaterNotify";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -63,8 +64,9 @@ function takeSharedUrl(url: string | null) {
   else pushCaptureText(text);
 }
 
-function CycleAlarms() {
+function LocalAlarms() {
   useCycleNotify();
+  useWaterNotify();
   return null;
 }
 
@@ -92,7 +94,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <KeyboardProvider>
           <StoreProvider>
-            <CycleAlarms />
+            <LocalAlarms />
             <Themed>
               <ToastProvider>
                 <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />

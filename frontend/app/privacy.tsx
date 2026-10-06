@@ -1,7 +1,7 @@
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/theme";
-import { PRIVACY_NEVER, PRIVACY_PERMISSIONS, PRIVACY_STAYS } from "@/src/core/privacyCopy";
+import { PRIVACY_CONNECTION, PRIVACY_NEVER, PRIVACY_PERMISSIONS, PRIVACY_STAYS } from "@/src/core/privacyCopy";
 import { Header } from "@/src/components/Header";
 import { T } from "@/src/components/ui";
 
@@ -21,6 +21,8 @@ export default function PrivacyUsage() {
             <T muted style={{ marginTop: 4 }}>{row.line}</T>
           </View>
         ))}
+        <T v="label">Needs a connection</T>
+        <T>{PRIVACY_CONNECTION}</T>
         <T v="label">What never leaves</T>
         <T>{PRIVACY_NEVER}</T>
       </ScrollView>
