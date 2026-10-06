@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { LayoutId, LookId, ThemeKey } from "./core/types";
-import { dualTonePatch, resolveLook, type ResolvedLook } from "./core/looks";
+import { dualTonePatch, paintLook, resolveLook, type ResolvedLook } from "./core/looks";
 import { resolveLayout, type ResolvedLayout } from "./core/layouts";
 
 export const palettes = {
@@ -136,8 +136,9 @@ export function buildColors(themeKey: string, accentKey: string, dualTone = fals
     brandTertiary: mode === "light" ? a.tint : a.tintDark,
     onBrandTertiary: mode === "light" ? a.onTint : a.onTintDark,
   };
-  if (!dualTone) return painted;
-  return { ...painted, ...dualTonePatch(painted.surface, mode) };
+  const skinned = lookId ? paintLook(painted, lookId, mode) : painted;
+  if (!dualTone) return skinned;
+  return { ...skinned, ...dualTonePatch(skinned.surface, mode) };
 }
 
 export const fonts = {

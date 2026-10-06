@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { homeSchedule, logMaintenance, ROOMS, upsertAppliance } from "@/src/core/domains";
-import { applianceOwnership, dueDayLabel } from "@/src/core/life";
+import { applianceIcon, applianceOwnership, dueDayLabel } from "@/src/core/life";
 import { HomeLife } from "@/src/components/HomeLife";
 import { deleteEntity } from "@/src/core/actions";
 import type { Appliance } from "@/src/core/types";
@@ -82,7 +82,7 @@ export default function Home() {
               return (
                 <Card key={a.id} testID={`appliance-card-${a.id}`} onPress={() => setEdit(a)}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <View style={[styles.ic, { backgroundColor: colors.surfaceTertiary }]}><Icon name="washing-machine" size={22} /></View>
+                    <View style={[styles.ic, { backgroundColor: colors.surfaceTertiary }]}><Icon name={applianceIcon(a.name)} size={22} /></View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <T v="h2" numberOfLines={1}>{a.name}</T>
                       <T muted style={{ fontSize: 12 }} numberOfLines={1}>{[a.room, a.brand, a.model].filter(Boolean).join(" · ")}</T>
@@ -125,7 +125,7 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
   const save = () => {
     if (!f.name.trim()) return setErr("Name is required");
     update((d) => upsertAppliance(d, { id: appliance?.id ?? uid(), createdAt: appliance?.createdAt ?? new Date().toISOString(), name: f.name.trim(), brand: f.brand || undefined, model: f.model || undefined, serial: f.serial || undefined, room: f.room, purchaseDate: f.purchaseDate, price: parseNum(f.price) || undefined, warrantyUntil: f.warrantyUntil, plans }));
-    toast(appliance ? "Appliance updated" : `${f.name.trim()} added`, "washing-machine");
+    toast(appliance ? "Appliance updated" : `${f.name.trim()} added`, applianceIcon(f.name));
     onClose();
   };
   return (

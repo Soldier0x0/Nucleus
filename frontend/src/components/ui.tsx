@@ -79,6 +79,8 @@ export function Eyebrow({ children, style, testID, numberOfLines = 1 }: { childr
     <Text
       testID={testID}
       numberOfLines={numberOfLines}
+      textBreakStrategy="simple"
+      android_hyphenationFrequency="none"
       style={[
         {
           fontFamily: look.plain ? fonts.textMedium : fonts.monoMedium,

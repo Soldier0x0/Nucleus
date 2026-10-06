@@ -8,7 +8,7 @@ import { File, Paths } from "expo-file-system";
 import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addDays, fmtDate, todayISO } from "@/src/core/format";
-import type { CycleFlow, CycleProduct, CycleState } from "@/src/core/types";
+import type { CycleFlow, CycleState } from "@/src/core/types";
 import {
   ABSORBENCY_NOTE,
   DOCTOR_NOTE,
@@ -25,9 +25,11 @@ import {
   forecastDetail,
   guessPhase,
   listedSymptoms,
+  changeOvertimeLine,
   lowStash,
   lowStashLine,
   ovulationLine,
+  rematchLine,
   removeCustomSymptom,
   searchCycleDays,
   clearDay,
@@ -35,8 +37,11 @@ import {
   setChangeHours,
   setChangeKind,
   setFlowLevel,
+  restockPack,
+  setStashCarry,
   setStashCount,
   setStashLow,
+  setStashPack,
   symptomLabel,
   showAbsorbency,
   startChangeTimer,
@@ -239,6 +244,8 @@ export default function CycleDetails() {
             <IconButton icon="plus" label="More hours" testID="cycle-hours-plus" onPress={() => setCycle(setChangeHours(db.cycle, db.cycle.changeHours + 1))} />
           </View>
           {db.cycle.changeEndsAt ? <T style={{ textAlign: "center" }}>Ends {clock(db.cycle.changeEndsAt, db.settings.timeFormat)}</T> : null}
+          {rematchLine(db.cycle) ? <T muted testID="cycle-rematch" style={{ textAlign: "center", marginTop: 8 }}>{rematchLine(db.cycle)}</T> : null}
+          {changeOvertimeLine(db.cycle) ? <T testID="cycle-overtime" style={{ textAlign: "center", marginTop: 8 }}>{changeOvertimeLine(db.cycle)}</T> : null}
           <Button
             label={db.cycle.changeEndsAt ? "Stop timer" : "Start timer"}
             kind="secondary"
@@ -251,11 +258,27 @@ export default function CycleDetails() {
         <Card testID="cycle-stash">
           <Eyebrow>Stash</Eyebrow>
           {db.cycle.stash.map((item) => (
-            <View key={item.kind} style={{ flexDirection: "row", alignItems: "center", minHeight: 52 }}>
-              <T v="label" style={{ flex: 1 }}>{PRODUCTS.find((p) => p.id === item.kind)?.label}</T>
-              <IconButton icon="minus" label={`Fewer ${item.kind}`} testID={`cycle-stash-${item.kind}-minus`} onPress={() => item.count !== null && setCycle(setStashCount(db.cycle, item.kind, item.count - 1))} />
-              <T v="monoLg" style={{ width: 48, textAlign: "center" }} testID={`cycle-stash-${item.kind}-count`}>{item.count === null ? "—" : item.count}</T>
-              <IconButton icon="plus" label={`More ${item.kind}`} testID={`cycle-stash-${item.kind}-plus`} onPress={() => setCycle(setStashCount(db.cycle, item.kind as CycleProduct, (item.count ?? 0) + 1))} />
+            <View key={item.kind} style={{ paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider }}>
+              <T v="label">{PRODUCTS.find((p) => p.id === item.kind)?.label}</T>
+              <View style={{ flexDirection: "row", alignItems: "center", minHeight: 44 }}>
+                <T muted style={{ width: 48 }}>Home</T>
+                <IconButton icon="minus" label={`Fewer ${item.kind} at home`} testID={`cycle-stash-${item.kind}-minus`} onPress={() => item.count !== null && setCycle(setStashCount(db.cycle, item.kind, item.count - 1))} />
+                <T v="monoLg" style={{ width: 48, textAlign: "center" }} testID={`cycle-stash-${item.kind}-count`}>{item.count === null ? "—" : item.count}</T>
+                <IconButton icon="plus" label={`More ${item.kind} at home`} testID={`cycle-stash-${item.kind}-plus`} onPress={() => setCycle(setStashCount(db.cycle, item.kind, (item.count ?? 0) + 1))} />
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", minHeight: 44 }}>
+                <T muted style={{ width: 48 }}>Bag</T>
+                <IconButton icon="minus" label={`Fewer ${item.kind} in the bag`} testID={`cycle-carry-${item.kind}-minus`} onPress={() => item.carry !== null && setCycle(setStashCarry(db.cycle, item.kind, item.carry - 1))} />
+                <T v="monoLg" style={{ width: 48, textAlign: "center" }} testID={`cycle-carry-${item.kind}-count`}>{item.carry === null ? "—" : item.carry}</T>
+                <IconButton icon="plus" label={`More ${item.kind} in the bag`} testID={`cycle-carry-${item.kind}-plus`} onPress={() => setCycle(setStashCarry(db.cycle, item.kind, (item.carry ?? 0) + 1))} />
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", minHeight: 44 }}>
+                <T muted style={{ width: 48 }}>Pack</T>
+                <IconButton icon="minus" label={`Smaller ${item.kind} pack`} testID={`cycle-pack-${item.kind}-minus`} onPress={() => setCycle(setStashPack(db.cycle, item.kind, item.pack - 1))} />
+                <T v="monoLg" style={{ width: 48, textAlign: "center" }} testID={`cycle-pack-${item.kind}`}>{item.pack}</T>
+                <IconButton icon="plus" label={`Larger ${item.kind} pack`} testID={`cycle-pack-${item.kind}-plus`} onPress={() => setCycle(setStashPack(db.cycle, item.kind, item.pack + 1))} />
+                <Button small kind="secondary" label="Restock" testID={`cycle-restock-${item.kind}`} onPress={() => setCycle(restockPack(db.cycle, item.kind))} />
+              </View>
             </View>
           ))}
           <T muted style={{ marginTop: 4 }}>Low mark</T>
@@ -265,7 +288,7 @@ export default function CycleDetails() {
             ))}
           </View>
           {lows.map((item) => (
-            <T key={item.kind} color={colors.warning} style={{ marginTop: 8 }} testID={`cycle-low-line-${item.kind}`}>{lowStashLine(item.kind)}</T>
+            <T key={item.kind} color={colors.warning} style={{ marginTop: 8 }} testID={`cycle-low-line-${item.kind}`}>{lowStashLine(item.kind, item.count)}</T>
           ))}
         </Card>
 

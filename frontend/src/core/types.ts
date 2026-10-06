@@ -88,6 +88,9 @@ export type FuelEntry = {
   vehicleId: string;
   date: string;
   odometer: number;
+  /** True until a typed reading replaces the estimate. */
+  odometerEstimated?: boolean;
+  station?: string;
   litres: number;
   price: number;
   total: number;
@@ -306,7 +309,7 @@ export type ToolHistoryItem = { id: string; tool: string; label: string; value: 
 export type CycleBleeding = "flow" | "spotting";
 export type CycleFlow = "light" | "medium" | "heavy";
 export type CycleSymptom = "cramps" | "low-energy" | "headache" | "bloating" | "backache" | "tender";
-export type CycleProduct = "pad" | "tampon" | "cup";
+export type CycleProduct = "pad" | "liner" | "tampon" | "cup" | "disc" | "underwear";
 export type CycleDay = {
   id: string;
   date: string;
@@ -319,16 +322,22 @@ export type CycleDay = {
   symptoms?: string[];
 };
 export type CycleReportName = "private" | "normal";
-export type CycleStash = { kind: CycleProduct; count: number | null; lowAt: number };
+export type CycleStash = { kind: CycleProduct; count: number | null; carry: number | null; lowAt: number; pack: number };
 export type CycleState = {
   days: CycleDay[];
   buddyName: string;
   buddyEmoji: string;
+  /** First-open buddy card has been saved or skipped. */
+  buddyIntroSeen?: boolean;
+  /** A short note she can edit. Cycle still runs with this empty. */
+  buddyNote?: string;
   periodNudge: boolean;
   changeNudge: boolean;
   changeKind: CycleProduct;
   changeHours: number;
   changeEndsAt?: string;
+  /** One reminder an hour under the safe maximum, when the timer is set that long. */
+  changeRematchAt?: string;
   paused: boolean;
   packedFor?: string;
   absorbencySeenFor?: string;

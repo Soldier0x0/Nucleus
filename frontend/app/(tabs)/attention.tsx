@@ -7,11 +7,12 @@ import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { usesNativeTabs } from "@/src/navigation";
 import { AttentionItem } from "@/src/core/intelligence";
-import { allAttention, attentionSwipeThreshold, visibleAttention } from "@/src/core/attention";
+import { allAttention, attentionPreview, attentionSwipeThreshold, daysPastDue, SNOOZE_CHOICES, snoozeStillPastDue, visibleAttention } from "@/src/core/attention";
 import { paySubscription } from "@/src/core/actions";
 import { addDays, todayISO } from "@/src/core/format";
 import { Button, EmptyState, Eyebrow, Icon, Press, StatusBadge, T } from "@/src/components/ui";
 import { WhySheet } from "@/src/components/WhySheet";
+import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
 
 const GROUPS = [
@@ -29,17 +30,21 @@ export default function Attention() {
   const items = visibleAttention(db);
   const hiddenCount = allAttention(db).length - items.length;
   const [open, setOpen] = useState<AttentionItem | null>(null);
+  const [snooze, setSnooze] = useState<AttentionItem | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [rowWidth, setRowWidth] = useState(0);
   const swipeThreshold = rowWidth > 0 ? attentionSwipeThreshold(rowWidth) : 100000;
+  const today = todayISO();
 
-  const mark = (it: AttentionItem, status: "done" | "dismissed" | "snoozed") => {
+  const mark = (it: AttentionItem, status: "done" | "dismissed" | "snoozed", days = 3) => {
     update((d) => {
       let next = d;
       if (status === "done" && it.subscriptionId) next = paySubscription(next, it.subscriptionId);
-      return { ...next, attention: { ...next.attention, [it.key]: { status, until: status === "snoozed" ? addDays(todayISO(), 3) : undefined } } };
+      return { ...next, attention: { ...next.attention, [it.key]: { status, until: status === "snoozed" ? addDays(today, days) : undefined } } };
     });
     setOpen(null);
-    toast(status === "done" ? (it.subscriptionId ? "Payment logged in Money · renewal moved forward" : "Marked done") : status === "snoozed" ? "Snoozed for 3 days" : "Dismissed", status === "done" ? "check-circle-outline" : status === "snoozed" ? "alarm-snooze" : "eye-off-outline");
+    setSnooze(null);
+    toast(status === "done" ? (it.subscriptionId ? "Payment logged in Money · renewal moved forward" : "Marked done") : status === "snoozed" ? `Snoozed for ${days} days` : "Dismissed", status === "done" ? "check-circle-outline" : status === "snoozed" ? "alarm-snooze" : "eye-off-outline");
   };
 
   return (
@@ -70,7 +75,7 @@ export default function Attention() {
                 <Eyebrow style={{ marginBottom: 8 }}>
                   {g.label} · {list.length}
                 </Eyebrow>
-                {list.map((it, i) => (
+                {attentionPreview(list, expanded[g.sev] === true).map((it, i) => (
                   <Animated.View key={it.key} entering={FadeInDown.delay(i * 40)} layout={LinearTransition}>
                     <Swipeable
                       overshootLeft={false}
@@ -87,7 +92,7 @@ export default function Attention() {
                           <T v="label" color={colors.onSuccess}>Done</T>
                         </View>
                       )}
-                      onSwipeableOpen={(direction) => mark(it, direction === "right" ? "done" : "snoozed")}
+                      onSwipeableOpen={(direction) => (direction === "right" ? mark(it, "done") : setSnooze(it))}
                     >
                     <Press testID={`attention-item-${it.key}`} onPress={() => setOpen(it)} onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)} style={[styles.item, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border, borderLeftColor: g.sev === "urgent" ? colors.error : g.sev === "upcoming" ? colors.warning : colors.info }]}>
                       <View style={{ flexDirection: "row", gap: 12 }}>
@@ -109,9 +114,9 @@ export default function Attention() {
                           <Icon name="check" size={16} />
                           <T v="caption">{it.subscriptionId ? "Paid" : "Done"}</T>
                         </Press>
-                        <Press testID={`attention-snooze-${it.key}`} onPress={() => mark(it, "snoozed")} style={[styles.act, { borderColor: colors.borderStrong, borderWidth: 1 }]}>
+                        <Press testID={`attention-snooze-${it.key}`} onPress={() => setSnooze(it)} style={[styles.act, { borderColor: colors.borderStrong, borderWidth: 1 }]}>
                           <Icon name="alarm-snooze" size={16} />
-                          <T v="caption">3d</T>
+                          <T v="caption">Snooze</T>
                         </Press>
                         <Press testID={`attention-dismiss-${it.key}`} onPress={() => mark(it, "dismissed")} style={[styles.act, { borderColor: colors.borderStrong, borderWidth: 1 }]} accessibilityLabel="Dismiss">
                           <Icon name="eye-off-outline" size={16} />
@@ -121,6 +126,9 @@ export default function Attention() {
                     </Swipeable>
                   </Animated.View>
                 ))}
+                {list.length > 4 && expanded[g.sev] !== true ? (
+                  <Button kind="ghost" small label="See more" testID={`attention-more-${g.sev}`} onPress={() => setExpanded((prev) => ({ ...prev, [g.sev]: true }))} />
+                ) : null}
               </View>
             );
           })
@@ -150,11 +158,27 @@ export default function Attention() {
           open ? (
             <View style={{ flexDirection: "row", gap: 8 }}>
               <Button label={open.subscriptionId ? "Log payment" : "Done"} icon="check" style={{ flex: 1 }} testID="why-done-button" onPress={() => mark(open, "done")} />
-              <Button kind="secondary" label="Snooze 3d" icon="alarm-snooze" style={{ flex: 1 }} testID="why-snooze-button" onPress={() => mark(open, "snoozed")} />
+              <Button kind="secondary" label="Snooze" icon="alarm-snooze" style={{ flex: 1 }} testID="why-snooze-button" onPress={() => setSnooze(open)} />
             </View>
           ) : null
         }
       />
+      <Sheet visible={!!snooze} onClose={() => setSnooze(null)} title="Snooze" testID="attention-snooze-sheet">
+        {SNOOZE_CHOICES.map((days) => {
+          const past = snoozeStillPastDue(daysPastDue(snooze?.due, today), days);
+          return (
+            <Press
+              key={days}
+              disabled={past}
+              testID={`attention-snooze-choice-${days}`}
+              onPress={() => snooze && mark(snooze, "snoozed", days)}
+              style={{ minHeight: 48, justifyContent: "center", opacity: past ? 0.35 : 1 }}
+            >
+              <T v="label">{days} days</T>
+            </Press>
+          );
+        })}
+      </Sheet>
     </View>
   );
 }

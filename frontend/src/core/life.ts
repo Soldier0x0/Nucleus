@@ -95,6 +95,22 @@ export function vehicleOwnership(db: DB, vehicleId: string) {
   return { fuel, service, other, total, distance, perKm: distance > 0 ? total / distance : Number.NaN };
 }
 
+/** One glyph per appliance, from the name. Unknown names stay on the home mark. */
+export function applianceIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("dish")) return "dishwasher";
+  if (n.includes("wash")) return "washing-machine";
+  if (n.includes("purif")) return "air-filter";
+  if (n.includes("fridge") || n.includes("refrigerat")) return "fridge-outline";
+  if (/\btv\b/.test(n) || n.includes("television")) return "television";
+  if (n.includes("geyser") || n.includes("heater")) return "water-boiler";
+  if (/\bfan\b/.test(n)) return "fan";
+  if (n.includes("microwave")) return "microwave";
+  if (n.includes("vacuum")) return "vacuum";
+  if (/\bac\b/.test(n) || n.includes("cooler") || n.includes("air condition")) return "air-conditioner";
+  return "home-outline";
+}
+
 export function applianceOwnership(db: DB, applianceId: string) {
   const a = db.appliances.find((x) => x.id === applianceId);
   if (!a) return null;
@@ -218,7 +234,7 @@ export function morningLine(db: DB, today = todayISO()): string {
   const parts: string[] = [];
   if (soon) parts.push(soon.days === 0 ? `${soon.title} is today` : soon.days === 1 ? `${soon.title} is tomorrow` : `${soon.title} in ${soon.days} days`);
   if (week.budget > 0) parts.push(`${money(Math.max(0, week.left), db.settings.currency, { decimals: false })} left this month`);
-  if (!parts.length) return "Nothing dated in the next three weeks.";
+  if (!parts.length) return "";
   return parts.join(" · ");
 }
 

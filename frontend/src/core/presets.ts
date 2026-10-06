@@ -662,6 +662,23 @@ export function tileHasData(db: DB, id: string): boolean {
 
 export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"];
 
+/** A board with no tiles left after disabled modules are hidden. Custom stays if nothing else is open. */
+export function openBoards(db: DB): HomePresetId[] {
+  const open = BOARD_CIRCLE.filter((id) => visiblePresetItems(db, id).length > 0);
+  return open.length > 0 ? open : ["custom"];
+}
+
+/** A long single word, or a long title, takes the full row so it is not split mid-word. */
+export function labelNeedsFullRow(title: string): boolean {
+  const trimmed = title.trim();
+  if (trimmed.length >= 16) return true;
+  return trimmed.split(/\s+/).some((word) => word.length >= 8);
+}
+
+export function widenLongLabels(items: PresetItem[], title: (id: string) => string): PresetItem[] {
+  return items.map((item) => (labelNeedsFullRow(title(item.id)) ? { ...item, size: "large" as const } : item));
+}
+
 export function swipeScreens(preset: HomePresetId): HomePresetId[] {
   switch (preset) {
     case "custom":

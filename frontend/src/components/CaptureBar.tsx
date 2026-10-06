@@ -7,13 +7,37 @@ import { subscribeCapture } from "@/src/core/captureBus";
 import { Icon, IconButton, T } from "./ui";
 import { useToast } from "./Toast";
 
-/** One-line quick capture with a live preview of what will be created. */
+const HINTS = ["450 food lunch", "5.4L @103.7 Activa", "netflix 649 monthly", "onion 80 groceries"];
+
+/** One-line quick capture. The hint types itself. The draft stays while search opens. */
 export function CaptureBar() {
   const { db, update } = useStore();
   const { colors } = useTheme();
   const toast = useToast();
   const [q, setQ] = useState("");
+  const [hint, setHint] = useState("");
   useEffect(() => subscribeCapture(setQ), []);
+  useEffect(() => {
+    let phrase = 0;
+    let count = 0;
+    let deleting = false;
+    const id = setInterval(() => {
+      const text = HINTS[phrase % HINTS.length] ?? "";
+      if (!deleting) {
+        count += 1;
+        setHint(text.slice(0, count));
+        if (count >= text.length) deleting = true;
+        return;
+      }
+      count -= 1;
+      setHint(text.slice(0, Math.max(0, count)));
+      if (count <= 0) {
+        deleting = false;
+        phrase += 1;
+      }
+    }, 90);
+    return () => clearInterval(id);
+  }, []);
   const r = parseCapture(db, q);
   const ok = r && !("error" in r);
   const save = () => {
@@ -23,10 +47,9 @@ export function CaptureBar() {
     setQ("");
   };
   return (
-    <View style={{ marginTop: 10 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingLeft: 12, backgroundColor: colors.surfaceSecondary }}>
-        <Icon name="lightning-bolt-outline" size={18} color={colors.brandPrimary} />
-        <TextInput testID="capture-input" value={q} onChangeText={setQ} onSubmitEditing={save} placeholder="Capture: 450 food lunch" placeholderTextColor={colors.muted} returnKeyType="done" style={{ flex: 1, height: 46, color: colors.onSurface, fontFamily: fonts.monoMedium, fontSize: 14 }} />
+    <View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.pill, paddingLeft: 14, backgroundColor: colors.surfaceSecondary, height: 46 }}>
+        <TextInput testID="capture-input" value={q} onChangeText={setQ} onSubmitEditing={save} placeholder={hint} placeholderTextColor={colors.muted} returnKeyType="done" style={{ flex: 1, height: 46, color: colors.onSurface, fontFamily: fonts.monoMedium, fontSize: 14 }} />
         {ok ? <IconButton icon="check" testID="capture-save-button" label="Save capture" onPress={save} /> : null}
       </View>
       {r ? (

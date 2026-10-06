@@ -10,6 +10,25 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9
+
+- Changed home pills so a board stays hidden when its module is off.
+- Changed Capture so search and the line sit side by side, and the hint types itself.
+- Changed fuel capture so litres, total, and rate can sit in any order, and only a named vehicle becomes a fuel entry.
+- Added soft follow-ups when a fill still needs the odometer, date, or station.
+- Added a soft note when a change timer runs past its usual time and the bag is empty.
+- Changed tiles so a pair matches height and a long name keeps the full row.
+- Changed Attention so snooze offers 1, 3, 7, 15, and 30 days, and a long list can show more.
+- Changed erase so it asks for the PIN or biometrics again.
+- Changed currency to one alphabetical picker.
+- Added Cycle on the first-run module list.
+- Added a buddy intro you can edit or skip.
+- Added discs, period underwear, a home stash and a bag, and a pack size on restock.
+- Changed appliance icons.
+- Changed tile drag so the page follows your finger.
+- Changed each appearance into a fuller skin. Paper stays the default.
+- Added a longer sample cycle history.
+
 ## v0.8.3
 
 - Fixed the home pills so the selected one scrolls into view when you swipe boards.

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
@@ -14,7 +14,8 @@ export default function Search() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [q, setQ] = useState("");
+  const params = useLocalSearchParams<{ q?: string }>();
+  const [q, setQ] = useState(typeof params.q === "string" ? params.q : "");
   const groups = useMemo(() => ownSearch(db, q, session), [db, q, session]);
 
   return (

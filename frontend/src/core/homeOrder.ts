@@ -52,6 +52,24 @@ export function homeDropIndex(from: number, point: { x: number; y: number }, fra
   return best;
 }
 
+/** Tiles between the held tile and the drop slot step aside. The slot itself stays put. */
+export function neighborShift(index: number, from: number, to: number): -1 | 0 | 1 {
+  if (from === to || index === from) return 0;
+  if (from < to && index > from && index < to) return -1;
+  if (to < from && index > to && index < from) return 1;
+  return 0;
+}
+
+/** Scroll the page when the finger sits near the top or bottom of the list. */
+export function edgeScrollDelta(fingerY: number, top: number, height: number): number {
+  const edge = 88;
+  const step = 16;
+  if (!(height > 0)) return 0;
+  if (fingerY < top + edge) return -step;
+  if (fingerY > top + height - edge) return step;
+  return 0;
+}
+
 export function parseTileOrder(raw: unknown): Partial<Record<HomePresetId, string[]>> {
   if (!raw || typeof raw !== "object") return {};
   const out: Partial<Record<HomePresetId, string[]>> = {};

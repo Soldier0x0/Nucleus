@@ -6,7 +6,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { homeCard } from "@/src/core/homeCards";
 import { homeFace, type HomeWeather } from "@/src/core/homeFace";
-import { homeBoardCanMove, homeDropIndex, reorderHomeTiles, type TileBox } from "@/src/core/homeOrder";
+import { edgeScrollDelta, homeBoardCanMove, homeDropIndex, neighborShift, reorderHomeTiles, type TileBox } from "@/src/core/homeOrder";
 import { presentHome, type HomePresentation } from "@/src/core/layouts";
 import { weather, wmo } from "@/src/core/online";
 import { useTheme } from "@/src/theme";
@@ -32,10 +32,10 @@ import {
   setAdhdBuddy,
   setAdhdMotion,
   startAdhdTask,
-  swipePages,
   swipeScreens,
   swipeStartIndex,
   swipeWrap,
+  openBoards,
   typeAdhdDraft,
   withTileSizes,
 } from "@/src/core/presets";
@@ -58,11 +58,13 @@ export function PresetGrid({
   layoutFor,
   emptyCopy,
   onDragging,
+  onDragY,
 }: {
   preset: HomePresetId;
   layoutFor?: (page: HomePresetId) => HomePresentation;
   emptyCopy?: (id: string) => { title: string; line: string; route: string };
   onDragging?: (active: boolean) => void;
+  onDragY?: (y: number) => void;
 }) {
   const { db, update, session } = useStore();
   const router = useRouter();
@@ -72,6 +74,7 @@ export function PresetGrid({
     : presentHome(layout.layout, withTileSizes(db, homePresetTiles(db, preset, session)));
   void emptyCopy;
   const [forecast, setForecast] = useState<HomeWeather | null>(null);
+  const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
   const city = db.settings.homeCity;
   useEffect(() => {
     if (!city) {
@@ -113,7 +116,13 @@ export function PresetGrid({
     frames.current[index] = box;
   };
   const settle = () => {
+    setDrag(null);
     onDraggingRef.current?.(false);
+  };
+  const point = (index: number, x: number, y: number) => {
+    const to = homeDropIndex(index, { x, y }, frames.current);
+    setDrag((prev) => (prev && prev.from === index && prev.to === to ? prev : { from: index, to }));
+    onDragY?.(y);
   };
   const changeWidth = (id: string, shown: "large" | "small", request: "large" | "small" | "flip") => {
     let size: "large" | "small";
@@ -155,22 +164,27 @@ export function PresetGrid({
           <T>{lastLabel}</T>
         </Card>
       ) : null}
-      <View style={{ marginHorizontal: -half, marginBottom: -sp.md, marginTop: lastLabel ? sp.md : 0, flexDirection: "row", flexWrap: "wrap", overflow: "visible" }}>
-      {presented.rows.flatMap((row) => {
+      <View style={{ marginHorizontal: -half, marginBottom: -sp.md, marginTop: lastLabel ? sp.md : 0, overflow: "visible" }}>
+      {presented.rows.map((row) => {
         const flexes = rowFlex(row);
-        return row.items.map((item, itemIndex) => {
+        return (
+          <View key={row.items.map((item) => item.id).join("-")} style={{ flexDirection: "row", alignItems: row.items.length > 1 ? "stretch" : "flex-start", overflow: "visible" }}>
+            {row.items.map((item, itemIndex) => {
               const shown = homeCard(db, item.id, item.id === "weather" ? forecast : null);
               const face = homeFace(db, item.id, item.id === "weather" ? forecast : null);
               const title = presetTileTitle(item.id);
               const slot = cursor;
               cursor += 1;
               const full = flexes[itemIndex]?.span === 2;
+              const nudge = drag ? neighborShift(slot, drag.from, drag.to) : 0;
+              const marked = !!drag && drag.to === slot && drag.from !== slot;
+              const cardStyle = full ? undefined : { flex: 1, justifyContent: "space-between" as const };
               const body = item.id === "weather" && city ? (
                 <WeatherCard place={city} testID={`today-slot-${item.id}`} />
               ) : item.id === "heading" ? (
                 <HeadingTile testID={`today-slot-${item.id}`} />
               ) : (
-                <Card testID={`today-slot-${item.id}`}>
+                <Card testID={`today-slot-${item.id}`} style={cardStyle}>
                     <Eyebrow>{face.eyebrow || title}</Eyebrow>
                     {item.id === "attention" && face.counts ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
@@ -223,17 +237,25 @@ export function PresetGrid({
                   enabled={canMove}
                   reduced={reduced}
                   frames={frames}
+                  nudge={nudge}
+                  marked={marked}
                   onOpen={() => open(item.id, face.route || shown.route)}
                   onMeasure={remember}
                   onCommit={commitMove}
-                  onLift={() => onDraggingRef.current?.(true)}
+                  onLift={() => {
+                    onDraggingRef.current?.(true);
+                    setDrag({ from: slot, to: slot });
+                  }}
+                  onDragPoint={(x, y) => point(slot, x, y)}
                   onSettle={settle}
                   onResize={(request) => changeWidth(item.id, item.size, request)}
                 >
                   {body}
                 </HeldTile>
               );
-        });
+            })}
+          </View>
+        );
       })}
       </View>
     </View>
@@ -260,10 +282,13 @@ function HeldTile({
   enabled,
   reduced,
   frames,
+  nudge,
+  marked,
   onOpen,
   onMeasure,
   onCommit,
   onLift,
+  onDragPoint,
   onSettle,
   onResize,
   children,
@@ -274,16 +299,21 @@ function HeldTile({
   enabled: boolean;
   reduced: boolean;
   frames: { current: TileBox[] };
+  nudge: -1 | 0 | 1;
+  marked: boolean;
   onOpen: () => void;
   onMeasure: (index: number, box: TileBox) => void;
   onCommit: (from: number, to: number) => void;
   onLift: () => void;
+  onDragPoint: (x: number, y: number) => void;
   onSettle: () => void;
   onResize: (request: "large" | "small" | "flip") => void;
   children: React.ReactNode;
 }) {
+  const { colors } = useTheme();
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
+  const aside = useSharedValue(0);
   const scale = useSharedValue(1);
   const lifted = useSharedValue(0);
   const reducedSv = useSharedValue(reduced ? 1 : 0);
@@ -299,6 +329,9 @@ function HeldTile({
     settle: () => {},
   });
   const callLift = useRef(() => api.current.lift()).current;
+  const dragRef = useRef(onDragPoint);
+  dragRef.current = onDragPoint;
+  const callMove = useRef((x: number, y: number) => dragRef.current(x, y)).current;
   const callRelease = useRef((x: number, y: number) => api.current.release(x, y)).current;
   const callCancel = useRef(() => api.current.cancel()).current;
   const callOpen = useRef(() => api.current.open()).current;
@@ -306,6 +339,10 @@ function HeldTile({
   useEffect(() => () => {
     alive.current = false;
   }, []);
+  useEffect(() => {
+    const target = nudge * 18;
+    aside.value = reduced ? target : withSpring(target, { damping: 16, stiffness: 180 });
+  }, [aside, nudge, reduced]);
   useLayoutEffect(() => {
     const frame = requestAnimationFrame(() => {
       host.current?.measureInWindow((x, y, w, h) => {
@@ -367,7 +404,7 @@ function HeldTile({
     onCommit(from, to);
   };
   const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
+    transform: [{ translateX: tx.value + aside.value }, { translateY: ty.value }, { scale: scale.value }],
     zIndex: lifted.value > 0 ? 20 : 0,
     elevation: lifted.value > 0 ? 12 : 0,
   }));
@@ -387,6 +424,7 @@ function HeldTile({
       .onUpdate((event) => {
         tx.value = event.translationX;
         ty.value = event.translationY;
+        runOnJS(callMove)(event.absoluteX, event.absoluteY);
       })
       .onEnd((event) => {
         runOnJS(callRelease)(event.absoluteX, event.absoluteY);
@@ -403,12 +441,12 @@ function HeldTile({
       if (success) runOnJS(callOpen)();
     });
     return Gesture.Exclusive(pan, tap);
-  }, [callCancel, callLift, callOpen, callRelease, enabled, lifted, reducedSv, scale, tx, ty]);
+  }, [callCancel, callLift, callMove, callOpen, callRelease, enabled, lifted, reducedSv, scale, tx, ty]);
   return (
     <View
       ref={host}
       collapsable={false}
-      style={{ width: full ? "100%" : "50%", paddingHorizontal: gap, marginBottom: gap * 2, overflow: "visible", zIndex: hot ? 4 : 0, elevation: hot ? 12 : 0 }}
+      style={{ flex: full ? undefined : 1, width: full ? "100%" : undefined, alignSelf: "stretch", paddingHorizontal: gap, marginBottom: gap * 2, overflow: "visible", zIndex: hot ? 4 : 0, elevation: hot ? 12 : 0 }}
       onLayout={() => {
         host.current?.measureInWindow((x, y, w, h) => {
           if (w <= 0 || h <= 0) return;
@@ -417,7 +455,7 @@ function HeldTile({
       }}
     >
       <GestureDetector gesture={gesture}>
-        <Animated.View style={[{ flex: 1 }, style]}>{children}</Animated.View>
+        <Animated.View style={[{ flex: full ? undefined : 1, borderRadius: 16, borderWidth: marked ? 2 : 0, borderColor: colors.brandPrimary, borderStyle: "dashed" }, style]}>{children}</Animated.View>
       </GestureDetector>
       <TileWidth onResize={onResize} />
     </View>
@@ -476,15 +514,28 @@ export function SwipeHome({
 }) {
   const { width } = useWindowDimensions();
   const { sp } = useTheme();
-  const { setSettings } = useStore();
-  const circle = swipeScreens(preset);
-  const pages = swipePages(preset);
+  const { db, setSettings } = useStore();
+  const catalog = swipeScreens(preset);
+  const openIds = openBoards(db);
+  const circle = catalog.filter((id) => openIds.includes(id));
+  const pages = circle[0] ? [...circle, circle[0]] : catalog;
   const pageW = Math.min(width, 720);
   const [frameH, setFrameH] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const pageRefs = useRef<Array<ScrollView | null>>([]);
+  const pageOffset = useRef<number[]>([]);
+  const pageBox = useRef<{ y: number; h: number }[]>([]);
   const fromSwipe = useRef(false);
-  const start = swipeStartIndex(preset);
+  const start = Math.max(0, circle.indexOf(catalog[swipeStartIndex(preset)] ?? preset));
+  const followFinger = (index: number, y: number) => {
+    const box = pageBox.current[index];
+    if (!box) return;
+    const delta = edgeScrollDelta(y, box.y, box.h);
+    if (!delta) return;
+    const next = Math.max(0, (pageOffset.current[index] ?? 0) + delta);
+    pageOffset.current[index] = next;
+    pageRefs.current[index]?.scrollTo({ y: next, animated: false });
+  };
   const lockScroll = (locked: boolean) => {
     scrollRef.current?.setNativeProps({ scrollEnabled: !locked });
     for (const row of pageRefs.current) row?.setNativeProps({ scrollEnabled: !locked });
@@ -522,8 +573,22 @@ export function SwipeHome({
     >
       {pages.map((page, index) => (
         <View key={`${page}-${index}`} style={{ width: pageW, height: frameH || undefined }}>
-          <ScrollView ref={(node) => { pageRefs.current[index] = node; }} nestedScrollEnabled style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 24, gap: sp.md, overflow: "visible" }}>
-            {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} onDragging={lockScroll} />}
+          <ScrollView
+            ref={(node) => { pageRefs.current[index] = node; }}
+            nestedScrollEnabled
+            scrollEventThrottle={16}
+            onScroll={(event) => { pageOffset.current[index] = event.nativeEvent.contentOffset.y; }}
+            onLayout={(event) => {
+              const height = event.nativeEvent.layout.height;
+              event.currentTarget.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+                if (h > 0) pageBox.current[index] = { y, h };
+                else if (height > 0) pageBox.current[index] = { y: 0, h: height };
+              });
+            }}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 24, gap: sp.md, overflow: "visible" }}
+          >
+            {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} onDragging={lockScroll} onDragY={(y) => followFinger(index, y)} />}
             {below ? below(page) : null}
           </ScrollView>
         </View>

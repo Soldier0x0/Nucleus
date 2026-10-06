@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts, radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { monthKey, monthLabel, todayISO } from "@/src/core/format";
-import { BUDDY_EMOJIS, buddyTitle, dayInWindow, estimateLine, forecast, markEnd, markStart, packingTarget, rememberPeriod, setBuddy, togglePacked, typicalCompare } from "@/src/core/cycle";
+import { BUDDY_EMOJIS, SAMPLE_BUDDY_NOTE, buddyTitle, changeOvertimeLine, dayInWindow, estimateLine, forecast, markEnd, markStart, packingTarget, rememberPeriod, rematchLine, saveBuddyIntro, setBuddy, skipBuddyIntro, togglePacked, typicalCompare } from "@/src/core/cycle";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Icon, Press, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
@@ -32,6 +32,8 @@ export default function CycleScreen() {
   const [pastEnd, setPastEnd] = useState("");
   const [name, setName] = useState(db.cycle.buddyName);
   const [emoji, setEmoji] = useState(db.cycle.buddyEmoji);
+  const [introNote, setIntroNote] = useState(db.cycle.buddyNote || SAMPLE_BUDDY_NOTE);
+  const showIntro = real && on && db.cycle.buddyIntroSeen !== true && !db.cycle.buddyName;
 
   useEffect(() => {
     if (real && !on) router.replace("/");
@@ -79,7 +81,10 @@ export default function CycleScreen() {
           <T v="label" style={{ marginTop: 8 }} numberOfLines={1}>
             {db.cycle.buddyName || "Name a buddy"}
           </T>
+          {db.cycle.buddyNote ? <T muted testID="cycle-buddy-note" style={{ textAlign: "center", marginTop: 4 }}>{db.cycle.buddyNote}</T> : null}
         </Press>
+        {rematchLine(db.cycle) ? <T muted testID="cycle-rematch" style={{ textAlign: "center", marginBottom: 8 }}>{rematchLine(db.cycle)}</T> : null}
+        {changeOvertimeLine(db.cycle) ? <T testID="cycle-overtime" style={{ textAlign: "center", marginBottom: 8 }}>{changeOvertimeLine(db.cycle)}</T> : null}
 
         <T testID="cycle-window" v="title" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={{ textAlign: "center", marginBottom: 8 }}>
           {line}
@@ -163,6 +168,22 @@ export default function CycleScreen() {
         <Button label="Flow, symptoms, stash" kind="ghost" testID="cycle-more" style={{ marginTop: 10 }} onPress={() => router.push({ pathname: "/cycle/more", params: { date: selected } })} />
       </ScrollView>
 
+      <Sheet
+        visible={showIntro}
+        onClose={() => update((d) => ({ ...d, cycle: skipBuddyIntro(d.cycle) }))}
+        title="A buddy, if you want one"
+        testID="cycle-buddy-intro"
+        footer={
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Button kind="ghost" label="Skip" testID="cycle-buddy-skip" style={{ flex: 1 }} onPress={() => update((d) => ({ ...d, cycle: skipBuddyIntro(d.cycle) }))} />
+            <Button label="Save" testID="cycle-buddy-intro-save" style={{ flex: 1 }} onPress={() => update((d) => ({ ...d, cycle: saveBuddyIntro(d.cycle, name, emoji, introNote) }))} />
+          </View>
+        }
+      >
+        <T style={{ marginBottom: 8 }}>Cycle works on its own. A buddy is only a name for reminders. You can change this note.</T>
+        <Field label="Note" testID="cycle-buddy-intro-note" value={introNote} onChangeText={setIntroNote} />
+        <Field label="Name" testID="cycle-buddy-intro-name" value={name} onChangeText={setName} placeholder="Optional" autoCapitalize="words" />
+      </Sheet>
       <Sheet visible={buddyOpen} onClose={() => setBuddyOpen(false)} title="Buddy" testID="cycle-buddy-sheet" footer={<Button label="Save" testID="cycle-buddy-save" onPress={saveBuddy} />}>
         <Field label="Name" testID="cycle-buddy-name" value={name} onChangeText={setName} placeholder="Mango" autoCapitalize="words" />
         <T muted style={{ marginBottom: 8 }}>This picture stays in the app. A reminder only says the name.</T>
