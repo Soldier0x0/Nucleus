@@ -10,6 +10,13 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.4
+
+- Fixed PDF open so insurance and other vault PDFs show pages offline again (local cache write checks and PDF viewer cache flag).
+- Fixed missing-file PDF paths so a broken `file://` shows an error instead of a blank failure.
+- Added Settings **Allow screen sharing** (off by default) so Discord/WhatsApp can capture the screen when demoing; privacy note in the row.
+- Changed screenshot privacy copy to match the new wording.
+
 ## v0.9.3
 
 - Fixed the document viewer hang so PDFs and images open offline again (directory create, error state before the spinner, and large PDF paths under Documents/papers).
