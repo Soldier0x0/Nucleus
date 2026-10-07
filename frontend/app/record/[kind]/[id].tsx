@@ -7,9 +7,11 @@ import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity, getEntity, SERVICE_LABEL } from "@/src/core/actions";
 import { setFuelFacts } from "@/src/core/fuelCapture";
-import type { EntityKind } from "@/src/core/types";
+import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
+import type { EntityKind, Paper } from "@/src/core/types";
 import { fmtDate, money, num } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
+import { DocumentContent } from "@/src/components/DocumentContent";
 import { Button, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { DateField, Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
@@ -94,7 +96,73 @@ export default function RecordDetail() {
             }}
           />
         ) : null}
-        {kind === "txn" && e.photo ? <Image source={{ uri: e.photo }} style={{ width: "100%", height: 180, borderRadius: radius.lg, marginTop: 12 }} contentFit="cover" /> : null}
+        {kind === "txn" && e.photo ? (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            <Image source={{ uri: e.photo }} style={{ width: "100%", height: 180, borderRadius: radius.lg }} contentFit="cover" />
+            <Button
+              small
+              kind="ghost"
+              label="Remove photo"
+              testID="txn-photo-clear-saved"
+              onPress={() => update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }))}
+            />
+          </View>
+        ) : null}
+        {kind === "service" && e.billFile ? (
+          <View style={{ marginTop: 12, gap: 8 }} testID="service-bill-detail">
+            <Eyebrow>Service bill</Eyebrow>
+            <View style={{ height: 280, borderRadius: radius.lg, overflow: "hidden" }}>
+              <DocumentContent
+                paper={{ id: `svc-${id}`, kind: "other", title: "Bill", createdAt: e.date, file: e.billFile, mime: e.billMime } as Paper}
+                testID="service-bill-viewer"
+              />
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <Button
+                small
+                kind="ghost"
+                label="Remove bill"
+                testID="service-bill-clear-saved"
+                onPress={() =>
+                  update((d) => ({
+                    ...d,
+                    services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)),
+                  }))
+                }
+              />
+              <Button
+                small
+                kind="secondary"
+                icon="image-outline"
+                label="Replace photo"
+                testID="service-bill-replace-photo"
+                onPress={async () => {
+                  const next = await pickPaperPhoto();
+                  if (!next || typeof next === "string") return;
+                  update((d) => ({
+                    ...d,
+                    services: d.services.map((row) => (row.id === id ? { ...row, billFile: next.uri, billMime: next.mime } : row)),
+                  }));
+                }}
+              />
+              <Button
+                small
+                kind="secondary"
+                icon="file-pdf-box"
+                label="Replace PDF"
+                testID="service-bill-replace-pdf"
+                onPress={async () => {
+                  const next = await pickPaperDocument();
+                  if (!next || typeof next === "string") return;
+                  update((d) => ({
+                    ...d,
+                    services: d.services.map((row) => (row.id === id ? { ...row, billFile: next.uri, billMime: next.mime } : row)),
+                  }));
+                }}
+              />
+            </View>
+          </View>
+        ) : null}
         <LinkedSection refTo={{ kind, id }} />
       </ScrollView>
       <Sheet visible={fuelEdit && kind === "fuel"} onClose={() => setFuelEdit(false)} title="Fill details" testID="fuel-edit-sheet" footer={<Button label="Save" testID="fuel-edit-save" onPress={() => {

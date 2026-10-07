@@ -10,6 +10,14 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.3
+
+- Fixed the document viewer hang so PDFs and images open offline again (directory create, error state before the spinner, and large PDF paths under Documents/papers).
+- Fixed paper delete with a confirm step from the list, preview, and vehicle document view, plus edit again when a file is already attached.
+- Fixed missing clear or remove on service bills, money and receipt photos, and utility bill photos after save.
+- Changed image open so base64 images use the data URI directly instead of writing a cache file.
+- Changed dependency set by dropping unused WebView left after the PDF viewer switch.
+
 ## v0.9.2
 
 - Fixed the document viewer so insurance PDFs and images open on the phone with pinch zoom instead of a white screen.

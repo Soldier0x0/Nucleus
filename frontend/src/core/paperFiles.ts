@@ -1,7 +1,8 @@
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import { readAsStringAsync, EncodingType } from "expo-file-system/legacy";
+import type { Paper } from "./types";
 const MAX_IMAGE_B64 = 180_000;
 const MAX_PDF_BYTES = 2_400_000;
 
@@ -17,19 +18,37 @@ async function readFileBase64(uri: string): Promise<string | null> {
   }
 }
 
+function ensurePapersDocumentDir(): Directory {
+  const dir = new Directory(Paths.document, "papers");
+  if (!dir.exists) dir.create();
+  return dir;
+}
+
+/** Best-effort delete of on-disk paper overflow files (not data: vault blobs). */
+export function bestEffortDeletePaperFiles(paper: Paper): void {
+  for (const uri of [paper.file, paper.photo]) {
+    if (!uri?.startsWith("file:")) continue;
+    try {
+      const file = new File(uri);
+      if (file.exists) file.delete();
+    } catch {
+      /* missing file is fine */
+    }
+  }
+}
+
 export async function storePaperFile(paperId: string, uri: string, mime: string): Promise<string> {
   if (uri.startsWith("data:")) return uri;
   if (mime === "application/pdf") {
     const b64 = await readFileBase64(uri);
     if (!b64) return uri;
     if (b64.length * 0.75 > MAX_PDF_BYTES) {
-      const dir = new File(Paths.document, "papers");
-      if (!dir.exists) dir.create();
+      const dir = ensurePapersDocumentDir();
       const dest = new File(dir, `${paperId}.pdf`);
       if (dest.exists) dest.delete();
       dest.create();
       const src = new File(uri);
-      dest.write(src);
+      src.copySync(dest);
       return dest.uri;
     }
     return `data:application/pdf;base64,${b64}`;
