@@ -380,7 +380,19 @@ export default function Settings() {
           <Row icon="content-copy" label="Clear clipboard after copying" sub="Wipes copied amounts after a minute" right={<Switch testID="settings-clipboard-switch" value={s.clipboardAutoClear} onValueChange={(v) => setSettings({ clipboardAutoClear: v })} {...sw} />} />
           <Row icon="eye-off-outline" label="Privacy mode" sub="Mask every amount until tapped" right={<Switch testID="settings-privacy-switch" value={s.privacyMode} onValueChange={(v) => setSettings({ privacyMode: v })} {...sw} />} />
           <Row icon="shield-account-outline" label="Privacy and usage" sub="What stays on this phone" testID="settings-privacy-usage" onPress={() => router.push("/privacy")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
-          <Row icon="cellphone-screenshot" label="Block screenshots & hide in recents" sub="Installed app only" right={<Switch testID="settings-screenshot-switch" value={s.blockScreenshots} onValueChange={(v) => setSettings({ blockScreenshots: v })} {...sw} />} />
+          <Row
+            icon="cellphone-screenshot"
+            label="Allow screen sharing"
+            sub="Off by default. When on, Discord, WhatsApp, and screenshots can show this screen. Turn off after demos."
+            right={
+              <Switch
+                testID="settings-screenshot-switch"
+                value={!s.blockScreenshots}
+                onValueChange={(v) => setSettings({ blockScreenshots: !v })}
+                {...sw}
+              />
+            }
+          />
         </Section>
 
         <Section title="Emergency card">

@@ -25,6 +25,30 @@ export function attachmentNeedsViewerMaterialize(uri: string, mime: string): boo
   return mime === "application/pdf";
 }
 
+/** Strip line wraps and spaces from a data-URI base64 payload before decode/write. */
+export function stripDataUriBase64(b64: string): string {
+  return b64.replace(/\s+/g, "");
+}
+
+/** True when decoded head starts with the PDF magic bytes. */
+export function looksLikePdfMagicFromBase64(b64: string): boolean {
+  const stripped = stripDataUriBase64(b64);
+  if (stripped.length < 4) return false;
+  if (typeof atob !== "function") return false;
+  try {
+    let head = stripped.slice(0, 12);
+    while (head.length % 4 !== 0) head += "=";
+    return atob(head).startsWith("%PDF");
+  } catch {
+    return false;
+  }
+}
+
+/** Persisted setting: Allow screen sharing ON means blockScreenshots is false. */
+export function allowScreenSharing(blockScreenshots: boolean): boolean {
+  return !blockScreenshots;
+}
+
 export function paperBadge(paper: Paper): "PDF" | "Image" | null {
   const uri = paperAttachmentUri(paper);
   if (!uri) return null;

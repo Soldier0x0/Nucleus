@@ -10,5 +10,5 @@ export const PRIVACY_PERMISSIONS: { name: string; line: string }[] = [
   { name: "Notification access", line: "Reads bank lines from Google Pay, PhonePe, and bank notifications once you turn access on. Codes are dropped. Nucleus does not turn the permission on." },
   { name: "Photos", line: "A picture you choose for a receipt, a bill, or a cover. The picture stays in the file on this phone." },
   { name: "Location", line: "One reading for weather, then it stops. Nucleus cannot turn the phone's location switch on or off." },
-  { name: "Screenshots", line: "While Block screenshots is on, this app stays out of screenshots and the recent-apps list. A screenshot while the phone is unlocked does not ask for a PIN." },
+  { name: "Screenshots", line: "Allow screen sharing is off by default so Discord, WhatsApp, screenshots, and the recent-apps list stay blocked. Turn it on only while demoing, then turn it off again. A screenshot while the phone is unlocked does not ask for a PIN." },
 ];
