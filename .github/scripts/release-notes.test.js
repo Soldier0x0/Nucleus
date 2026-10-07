@@ -72,7 +72,7 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.5", changelogPath), /Two tones/);
   assert.match(readReleaseNotes("v0.5", changelogPath), /bullet points/);
   const changelog = fs.readFileSync(changelogPath, "utf8");
-  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9"]) {
+  for (const tag of ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9", "v0.9.1"]) {
     assert.equal(prepareRelease({ changelog, tag }).publish, true, tag);
   }
   assert.match(readReleaseNotes("v0.6", changelogPath), /Empty modules stay hidden/);
@@ -99,10 +99,11 @@ test("the repository changelog records published versions and the cycle calendar
   assert.equal(prepareRelease({ changelog, tag: "v0.8.2" }).publish, true);
   assert.equal(prepareRelease({ changelog, tag: "v0.8.3" }).publish, true);
   assert.equal(prepareRelease({ changelog, tag: "v0.9" }).publish, true);
+  assert.equal(prepareRelease({ changelog, tag: "v0.9.1" }).publish, true);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.5" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.1" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.4" }), { publish: false, reason: "missing" });
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.9.1" }), { publish: false, reason: "missing" });
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.9.2" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.10" }), { publish: false, reason: "missing" });
   assert.match(readReleaseNotes("v0.7", changelogPath), /Activa · 5\.6 L/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /last board wraps to the first/);
@@ -178,11 +179,13 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.9", changelogPath), /Paper stays the default/);
   assert.match(readReleaseNotes("v0.9", changelogPath), /Do not uninstall/);
   assert.doesNotMatch(changelogSection(changelog, "v0.9"), /overdue|\bmissed\b|behind|\blate\b|\bfail/i);
+  assert.match(readReleaseNotes("v0.9.1", changelogPath), /PDF/);
+  assert.match(readReleaseNotes("v0.9.1", changelogPath), /Vehicle and Travel/);
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.9",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3"],
+      tag: "v0.9.1",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9"],
     }),
   );
 });

@@ -1,8 +1,15 @@
 import { billCardCopy } from "./bills";
 import { documentCardCopy } from "./documents";
 import { money, monthKey, todayISO } from "./format";
-import { attentionItems } from "./intelligence";
+import { attentionItems, vehicleStats } from "./intelligence";
+import { vehicleOwnership } from "./life";
 import { balanceOverTime, monthFlow, repeatingBills } from "./moneyDesk";
+import { parseTransitTileId, publicTransitSpend, transitSpendLine } from "./travelSpend";
+import { transitLabel } from "./transit";
+import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath";
+import { paperForVehicleDocTile, vehicleDocTileLines, vehicleDocTileTitle, type VehicleDocTileId } from "./vehicleDocs";
+import { lowStash } from "./cycle";
+import { formatWaterTime } from "./water";
 import type { DB } from "./types";
 
 export type HomeForecast = { temp: number; label: string };
@@ -39,6 +46,19 @@ const ICONS: Record<string, string> = {
   stops: "map-marker-outline",
   packing: "bag-checked",
   heading: "compass-outline",
+  costkm: "currency-inr",
+  fueltank: "gas-station-outline",
+  servleft: "wrench-clock",
+  transitmetro: "train",
+  transittrain: "train-variant",
+  transitcab: "taxi",
+  transitbus: "bus",
+  water: "cup-water",
+  cyclestash: "package-variant",
+  "vdoc-motor": "shield-car",
+  "vdoc-pa": "account-injury",
+  "vdoc-puc": "smoke",
+  "vdoc-rsa": "car-wrench",
   maintenance: "home-outline",
   chores: "checkbox-marked-outline",
   appliances: "washing-machine",
@@ -135,6 +155,54 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
     case "route": {
       const trip = [...db.trips].sort((a, b) => a.start.localeCompare(b.start))[0];
       return card("Route", id, trip ? [trip.name, trip.destination] : ["0"], trip ? `/travel/${trip.id}` : "/travel");
+    }
+    case "transitmetro":
+    case "transittrain":
+    case "transitcab":
+    case "transitbus": {
+      const kind = parseTransitTileId(id);
+      if (!kind) return card("Transit", id, ["—"], "/travel");
+      const month = monthKey(today);
+      const line = transitSpendLine(db, month, kind);
+      const total = publicTransitSpend(db, month, kind);
+      return card(transitLabel(kind), id, [total > 0 ? money(total, cur) : line], "/money");
+    }
+    case "costkm": {
+      const vehicle = db.vehicles[0];
+      const own = vehicle ? vehicleOwnership(db, vehicle.id) : null;
+      const line = own ? costPerKmLine(own.perKm, db.settings.distanceUnit) : null;
+      return card("Cost / km", id, [line ?? "Log fuel and distance"], vehicle ? `/vehicles/${vehicle.id}` : "/vehicles");
+    }
+    case "fueltank": {
+      const vehicle = db.vehicles[0];
+      const last = vehicle ? db.fuel.filter((row) => row.vehicleId === vehicle.id).sort((a, b) => b.date.localeCompare(a.date))[0] : undefined;
+      const line = vehicle?.tankLitres && last ? fuelAgainstTank(last.litres, vehicle.tankLitres).line : "Set a tank size";
+      return card("Fuel vs tank", id, [line], vehicle ? `/vehicles/${vehicle.id}` : "/vehicles");
+    }
+    case "servleft": {
+      const vehicle = db.vehicles[0];
+      const line = vehicle ? serviceLeftLine(vehicleStats(db, vehicle).service.remaining) : "No vehicle yet";
+      return card("Service left", id, [line], vehicle ? `/vehicles/${vehicle.id}` : "/vehicles");
+    }
+    case "water": {
+      const next = db.water.times[0];
+      const lines = next ? [formatWaterTime(next.hour, next.minute, db.settings.timeFormat)] : ["No reminder yet"];
+      return card("Water", id, lines, "/health");
+    }
+    case "cyclestash": {
+      const lows = lowStash(db.cycle);
+      return card("Stash", id, lows.length ? [`${lows.length} running low`] : ["Looks fine"], "/cycle/more");
+    }
+    case "vdoc-motor":
+    case "vdoc-pa":
+    case "vdoc-puc":
+    case "vdoc-rsa": {
+      const vehicle = db.vehicles[0];
+      const tile = id as VehicleDocTileId;
+      const paper = vehicle ? paperForVehicleDocTile(db, vehicle.id, tile) : undefined;
+      const lines = vehicle ? vehicleDocTileLines(db, vehicle.id, tile, today) : ["No vehicle"];
+      const route = paper ? `/papers/view?id=${paper.id}` : "/papers";
+      return card(vehicleDocTileTitle(tile), id, lines, route);
     }
     case "mileage": {
       const last = db.fuel[db.fuel.length - 1];

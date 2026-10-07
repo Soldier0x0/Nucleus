@@ -5,13 +5,17 @@ import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { missingDocumentNames } from "@/src/core/documents";
 import { PAPER_KINDS } from "@/src/core/life";
-import type { Paper, Person } from "@/src/core/types";
+import type { MotorCover, Paper, Person } from "@/src/core/types";
 import { daysBetween, fmtDate, todayISO, uid } from "@/src/core/format";
+import { extractFromPdfDataUri, mergeExtract } from "@/src/core/paperExtract";
+import { paperAttachmentUri, storePaperFile } from "@/src/core/paperFiles";
+import { applyMotorXor, syncVehicleExpiryFields } from "@/src/core/vehicleDocs";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, StatusBadge, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
 import { DateField, Field } from "@/src/components/inputs";
-import { PhotoNote } from "@/src/components/PhotoPick";
+import { PaperAttach, paperBadgeForRow } from "@/src/components/PaperAttach";
+import { DocViewer } from "@/src/components/DocViewer";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
@@ -21,6 +25,7 @@ export default function Papers() {
   const insets = useSafeAreaInsets();
   const [edit, setEdit] = useState<Paper | "new" | null>(null);
   const [person, setPerson] = useState<Person | "new" | null>(null);
+  const [preview, setPreview] = useState<Paper | null>(null);
   const today = todayISO();
   const missing = missingDocumentNames(db);
 
@@ -51,17 +56,22 @@ export default function Papers() {
           </Card>
         ) : null}
         {db.papers.length === 0 ? (
-          <EmptyState testID="papers-empty" icon="file-document-outline" title="No papers yet" body="A driving licence, RC, insurance page or passport. The date feeds Attention. The photo stays on this phone." action={<Button label="Add a paper" icon="plus" testID="papers-empty-add" onPress={() => setEdit("new")} />} />
+          <EmptyState testID="papers-empty" icon="file-document-outline" title="No papers yet" body="A driving licence, RC, insurance page or passport. The date feeds Attention. The file stays on this phone." action={<Button label="Add a paper" icon="plus" testID="papers-empty-add" onPress={() => setEdit("new")} />} />
         ) : (
           db.papers.map((p) => {
             const days = p.expiry ? daysBetween(today, p.expiry) : undefined;
             const who = db.people.find((x) => x.id === p.personId)?.name;
+            const badge = paperBadgeForRow(p);
+            const open = () => {
+              if (paperAttachmentUri(p)) setPreview(p);
+              else setEdit(p);
+            };
             return (
-              <Card key={p.id} testID={`paper-${p.id}`} onPress={() => setEdit(p)}>
+              <Card key={p.id} testID={`paper-${p.id}`} onPress={open}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ flex: 1 }}>
                     <T v="h2" numberOfLines={1}>{p.title}</T>
-                    <T muted style={{ fontSize: 12 }} numberOfLines={1}>{[PAPER_KINDS.find((k) => k.id === p.kind)?.label, who, p.number].filter(Boolean).join(" · ")}</T>
+                    <T muted style={{ fontSize: 12 }} numberOfLines={1}>{[PAPER_KINDS.find((k) => k.id === p.kind)?.label, who, p.number, badge].filter(Boolean).join(" · ")}</T>
                   </View>
                   {days !== undefined ? <StatusBadge severity={days < 0 ? "urgent" : days <= 30 ? "upcoming" : "ok"} /> : null}
                 </View>
@@ -73,6 +83,7 @@ export default function Papers() {
       </ScrollView>
       {edit ? <PaperSheet paper={edit === "new" ? undefined : edit} onClose={() => setEdit(null)} /> : null}
       {person ? <PersonSheet person={person === "new" ? undefined : person} onClose={() => setPerson(null)} /> : null}
+      {preview ? <DocViewer paper={preview} visible onClose={() => setPreview(null)} /> : null}
       <ModuleGate id="papers" name="Documents" icon="file-document-outline" />
     </View>
   );
@@ -104,37 +115,57 @@ function PersonSheet({ person, onClose }: { person?: Person; onClose: () => void
 function PaperSheet({ paper, onClose }: { paper?: Paper; onClose: () => void }) {
   const { db, update } = useStore();
   const toast = useToast();
+  const paperId = paper?.id ?? uid();
   const [f, setF] = useState({
     kind: paper?.kind ?? ("licence" as Paper["kind"]),
     title: paper?.title ?? "",
     number: paper?.number ?? "",
     expiry: paper?.expiry,
     note: paper?.note ?? "",
-    photo: paper?.photo,
+    file: paper?.file ?? paper?.photo,
+    mime: paper?.mime,
+    motorCover: paper?.motorCover,
+    rsaAddOn: paper?.rsaAddOn === true,
+    insurer: paper?.insurer ?? "",
     personId: paper?.personId,
     vehicleId: paper?.vehicleId,
   });
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
-  const save = () => {
+  const save = async () => {
     if (!f.title.trim()) return toast("Name the paper", "file-document-outline");
-    const next: Paper = {
-      id: paper?.id ?? uid(),
+    let storedFile = f.file;
+    if (storedFile && f.mime) storedFile = await storePaperFile(paperId, storedFile, f.mime);
+    let draft: Paper = {
+      id: paperId,
       createdAt: paper?.createdAt ?? new Date().toISOString(),
       kind: f.kind,
       title: f.title.trim(),
       number: f.number.trim() || undefined,
       expiry: f.expiry,
       note: f.note.trim() || undefined,
-      photo: f.photo,
+      file: storedFile,
+      mime: f.mime,
       personId: f.personId,
       vehicleId: f.vehicleId,
+      insurer: f.insurer.trim() || undefined,
     };
-    update((d) => ({ ...d, papers: d.papers.some((p) => p.id === next.id) ? d.papers.map((p) => (p.id === next.id ? next : p)) : [next, ...d.papers] }));
+    if (f.kind === "insurance" && f.vehicleId && f.motorCover) {
+      draft.motorCover = f.motorCover;
+      draft.rsaAddOn = f.rsaAddOn;
+    }
+    if (storedFile?.startsWith("data:application/pdf")) draft = mergeExtract(draft, extractFromPdfDataUri(storedFile));
+    update((d) => {
+      let papers = applyMotorXor(d, draft);
+      let next = { ...d, papers };
+      if (draft.vehicleId) next = syncVehicleExpiryFields(next, draft.vehicleId);
+      return next;
+    });
     toast(paper ? "Paper updated" : "Paper saved", "file-document-outline");
     onClose();
   };
+  const motor = f.kind === "insurance" && !!f.vehicleId;
   return (
-    <Sheet visible onClose={onClose} title={paper ? "Edit paper" : "Add paper"} testID="paper-sheet" footer={<Button label="Save paper" icon="check" testID="paper-save" onPress={save} />}>
+    <Sheet visible onClose={onClose} title={paper ? "Edit paper" : "Add paper"} testID="paper-sheet" footer={<Button label="Save paper" icon="check" testID="paper-save" onPress={() => save().catch(() => toast("Could not save the file"))} />}>
       <ChipRow testID="paper-kind-row">
         {PAPER_KINDS.map((k) => (
           <Chip key={k.id} label={k.label} selected={f.kind === k.id} testID={`paper-kind-${k.id}`} onPress={() => set({ kind: k.id, title: f.title || k.label })} />
@@ -143,6 +174,18 @@ function PaperSheet({ paper, onClose }: { paper?: Paper; onClose: () => void }) 
       <Field label="Title" testID="paper-title" value={f.title} onChangeText={(t) => set({ title: t })} placeholder="Driving licence" />
       <Field label="Number" testID="paper-number" value={f.number} onChangeText={(t) => set({ number: t })} placeholder="Optional" autoCapitalize="characters" />
       <DateField label="Expiry" optional testID="paper-expiry" value={f.expiry} onChange={(v) => set({ expiry: v })} />
+      {motor ? (
+        <>
+          <Eyebrow style={{ marginBottom: 8 }}>Motor cover</Eyebrow>
+          <ChipRow testID="paper-motor-row">
+            {(["comprehensive", "third-party"] as MotorCover[]).map((cover) => (
+              <Chip key={cover} label={cover === "comprehensive" ? "Comprehensive" : "Third-party"} selected={f.motorCover === cover} testID={`paper-motor-${cover}`} onPress={() => set({ motorCover: cover })} />
+            ))}
+          </ChipRow>
+          <Chip label="Roadside assistance add-on" selected={f.rsaAddOn} testID="paper-rsa" onPress={() => set({ rsaAddOn: !f.rsaAddOn })} />
+          <Field label="Insurer" testID="paper-insurer" value={f.insurer} onChangeText={(t) => set({ insurer: t })} placeholder="Optional" />
+        </>
+      ) : null}
       {db.people.length ? (
         <>
           <Eyebrow style={{ marginBottom: 8 }}>Whose</Eyebrow>
@@ -164,7 +207,13 @@ function PaperSheet({ paper, onClose }: { paper?: Paper; onClose: () => void }) 
         </>
       ) : null}
       <Field label="Note" testID="paper-note" value={f.note} onChangeText={(t) => set({ note: t })} placeholder="Optional" />
-      <PhotoNote uri={f.photo} onChange={(photo) => set({ photo })} testID="paper-photo" />
+      <PaperAttach
+        paperId={paperId}
+        uri={f.file}
+        mime={f.mime}
+        testID="paper-photo"
+        onChange={({ uri, mime }) => set({ file: uri, mime })}
+      />
       {paper ? <Button kind="danger" label="Delete paper" testID="paper-delete" onPress={() => { update((d) => ({ ...d, papers: d.papers.filter((p) => p.id !== paper.id) })); onClose(); }} /> : null}
     </Sheet>
   );

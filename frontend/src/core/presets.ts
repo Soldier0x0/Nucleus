@@ -1,6 +1,8 @@
 import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, ModuleId, TileId } from "./types";
 import { billBoardItems } from "./bills";
 import { documentBoardItems } from "./documents";
+import { vehicleDocBoardItems } from "./vehicleDocs";
+import { isPersonalTrip } from "./transit";
 import { uid } from "./format";
 import { repeatingBills } from "./moneyDesk";
 
@@ -54,14 +56,24 @@ const MONEY: PresetItem[] = [
   { id: "networth", size: "small" },
 ];
 
-const TRAVEL: PresetItem[] = [
-  { id: "route", size: "large" },
+const VEHICLE: PresetItem[] = [
+  { id: "vehicle", size: "large" },
   { id: "mileage", size: "small" },
   { id: "fuel", size: "small" },
-  { id: "papers", size: "small" },
-  { id: "vehicle", size: "small" },
+  { id: "servleft", size: "small" },
+  { id: "costkm", size: "small" },
+  { id: "fueltank", size: "small" },
   { id: "service", size: "small" },
   { id: "range", size: "small" },
+  { id: "papers", size: "small" },
+];
+
+const TRAVEL: PresetItem[] = [
+  { id: "route", size: "large" },
+  { id: "transitmetro", size: "small" },
+  { id: "transittrain", size: "small" },
+  { id: "transitcab", size: "small" },
+  { id: "transitbus", size: "small" },
   { id: "stops", size: "small" },
   { id: "weather", size: "large" },
   { id: "packing", size: "small" },
@@ -73,9 +85,14 @@ const HOME: PresetItem[] = [
   { id: "chores", size: "small" },
   { id: "appliances", size: "small" },
   { id: "notes", size: "small" },
-  { id: "cycle", size: "small" },
   { id: "warranties", size: "small" },
   { id: "utilities", size: "small" },
+];
+
+const HEALTH: PresetItem[] = [
+  { id: "cycle", size: "large" },
+  { id: "water", size: "small" },
+  { id: "cyclestash", size: "small" },
 ];
 
 const DESK: PresetItem[] = [
@@ -99,8 +116,10 @@ const WORKSHOP: PresetItem[] = [
 export const PRESET_CHOICES: { id: HomePresetId; name: string; icon: string }[] = [
   { id: "custom", name: "Custom", icon: "view-dashboard-outline" },
   { id: "money", name: "Money", icon: "wallet-outline" },
-  { id: "travel", name: "Travel", icon: "car-side" },
+  { id: "vehicle", name: "Vehicle", icon: "motorbike" },
+  { id: "travel", name: "Travel", icon: "train-car" },
   { id: "home", name: "Home", icon: "home-outline" },
+  { id: "health", name: "Health", icon: "cup-water" },
   { id: "documents", name: "Documents", icon: "file-document-outline" },
   { id: "bills", name: "Bills", icon: "calendar-clock" },
   { id: "desk", name: "Desk", icon: "book-open-variant" },
@@ -108,7 +127,19 @@ export const PRESET_CHOICES: { id: HomePresetId; name: string; icon: string }[] 
   { id: "adhd", name: "ADHD mode", icon: "circle-outline" },
 ];
 
-const PRESET_IDS: HomePresetId[] = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"];
+const PRESET_IDS: HomePresetId[] = ["custom", "money", "vehicle", "travel", "home", "health", "documents", "bills", "desk", "workshop", "adhd"];
+
+/** Install-over: bike/fuel-only Travel users land on Vehicle; public trips stay on Travel. */
+export function migrateHomePresetOnLoad(raw: unknown, preset: HomePresetId): HomePresetId {
+  if (preset !== "travel") return preset;
+  const bag = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const trips = Array.isArray(bag.trips) ? bag.trips : [];
+  const hasPublic = trips.some((trip) => trip && typeof trip === "object" && !isPersonalTrip(trip as { mode?: string }));
+  const fuel = Array.isArray(bag.fuel) ? bag.fuel : [];
+  const vehicles = Array.isArray(bag.vehicles) ? bag.vehicles : [];
+  if ((fuel.length > 0 || vehicles.length > 0) && !hasPublic) return "vehicle";
+  return "travel";
+}
 
 export function parseHomePreset(raw: unknown): HomePresetId {
   return PRESET_IDS.includes(raw as HomePresetId) ? (raw as HomePresetId) : "custom";
@@ -144,10 +175,14 @@ export function presetItems(preset: HomePresetId): PresetItem[] {
       return [];
     case "money":
       return MONEY;
+    case "vehicle":
+      return VEHICLE;
     case "travel":
       return TRAVEL;
     case "home":
       return HOME;
+    case "health":
+      return HEALTH;
     case "documents":
       return [
         { id: "docgaps", size: "small" },
@@ -242,11 +277,23 @@ export function presetItemHasData(db: DB, id: string): boolean {
       return db.netWorth.length > 0;
     case "route":
       return db.trips.length > 0;
+    case "transitmetro":
+    case "transittrain":
+    case "transitcab":
+    case "transitbus":
+      return db.txns.some((row) => row.type === "expense" && row.category === "Transport");
+    case "costkm":
+    case "fueltank":
+    case "servleft":
     case "mileage":
     case "range":
-      return mileageKnown(db);
+      return mileageKnown(db) || db.fuel.length > 0 || db.vehicles.length > 0;
     case "fuel":
       return db.fuel.length > 0;
+    case "water":
+      return db.water.times.length > 0;
+    case "cyclestash":
+      return db.cycle.stash.some((row) => row.count !== null && row.count > 0);
     case "papers":
       return db.papers.length > 0;
     case "vehicle":
@@ -338,6 +385,13 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   heading: "travel",
   stops: "travel",
   weather: "travel",
+  transitmetro: "travel",
+  transittrain: "travel",
+  transitcab: "travel",
+  transitbus: "travel",
+  costkm: "vehicles",
+  fueltank: "vehicles",
+  servleft: "vehicles",
   mileage: "vehicles",
   fuel: "vehicles",
   vehicle: "vehicles",
@@ -359,7 +413,13 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   appliances: "home",
   utilities: "home",
   warranties: "home",
-  cycle: "cycle",
+  cycle: "health",
+  water: "health",
+  cyclestash: "health",
+  "vdoc-motor": "vehicles",
+  "vdoc-pa": "vehicles",
+  "vdoc-puc": "vehicles",
+  "vdoc-rsa": "vehicles",
   notes: "notes",
   kanban: "kanban",
   wiki: "wiki",
@@ -381,6 +441,10 @@ export function tileModule(id: string): ModuleId | null {
 
 export function withModulesOn(db: DB, items: PresetItem[]): PresetItem[] {
   return items.filter((item) => {
+    if (item.id === "cycle" || item.id === "cyclestash") {
+      const cycleOn = db.settings.modules.find((row) => row.id === "cycle")?.enabled !== false;
+      if (!cycleOn) return false;
+    }
     const moduleId = tileModule(item.id);
     if (!moduleId) return true;
     return db.settings.modules.find((row) => row.id === moduleId)?.enabled !== false;
@@ -422,9 +486,13 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
     case "bills":
       items = billBoardItems(db);
       break;
+    case "vehicle":
+      items = [...presetItems(preset), ...vehicleDocBoardItems(db)];
+      break;
     case "money":
     case "travel":
     case "home":
+    case "health":
     case "adhd":
       items = presetItems(preset);
       break;
@@ -467,6 +535,20 @@ export function presetTileTitle(id: string): string {
       return "Net worth";
     case "route":
       return "Route";
+    case "transitmetro":
+      return "Metro";
+    case "transittrain":
+      return "Train";
+    case "transitcab":
+      return "Cab";
+    case "transitbus":
+      return "Bus";
+    case "costkm":
+      return "Cost / km";
+    case "fueltank":
+      return "Fuel vs tank";
+    case "servleft":
+      return "Service left";
     case "mileage":
       return "Mileage";
     case "fuel":
@@ -517,6 +599,18 @@ export function presetTileTitle(id: string): string {
       return "Notes";
     case "cycle":
       return "Cycle";
+    case "water":
+      return "Water";
+    case "cyclestash":
+      return "Stash";
+    case "vdoc-motor":
+      return "Motor policy";
+    case "vdoc-pa":
+      return "Personal accident";
+    case "vdoc-puc":
+      return "PUC";
+    case "vdoc-rsa":
+      return "Roadside";
     case "warranties":
       return "Warranties";
     case "utilities":
@@ -660,7 +754,7 @@ export function tileHasData(db: DB, id: string): boolean {
   }
 }
 
-export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"];
+export const BOARD_CIRCLE: HomePresetId[] = ["custom", "money", "vehicle", "travel", "home", "health", "documents", "bills", "desk", "workshop", "adhd"];
 
 /** A board with no tiles left after disabled modules are hidden. Custom stays if nothing else is open. */
 export function openBoards(db: DB): HomePresetId[] {
@@ -683,8 +777,10 @@ export function swipeScreens(preset: HomePresetId): HomePresetId[] {
   switch (preset) {
     case "custom":
     case "money":
+    case "vehicle":
     case "travel":
     case "home":
+    case "health":
     case "documents":
     case "bills":
     case "desk":
@@ -719,8 +815,10 @@ export function swipePages(preset: HomePresetId): HomePresetId[] {
 export function showsCustomizeHome(preset: HomePresetId): boolean {
   switch (preset) {
     case "money":
+    case "vehicle":
     case "travel":
     case "home":
+    case "health":
     case "documents":
     case "bills":
       return false;

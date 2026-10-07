@@ -10,6 +10,15 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.1
+
+- Added image and PDF attachments on papers with an in-app viewer that works offline from the stored URI.
+- Changed Vehicle and Travel into separate home boards: fuel, mileage, cost per km, and vehicle docs stay on Vehicle; metro, train, cab, and bus spend stay on Travel.
+- Added vehicle document tiles for motor policy (comprehensive XOR third-party), personal accident, PUC, and roadside assistance only when the add-on is marked.
+- Added a Health home board with Cycle, water reminders, and stash summary; Cycle moved off the Home board.
+- Changed install-over migration so bike-only Travel users land on Vehicle without wiping data.
+- Added tests for transit spend separation, motor XOR, and paper expiry helpers.
+
 ## v0.9
 
 - Changed home pills so a board stays hidden when its module is off.
