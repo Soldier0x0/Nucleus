@@ -2,11 +2,12 @@ import React, { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useStore } from "@/src/core/store";
 import { addFuel, addService, SERVICE_LABEL } from "@/src/core/actions";
-import type { ServiceKind, Vehicle } from "@/src/core/types";
+import type { FuelFillKind, ServiceKind, Vehicle } from "@/src/core/types";
+import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import { money, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { currentOdometer } from "@/src/core/intelligence";
 import { Sheet } from "./Sheet";
-import { DateField, Field } from "./inputs";
+import { DateField, Field, TimeField } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, T } from "./ui";
 import { useToast } from "./Toast";
 import { useTheme } from "@/src/theme";
@@ -22,6 +23,8 @@ export function FuelSheet({ visible, onClose, vehicle }: { visible: boolean; onC
   const [price, setPrice] = useState(lastPrice);
   const [total, setTotal] = useState("");
   const [date, setDate] = useState(todayISO());
+  const [time, setTime] = useState("12:00");
+  const [fillKind, setFillKind] = useState<FuelFillKind>("full");
   const [errs, setErrs] = useState<Record<string, string>>({});
   const s = db.settings;
   const energy = vehicle.fuelType === "electric";
@@ -51,7 +54,19 @@ export function FuelSheet({ visible, onClose, vehicle }: { visible: boolean; onC
     if (isNaN(P) || isNaN(Tt)) e.total = "Enter any two of litres, price, total";
     setErrs(e);
     if (Object.keys(e).length) return;
-    const entry = { id: uid(), vehicleId: vehicle.id, date, odometer: O, litres: Number(L.toFixed(2)), price: Number(P.toFixed(2)), total: Number(Tt.toFixed(2)) };
+    const timeParts = time.match(/^(\d{1,2}):(\d{2})$/);
+    const loggedAt = timeParts ? `${date}T${timeParts[1].padStart(2, "0")}:${timeParts[2]}:00` : undefined;
+    const entry = {
+      id: uid(),
+      vehicleId: vehicle.id,
+      date,
+      ...(loggedAt ? { loggedAt } : {}),
+      fillKind,
+      odometer: O,
+      litres: Number(L.toFixed(2)),
+      price: Number(P.toFixed(2)),
+      total: Number(Tt.toFixed(2)),
+    };
     update((d) => ({ ...addFuel(d, entry), recents: { ...d.recents, [`fuelPrice:${vehicle.id}`]: String(entry.price) } }));
     onClose();
     const linked = s.autoLinkExpenses && s.modules.find((m) => m.id === "money")?.enabled;
@@ -66,7 +81,13 @@ export function FuelSheet({ visible, onClose, vehicle }: { visible: boolean; onC
         <Field style={{ flex: 1 }} numeric label="Price" unit={`/${qtyUnit}`} testID="fuel-price-input" value={derived?.field === "price" ? "" : price} placeholder={derived?.field === "price" ? num(derived.value, 2) : "0.00"} onChangeText={setPrice} />
       </View>
       <Field numeric label="Total paid" unit={s.currency} testID="fuel-total-input" value={derived?.field === "total" ? "" : total} placeholder={derived?.field === "total" ? num(derived.value, 2) : "0.00"} onChangeText={setTotal} error={errs.total} hint={derived ? `Auto-calculated ${derived.field}: ${num(derived.value, 2)} (shown in grey)` : "Enter any two — the third is calculated"} />
+      <Eyebrow style={{ marginBottom: 8 }}>Fill type</Eyebrow>
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+        <Chip label="Full tank" selected={fillKind === "full"} testID="fuel-fill-full" onPress={() => setFillKind("full")} />
+        <Chip label="Partial" selected={fillKind === "partial"} testID="fuel-fill-partial" onPress={() => setFillKind("partial")} />
+      </View>
       <DateField label="Date" value={date} onChange={(v) => setDate(v ?? todayISO())} testID="fuel-date" />
+      <TimeField label="Time" value={time} onChange={setTime} testID="fuel-time" />
       {isFinite(preview) ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 8, backgroundColor: colors.brandTertiary }} testID="fuel-mileage-preview">
           <Icon name="speedometer" size={20} color={colors.onBrandTertiary} />
@@ -113,13 +134,26 @@ export function ServiceSheet({ visible, onClose, vehicle }: { visible: boolean; 
   const [date, setDate] = useState(todayISO());
   const [details, setDetails] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string>();
+  const [billFile, setBillFile] = useState<string | undefined>();
+  const [billMime, setBillMime] = useState<string | undefined>();
 
   const save = () => {
     const O = parseNum(odo);
     if (isNaN(O)) return setErr("Enter the odometer reading");
     const C = cost ? parseNum(cost) : 0;
     const clean = Object.fromEntries(Object.entries(details).filter(([k, v]) => v && KIND_FIELDS[kind].some((f) => f.key === k)));
-    update((d) => addService(d, { id: uid(), vehicleId: vehicle.id, date, odometer: O, kind, cost: isNaN(C) ? 0 : C, details: clean }));
+    update((d) =>
+      addService(d, {
+        id: uid(),
+        vehicleId: vehicle.id,
+        date,
+        odometer: O,
+        kind,
+        cost: isNaN(C) ? 0 : C,
+        details: clean,
+        ...(billFile ? { billFile, billMime } : {}),
+      }),
+    );
     onClose();
     toast(`${SERVICE_LABEL[kind]} logged${C > 0 && s.autoLinkExpenses ? " · expense linked" : ""}`, KIND_ICON[kind]);
   };
@@ -142,6 +176,35 @@ export function ServiceSheet({ visible, onClose, vehicle }: { visible: boolean; 
         <Field key={kind + f.key} label={f.label} testID={`service-detail-${f.key}`} value={details[f.key] ?? ""} placeholder={f.placeholder} onChangeText={(t) => setDetails((d) => ({ ...d, [f.key]: t }))} />
       ))}
       <DateField label="Date" value={date} onChange={(v) => setDate(v ?? todayISO())} testID="service-date" />
+      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+        <Button
+          small
+          kind="secondary"
+          icon="image-outline"
+          label="Bill photo"
+          testID="service-bill-photo"
+          onPress={async () => {
+            const next = await pickPaperPhoto();
+            if (!next || typeof next === "string") return;
+            setBillFile(next.uri);
+            setBillMime(next.mime);
+          }}
+        />
+        <Button
+          small
+          kind="secondary"
+          icon="file-pdf-box"
+          label="Bill PDF"
+          testID="service-bill-pdf"
+          onPress={async () => {
+            const next = await pickPaperDocument();
+            if (!next || typeof next === "string") return;
+            setBillFile(next.uri);
+            setBillMime(next.mime);
+          }}
+        />
+      </View>
+      {billFile ? <T muted style={{ fontSize: 12, marginBottom: 8 }}>Bill attached ({billMime === "application/pdf" ? "PDF" : "image"})</T> : null}
       {kind === "general" || kind === "oil" ? <T muted style={{ fontSize: 12 }}>Counts toward your learned service interval.</T> : null}
     </Sheet>
   );

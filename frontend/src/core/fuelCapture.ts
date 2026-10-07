@@ -41,6 +41,8 @@ export type FuelDraft = {
   odometer?: number;
   date?: string;
   station?: string;
+  fillKind?: "full" | "partial";
+  loggedAt?: string;
 };
 
 export function parseFuelDraft(db: DB, input: string): FuelDraft | null {
@@ -51,6 +53,18 @@ export function parseFuelDraft(db: DB, input: string): FuelDraft | null {
   if (vehicle) rest = rest.replace(new RegExp(vehicle.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), " ");
   const date = rest.match(/\b(\d{4}-\d{2}-\d{2})\b/)?.[1];
   if (date) rest = rest.replace(date, " ");
+  const time = rest.match(/\b(\d{1,2}):(\d{2})\b/)?.[0];
+  let loggedAt: string | undefined;
+  if (time && date) {
+    const [hh, mm] = time.split(":");
+    loggedAt = `${date}T${hh.padStart(2, "0")}:${mm}:00`;
+    rest = rest.replace(time, " ");
+  }
+  const fillKind: "full" | "partial" | undefined = /\b(partial|top[- ]?up|half)\b/i.test(raw)
+    ? "partial"
+    : /\b(full|full tank|tank full|brim)\b/i.test(raw)
+      ? "full"
+      : undefined;
   const stationMatch = rest.match(/\b(?:at|station)\s+([A-Za-z][A-Za-z .'-]{0,32})/i);
   const station = stationMatch?.[1]?.trim().replace(/[.'-]+$/, "");
   if (stationMatch && station) rest = rest.replace(stationMatch[0], " ");
@@ -62,7 +76,7 @@ export function parseFuelDraft(db: DB, input: string): FuelDraft | null {
     .replace(/\b\d+(?:\.\d+)?\s*(?:\/\s*l|per\s*l)\b/gi, " ")
     .replace(/@\s*\d+(?:\.\d+)?/gi, " ")
     .replace(/\b\d+(?:\.\d+)?\s*km\b/gi, " ")
-    .replace(/\b(?:fuel|petrol|diesel|cng|at|station)\b/gi, " ");
+    .replace(/\b(?:fuel|petrol|diesel|cng|at|station|partial|top[- ]?up|full tank|tank full|brim|full|half)\b/gi, " ");
   const nums = [...bare.matchAll(/\b\d+(?:\.\d+)?\b/g)].map((hit) => Number(hit[0])).filter((n) => n > 0);
   let total: number | undefined;
   let odo = odometer;
@@ -82,7 +96,15 @@ export function parseFuelDraft(db: DB, input: string): FuelDraft | null {
   const fuelish = /\b(fuel|petrol|diesel|cng)\b/i.test(raw) || litres != null || rate != null;
   if (!fuelish && !vehicle) return null;
   if (!numbers && !vehicle) return null;
-  return { vehicle, numbers, ...(odo != null ? { odometer: odo } : {}), ...(date ? { date } : {}), ...(station ? { station } : {}) };
+  return {
+    vehicle,
+    numbers,
+    ...(odo != null ? { odometer: odo } : {}),
+    ...(date ? { date } : {}),
+    ...(station ? { station } : {}),
+    ...(fillKind ? { fillKind } : {}),
+    ...(loggedAt ? { loggedAt } : {}),
+  };
 }
 
 function numberBefore(text: string, pattern: RegExp): number | undefined {

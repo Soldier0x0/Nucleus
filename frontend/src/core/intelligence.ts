@@ -6,7 +6,7 @@ import type { DB, Vehicle } from "./types";
 import { homeSchedule, readiness, tripStatus } from "./domains";
 import { lifeAlerts } from "./life";
 import { addDays, addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
-import { serviceLeftLine } from "./vehicleMath";
+import { fuelMileagePoints, serviceLeftLine } from "./vehicleMath";
 
 export type Fact = { label: string; value: string };
 export type Why = { summary: string; facts: Fact[]; rule: string; ranking: string };
@@ -39,11 +39,7 @@ export type MileagePoint = { date: string; value: number };
 
 export function vehicleStats(db: DB, v: Vehicle) {
   const fuel = db.fuel.filter((f) => f.vehicleId === v.id).sort((a, b) => a.odometer - b.odometer);
-  const mileage: MileagePoint[] = [];
-  for (let i = 1; i < fuel.length; i++) {
-    const dist = fuel[i].odometer - fuel[i - 1].odometer;
-    if (dist > 0 && fuel[i].litres > 0) mileage.push({ date: fuel[i].date, value: dist / fuel[i].litres });
-  }
+  const mileage: MileagePoint[] = fuelMileagePoints(fuel);
   const totalFuelCost = fuel.reduce((s, f) => s + f.total, 0);
   const distanceTracked = fuel.length > 1 ? fuel[fuel.length - 1].odometer - fuel[0].odometer : 0;
   const costForDistance = fuel.slice(1).reduce((s, f) => s + f.total, 0);

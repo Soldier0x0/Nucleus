@@ -36,6 +36,12 @@ import { Field } from "@/src/components/inputs";
 import { Sheet } from "@/src/components/Sheet";
 import { PinPad } from "@/src/components/PinPad";
 import { useToast } from "@/src/components/Toast";
+import * as Sharing from "expo-sharing";
+import { writeAsStringAsync } from "expo-file-system/legacy";
+import { Paths } from "expo-file-system";
+import { buildDeveloperLog } from "@/src/core/devLogs";
+import Constants from "expo-constants";
+import * as Device from "expo-device";
 
 function Section({ title, children, testID, onLayout }: { title: string; children: React.ReactNode; testID?: string; onLayout?: (y: number) => void }) {
   const { colors } = useTheme();
@@ -141,6 +147,8 @@ export default function Settings() {
     };
   }, [locationOnce, setSettings]);
   const [showLog, setShowLog] = useState(false);
+  const [showDevLog, setShowDevLog] = useState(false);
+  const [devLogPreview, setDevLogPreview] = useState("");
   const [showExports, setShowExports] = useState(false);
   const [diag, setDiag] = useState<null | { scheduled: number }>(null);
   const router = useRouter();
@@ -485,6 +493,24 @@ export default function Settings() {
           <Row icon="timeline-text-outline" label="Timeline" sub={`${timeline(db).length} things have happened`} testID="settings-timeline-button" onPress={() => router.push("/timeline")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="star-four-points-outline" label="Year in Review" sub="Your year, counted from your own records" testID="settings-review-button" onPress={() => router.push("/review")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="stethoscope" label="Diagnostics" sub="Storage, reminders and network activity" testID="settings-diagnostics-button" onPress={async () => setDiag({ scheduled: await scheduledCount() })} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          <Row
+            icon="file-download-outline"
+            label="Download logs for developer"
+            sub="Perf and errors only — no personal data"
+            testID="settings-dev-logs"
+            onPress={() => {
+              setDevLogPreview(
+                buildDeveloperLog({
+                  app: Constants.expoConfig?.version ?? "unknown",
+                  build: Constants.nativeBuildVersion ?? "dev",
+                  platform: `${Device.osName ?? "unknown"} ${Device.osVersion ?? ""}`.trim(),
+                  model: Device.modelName ?? "unknown",
+                }),
+              );
+              setShowDevLog(true);
+            }}
+            right={<Icon name="chevron-right" size={18} color={colors.muted} />}
+          />
           <Row icon="flask-outline" label="Add sample data" sub="Explore insights with a demo workspace" testID="settings-sample-button" onPress={() => (update(withSampleData), toast("Sample data added", "flask-outline"))} right={<Icon name="plus" size={18} color={colors.muted} />} />
           <Row icon="flask-empty-outline" label="Remove sample data" sub="Takes out the demo rows. Entries you added stay." testID="settings-sample-remove-button" onPress={() => (update(withoutSampleData), toast("Sample data removed", "flask-empty-outline"))} right={<Icon name="minus" size={18} color={colors.muted} />} />
           <Row icon="delete-outline" label="Erase all data" sub="Cannot be undone" testID="settings-reset-button" onPress={() => setConfirmReset(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
@@ -704,6 +730,32 @@ export default function Settings() {
             />
           </>
         ) : null}
+      </Sheet>
+
+      <Sheet
+        visible={showDevLog}
+        onClose={() => setShowDevLog(false)}
+        title="Developer log"
+        testID="devlog-sheet"
+        footer={
+          <Button
+            label="Share log file"
+            icon="share-variant-outline"
+            testID="devlog-share"
+            onPress={async () => {
+              const path = `${Paths.cache}/nucleus-dev-log.txt`;
+              await writeAsStringAsync(path, devLogPreview);
+              if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path, { mimeType: "text/plain", dialogTitle: "Nucleus developer log" });
+              else toast("Log saved to app cache", "file-download-outline");
+              setShowDevLog(false);
+            }}
+          />
+        }
+      >
+        <T muted style={{ marginBottom: 8, fontSize: 12 }}>No names, amounts, odometer, capture text, or document contents. App, device, scrubbed errors, and timing breadcrumbs only.</T>
+        <ScrollView style={{ maxHeight: 320 }}>
+          <T v="mono" style={{ fontSize: 11 }}>{devLogPreview}</T>
+        </ScrollView>
       </Sheet>
 
       <Sheet visible={showExports} onClose={() => setShowExports(false)} title="Export a table" testID="exports-sheet">

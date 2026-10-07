@@ -39,14 +39,18 @@ export async function storePaperFile(paperId: string, uri: string, mime: string)
   return uri;
 }
 
-export async function pickPaperAttachment(): Promise<PaperPick | null | "too-big" | "denied"> {
+/** Gallery only — no document picker fallback. */
+export async function pickPaperPhoto(): Promise<PaperPick | null | "too-big" | "denied"> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return "denied";
   const image = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.25, base64: true, allowsEditing: true });
-  if (!image.canceled && image.assets[0]?.base64) {
-    if (image.assets[0].base64.length > MAX_IMAGE_B64) return "too-big";
-    return { uri: `data:image/jpeg;base64,${image.assets[0].base64}`, mime: "image/jpeg" };
-  }
+  if (image.canceled || !image.assets[0]?.base64) return null;
+  if (image.assets[0].base64.length > MAX_IMAGE_B64) return "too-big";
+  return { uri: `data:image/jpeg;base64,${image.assets[0].base64}`, mime: "image/jpeg" };
+}
+
+/** Files picker only — PDF and images. */
+export async function pickPaperDocument(): Promise<PaperPick | null | "too-big" | "denied"> {
   const doc = await DocumentPicker.getDocumentAsync({
     type: ["application/pdf", "image/*"],
     copyToCacheDirectory: true,
@@ -65,4 +69,9 @@ export async function pickPaperAttachment(): Promise<PaperPick | null | "too-big
   if (!b64) return null;
   if (b64.length > MAX_IMAGE_B64) return "too-big";
   return { uri: `data:${mime};base64,${b64}`, mime };
+}
+
+/** @deprecated Use pickPaperPhoto or pickPaperDocument. */
+export async function pickPaperAttachment(): Promise<PaperPick | null | "too-big" | "denied"> {
+  return pickPaperPhoto();
 }

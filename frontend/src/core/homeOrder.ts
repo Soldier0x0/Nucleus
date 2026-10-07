@@ -1,5 +1,6 @@
 import { moveItem } from "./reorder";
 import { applyTileOrder, customItems, presetItems, withModulesOn } from "./presets";
+import { stripLegacyDocTiles } from "./vehicleDocs";
 import type { DB, HomePresetId, TileId } from "./types";
 
 export type TileBox = { x: number; y: number; w: number; h: number };
@@ -79,7 +80,7 @@ export function parseTileOrder(raw: unknown): Partial<Record<HomePresetId, strin
   for (const preset of PRESETS) {
     const value = record[preset];
     if (!Array.isArray(value)) continue;
-    const ids = value.filter((id): id is string => typeof id === "string").map((id) => id.slice(0, 40)).slice(0, 40);
+    const ids = stripLegacyDocTiles(value.filter((id): id is string => typeof id === "string").map((id) => id.slice(0, 40)).slice(0, 40));
     if (ids.length) out[preset] = ids;
   }
   return out;

@@ -126,6 +126,7 @@ function PaperSheet({ paper, onClose }: { paper?: Paper; onClose: () => void }) 
     mime: paper?.mime,
     motorCover: paper?.motorCover,
     rsaAddOn: paper?.rsaAddOn === true,
+    zeroDepAddOn: paper?.zeroDepAddOn === true,
     insurer: paper?.insurer ?? "",
     personId: paper?.personId,
     vehicleId: paper?.vehicleId,
@@ -152,6 +153,7 @@ function PaperSheet({ paper, onClose }: { paper?: Paper; onClose: () => void }) 
     if (f.kind === "insurance" && f.vehicleId && f.motorCover) {
       draft.motorCover = f.motorCover;
       draft.rsaAddOn = f.rsaAddOn;
+      draft.zeroDepAddOn = f.zeroDepAddOn;
     }
     if (storedFile?.startsWith("data:application/pdf")) draft = mergeExtract(draft, extractFromPdfDataUri(storedFile));
     update((d) => {
@@ -183,6 +185,7 @@ function PaperSheet({ paper, onClose }: { paper?: Paper; onClose: () => void }) 
             ))}
           </ChipRow>
           <Chip label="Roadside assistance add-on" selected={f.rsaAddOn} testID="paper-rsa" onPress={() => set({ rsaAddOn: !f.rsaAddOn })} />
+          <Chip label="Zero depreciation add-on" selected={f.zeroDepAddOn} testID="paper-zerodep" onPress={() => set({ zeroDepAddOn: !f.zeroDepAddOn })} />
           <Field label="Insurer" testID="paper-insurer" value={f.insurer} onChangeText={(t) => set({ insurer: t })} placeholder="Optional" />
         </>
       ) : null}

@@ -43,6 +43,7 @@ export function normalizePaper(raw: unknown): Paper {
   if (typeof row.mime === "string" && row.mime.trim()) next.mime = row.mime.trim().slice(0, 80);
   if (row.motorCover === "comprehensive" || row.motorCover === "third-party") next.motorCover = row.motorCover;
   if (row.rsaAddOn === true) next.rsaAddOn = true;
+  if (row.zeroDepAddOn === true) next.zeroDepAddOn = true;
   if (typeof row.insurer === "string" && row.insurer.trim()) next.insurer = row.insurer.trim().slice(0, 80);
   if (typeof row.personId === "string") next.personId = row.personId.slice(0, 40);
   if (typeof row.vehicleId === "string") next.vehicleId = row.vehicleId.slice(0, 40);

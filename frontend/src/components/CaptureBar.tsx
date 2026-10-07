@@ -7,7 +7,17 @@ import { subscribeCapture } from "@/src/core/captureBus";
 import { Icon, IconButton, T } from "./ui";
 import { useToast } from "./Toast";
 
-const HINTS = ["450 food lunch", "5.4L @103.7 Activa", "netflix 649 monthly", "onion 80 groceries"];
+const HINTS = [
+  "450 food lunch",
+  "5.4L @103.7 Activa",
+  "netflix 649 monthly",
+  "onion 80 groceries",
+  "Activa 5.4L 560 full 12450 km",
+  "period started",
+  "hotel 3200",
+  "puc expiry 2026-12-01",
+  "uber 180",
+];
 
 /** One-line quick capture. The hint types itself. The draft stays while search opens. */
 export function CaptureBar() {

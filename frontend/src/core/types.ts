@@ -69,6 +69,8 @@ export type Paper = {
   motorCover?: MotorCover;
   /** Roadside assistance on the motor policy. */
   rsaAddOn?: boolean;
+  /** Zero depreciation add-on on the motor policy. */
+  zeroDepAddOn?: boolean;
   insurer?: string;
   personId?: string;
   vehicleId?: string;
@@ -99,15 +101,23 @@ export type Vehicle = {
   initialOdometer: number;
   serviceIntervalKm: number;
   tankLitres?: number;
+  /** Gallery cover image (data URI or local file). */
+  cover?: string;
   insuranceExpiry?: string; // YYYY-MM-DD
   pucExpiry?: string;
   createdAt: string;
 };
 
+export type FuelFillKind = "full" | "partial";
+
 export type FuelEntry = {
   id: string;
   vehicleId: string;
   date: string;
+  /** When the fill was logged (ISO). Date-only rows omit this. */
+  loggedAt?: string;
+  /** Full tank vs partial top-up. Older rows default to full in normalize. */
+  fillKind?: FuelFillKind;
   odometer: number;
   /** True until a typed reading replaces the estimate. */
   odometerEstimated?: boolean;
@@ -115,6 +125,25 @@ export type FuelEntry = {
   litres: number;
   price: number;
   total: number;
+  note?: string;
+};
+
+export type OdometerLog = {
+  id: string;
+  vehicleId: string;
+  /** ISO datetime of the reading. */
+  at: string;
+  odometer: number;
+  note?: string;
+};
+
+export type VehicleJourney = {
+  id: string;
+  vehicleId: string;
+  startAt: string;
+  endAt?: string;
+  startOdometer: number;
+  endOdometer?: number;
   note?: string;
 };
 
@@ -129,6 +158,8 @@ export type ServiceEntry = {
   cost: number;
   details: Record<string, string>;
   note?: string;
+  billFile?: string;
+  billMime?: string;
 };
 
 export type Txn = {
@@ -386,6 +417,8 @@ export type DB = {
   settings: Settings;
   vehicles: Vehicle[];
   fuel: FuelEntry[];
+  odometerLogs: OdometerLog[];
+  vehicleJourneys: VehicleJourney[];
   services: ServiceEntry[];
   txns: Txn[];
   subscriptions: Subscription[];

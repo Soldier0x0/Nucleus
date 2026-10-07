@@ -1,4 +1,4 @@
-import type { DB, HomePresetId, Settings, Txn } from "./types";
+import type { DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Txn, Vehicle, VehicleJourney } from "./types";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { emptyWater, normalizeWater } from "./water";
 import { cleanCallName } from "./greeting";
@@ -121,6 +121,8 @@ export function emptyDB(): DB {
   },
     vehicles: [],
     fuel: [],
+    odometerLogs: [],
+    vehicleJourneys: [],
     services: [],
     txns: [],
     subscriptions: [],
@@ -234,6 +236,11 @@ export function normalizeDB(raw: any): DB {
     media: Array.isArray(raw?.media) ? raw.media : [],
     people: Array.isArray(raw?.people) ? raw.people : [],
     papers: Array.isArray(raw?.papers) ? raw.papers.map(normalizePaper) : [],
+    fuel: Array.isArray(raw?.fuel) ? raw.fuel.map(normalizeFuel) : [],
+    odometerLogs: Array.isArray(raw?.odometerLogs) ? raw.odometerLogs.map(normalizeOdometerLog) : [],
+    vehicleJourneys: Array.isArray(raw?.vehicleJourneys) ? raw.vehicleJourneys.map(normalizeVehicleJourney) : [],
+    vehicles: Array.isArray(raw?.vehicles) ? raw.vehicles.map(normalizeVehicle) : [],
+    services: Array.isArray(raw?.services) ? raw.services.map(normalizeService) : [],
     parts: Array.isArray(raw?.parts) ? raw.parts : [],
     specs: Array.isArray(raw?.specs) ? raw.specs : [],
     kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],
@@ -263,6 +270,58 @@ function parseSmsMemory(raw: unknown): Settings["smsMemory"] {
       choice: row.choice as Settings["smsMemory"][number]["choice"],
       category: typeof row.category === "string" ? row.category.slice(0, 40) : undefined,
     }));
+}
+
+function normalizeFillKind(raw: unknown): FuelFillKind {
+  return raw === "partial" ? "partial" : "full";
+}
+
+function normalizeFuel(raw: FuelEntry): FuelEntry {
+  const next = { ...raw, fillKind: normalizeFillKind(raw.fillKind) };
+  if (typeof raw.loggedAt === "string" && raw.loggedAt.trim()) next.loggedAt = raw.loggedAt.trim().slice(0, 40);
+  else delete next.loggedAt;
+  return next;
+}
+
+function normalizeVehicle(raw: Vehicle): Vehicle {
+  const next = { ...raw };
+  if (typeof raw.cover === "string" && raw.cover.trim()) next.cover = raw.cover;
+  else delete next.cover;
+  if (typeof raw.tankLitres === "number" && Number.isFinite(raw.tankLitres) && raw.tankLitres > 0) next.tankLitres = raw.tankLitres;
+  else delete next.tankLitres;
+  return next;
+}
+
+function normalizeOdometerLog(raw: OdometerLog): OdometerLog {
+  return {
+    id: String(raw.id).slice(0, 40),
+    vehicleId: String(raw.vehicleId).slice(0, 40),
+    at: String(raw.at).slice(0, 40),
+    odometer: Math.round(raw.odometer),
+    note: typeof raw.note === "string" && raw.note.trim() ? raw.note.trim().slice(0, 200) : undefined,
+  };
+}
+
+function normalizeVehicleJourney(raw: VehicleJourney): VehicleJourney {
+  const next: VehicleJourney = {
+    id: String(raw.id).slice(0, 40),
+    vehicleId: String(raw.vehicleId).slice(0, 40),
+    startAt: String(raw.startAt).slice(0, 40),
+    startOdometer: Math.round(raw.startOdometer),
+  };
+  if (typeof raw.endAt === "string" && raw.endAt.trim()) next.endAt = raw.endAt.trim().slice(0, 40);
+  if (typeof raw.endOdometer === "number" && Number.isFinite(raw.endOdometer)) next.endOdometer = Math.round(raw.endOdometer);
+  if (typeof raw.note === "string" && raw.note.trim()) next.note = raw.note.trim().slice(0, 200);
+  return next;
+}
+
+function normalizeService(raw: ServiceEntry): ServiceEntry {
+  const next = { ...raw };
+  if (typeof raw.billFile === "string" && raw.billFile.trim()) next.billFile = raw.billFile;
+  else delete next.billFile;
+  if (typeof raw.billMime === "string" && raw.billMime.trim()) next.billMime = raw.billMime.trim().slice(0, 80);
+  else delete next.billMime;
+  return next;
 }
 
 function normalizeTxn(raw: Txn): Txn {

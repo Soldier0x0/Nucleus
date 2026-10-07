@@ -185,7 +185,7 @@ export function PresetGrid({
                 <HeadingTile testID={`today-slot-${item.id}`} />
               ) : (
                 <Card testID={`today-slot-${item.id}`} style={cardStyle}>
-                    <Eyebrow>{face.eyebrow || title}</Eyebrow>
+                    <Eyebrow numberOfLines={1}>{face.eyebrow || title}</Eyebrow>
                     {item.id === "attention" && face.counts ? (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 }}>
                         <Ring value={face.counts.urgent + face.counts.upcoming > 0 ? 1 : 0} size={64} stroke={6}>
@@ -214,9 +214,9 @@ export function PresetGrid({
                     ) : (
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
                         <Icon name={face.icon || shown.icon} size={28} color={colors.onSurface} />
-                        <View style={{ flex: 1 }}>
-                          <T v="monoXl">{face.figure}</T>
-                          {face.detail ? <T muted numberOfLines={2}>{face.detail}</T> : null}
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <T v={full ? "monoXl" : "monoLg"} numberOfLines={2} ellipsizeMode="tail">{face.figure}</T>
+                          {face.detail ? <T muted numberOfLines={2} ellipsizeMode="tail">{face.detail}</T> : null}
                         </View>
                       </View>
                     )}
