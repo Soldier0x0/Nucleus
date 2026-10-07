@@ -3,8 +3,18 @@ import * as ImagePicker from "expo-image-picker";
 import { Directory, File, Paths } from "expo-file-system";
 import { readAsStringAsync, EncodingType } from "expo-file-system/legacy";
 import type { Paper } from "./types";
-const MAX_IMAGE_B64 = 180_000;
-const MAX_PDF_BYTES = 2_400_000;
+export const MAX_IMAGE_B64 = 500_000;
+export const MAX_PDF_BYTES = 2_400_000;
+
+export function paperAttachSizeHint(): string {
+  const pdfMb = (MAX_PDF_BYTES / 1_000_000).toFixed(1);
+  const photoKb = Math.round((MAX_IMAGE_B64 * 0.75) / 1000);
+  return `PDFs up to ${pdfMb} MB, photos up to about ${photoKb} KB when saved on this phone.`;
+}
+
+export function paperTooBigToast(): string {
+  return `That file is too large for on-phone storage. ${paperAttachSizeHint()}`;
+}
 
 export type PaperPick = { uri: string; mime: string };
 
@@ -62,7 +72,7 @@ export async function storePaperFile(paperId: string, uri: string, mime: string)
 export async function pickPaperPhoto(): Promise<PaperPick | null | "too-big" | "denied"> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return "denied";
-  const image = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.25, base64: true, allowsEditing: true });
+  const image = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.6, base64: true, allowsEditing: true });
   if (image.canceled || !image.assets[0]?.base64) return null;
   if (image.assets[0].base64.length > MAX_IMAGE_B64) return "too-big";
   return { uri: `data:image/jpeg;base64,${image.assets[0].base64}`, mime: "image/jpeg" };

@@ -3,8 +3,15 @@ import { ActivityIndicator, Platform, View, useWindowDimensions } from "react-na
 import Pdf from "react-native-pdf";
 import { useTheme } from "@/src/theme";
 import { paperMime } from "@/src/core/paperFiles";
-import { attachmentNeedsViewerMaterialize } from "@/src/core/paperNormalize";
-import { localViewerUriMissing, viewerUriForAttachment } from "@/src/core/paperViewerUri";
+import { attachmentNeedsViewerMaterialize, mistaggedJpegDataUri } from "@/src/core/paperNormalize";
+import { PDF_VIEWER_FAIL_BODY, PREPARE_FILE_FAIL_BODY } from "@/src/core/documentViewerCopy";
+import {
+  MistaggedJpegError,
+  localViewerUriMissing,
+  pdfSourceUsesCache,
+  toPdfSourcePath,
+  viewerUriForAttachment,
+} from "@/src/core/paperViewerUri";
 import type { Paper } from "@/src/core/types";
 import { EmptyState } from "./ui";
 import { ZoomableImage } from "./ZoomableImage";
@@ -18,18 +25,34 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
   const uri = paper.file ?? paper.photo;
   const mime = paperMime(paper);
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [displayMime, setDisplayMime] = useState<string | undefined>(mime);
   const [failed, setFailed] = useState(false);
   const [failBody, setFailBody] = useState(DEFAULT_FAIL_BODY);
+  const [pdfVaultFallback, setPdfVaultFallback] = useState(false);
+
   useEffect(() => {
     let alive = true;
     if (!uri) {
       setLocalUri(null);
+      setDisplayMime(mime);
       setFailed(false);
       setFailBody(DEFAULT_FAIL_BODY);
+      setPdfVaultFallback(false);
       return;
     }
     setFailed(false);
     setFailBody(DEFAULT_FAIL_BODY);
+    setPdfVaultFallback(false);
+    setDisplayMime(mime);
+
+    if (mistaggedJpegDataUri(uri, mime ?? "application/pdf")) {
+      setLocalUri(uri);
+      setDisplayMime("image/jpeg");
+      return () => {
+        alive = false;
+      };
+    }
+
     const needsMaterialize = attachmentNeedsViewerMaterialize(uri, mime ?? "image/jpeg");
     if (!needsMaterialize) {
       if (localViewerUriMissing(uri)) {
@@ -48,16 +71,22 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
       .then((next) => {
         if (alive) setLocalUri(next);
       })
-      .catch(() => {
-        if (alive) {
-          setFailed(true);
-          setFailBody(DEFAULT_FAIL_BODY);
+      .catch((err: unknown) => {
+        if (!alive) return;
+        if (err instanceof MistaggedJpegError || mistaggedJpegDataUri(uri, mime ?? "application/pdf")) {
+          setDisplayMime("image/jpeg");
+          setLocalUri(uri);
+          return;
         }
+        console.warn("paper materialize failed", String(err));
+        setFailed(true);
+        setFailBody(PREPARE_FILE_FAIL_BODY);
       });
     return () => {
       alive = false;
     };
   }, [uri, mime, paper.id]);
+
   if (!uri) {
     return <EmptyState icon="file-document-outline" title="No file" body="Attach an image or PDF on the edit sheet." />;
   }
@@ -71,16 +100,26 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
       </View>
     );
   }
-  if (mime === "application/pdf") {
-    const pdfCache = !(localUri.startsWith("file:") || localUri.startsWith("data:"));
+  if (displayMime === "application/pdf") {
+    const vaultDataUri = uri.startsWith("data:application/pdf") ? uri : null;
+    const pathUri = toPdfSourcePath(localUri);
+    const sourceUri = pdfVaultFallback && vaultDataUri ? vaultDataUri : pathUri;
+    const cache = pdfSourceUsesCache(sourceUri);
     return (
       <View style={{ flex: 1 }} testID={testID ?? "doc-viewer-pdf"}>
         <Pdf
-          source={{ uri: localUri, cache: pdfCache }}
+          key={pdfVaultFallback ? "vault-data" : "cache-path"}
+          source={{ uri: sourceUri, cache }}
           style={{ flex: 1, width, height }}
           trustAllCerts={Platform.OS === "android"}
-          onError={() => {
-            setFailBody(DEFAULT_FAIL_BODY);
+          enableAnnotationRendering={false}
+          onError={(error) => {
+            console.warn("pdf viewer failed", error?.message ?? String(error));
+            if (!pdfVaultFallback && vaultDataUri) {
+              setPdfVaultFallback(true);
+              return;
+            }
+            setFailBody(PDF_VIEWER_FAIL_BODY);
             setFailed(true);
           }}
           enablePaging

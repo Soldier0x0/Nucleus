@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { View } from "react-native";
 import { radius, useTheme } from "@/src/theme";
-import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
+import { paperAttachSizeHint, paperTooBigToast, pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import { paperBadge } from "@/src/core/paperNormalize";
 import type { Paper } from "@/src/core/types";
 import { Button, T } from "./ui";
@@ -25,7 +25,7 @@ export function PaperAttach({
   const badge = uri ? (mime === "application/pdf" ? "PDF" : "Image") : null;
   const attach = async (mode: "photo" | "document") => {
     const next = mode === "photo" ? await pickPaperPhoto() : await pickPaperDocument();
-    if (next === "too-big") return toast("That file is too large for on-phone storage.", "file-alert-outline");
+    if (next === "too-big") return toast(paperTooBigToast(), "file-alert-outline");
     if (next === "denied") return toast("File access is off for Nucleus.", "file-alert-outline");
     if (!next) return;
     onChange({ uri: next.uri, mime: next.mime });
@@ -47,7 +47,9 @@ export function PaperAttach({
         <Button small kind="secondary" icon="file-pdf-box" label={uri && mime === "application/pdf" ? "Replace document" : "Add document"} testID={`${testID}-document`} onPress={() => attach("document")} />
       </View>
       {uri ? <Button small kind="ghost" label="Remove file" testID={`${testID}-clear`} onPress={() => onChange({})} /> : null}
-      <T muted style={{ fontSize: 12, marginTop: 4 }}>Stored with your records on this phone. Easy fields may be read when you attach.</T>
+      <T muted style={{ fontSize: 12, marginTop: 4 }}>
+        {paperAttachSizeHint()} Stored with your records on this phone. Easy fields may be read when you attach.
+      </T>
     </View>
   );
 }
