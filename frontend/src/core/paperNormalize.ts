@@ -30,6 +30,33 @@ export function stripDataUriBase64(b64: string): string {
   return b64.replace(/\s+/g, "");
 }
 
+export function dataUriBase64Payload(uri: string): string {
+  const comma = uri.indexOf(",");
+  return comma >= 0 ? uri.slice(comma + 1) : "";
+}
+
+/** True when decoded head starts with JPEG magic (FF D8 FF). */
+export function looksLikeJpegMagicFromBase64(b64: string): boolean {
+  const stripped = stripDataUriBase64(b64);
+  if (stripped.length < 4) return false;
+  if (typeof atob !== "function") return false;
+  try {
+    let head = stripped.slice(0, 8);
+    while (head.length % 4 !== 0) head += "=";
+    const bytes = atob(head);
+    return bytes.charCodeAt(0) === 0xff && bytes.charCodeAt(1) === 0xd8 && bytes.charCodeAt(2) === 0xff;
+  } catch {
+    return false;
+  }
+}
+
+/** PDF mime on a data URI that is actually a JPEG (sniff fallback to image viewer). */
+export function mistaggedJpegDataUri(uri: string, mime: string): boolean {
+  if (mime !== "application/pdf" || !uri.startsWith("data:")) return false;
+  const b64 = dataUriBase64Payload(uri);
+  return looksLikeJpegMagicFromBase64(b64) && !looksLikePdfMagicFromBase64(b64);
+}
+
 /** True when decoded head starts with the PDF magic bytes. */
 export function looksLikePdfMagicFromBase64(b64: string): boolean {
   const stripped = stripDataUriBase64(b64);

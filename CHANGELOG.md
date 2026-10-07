@@ -10,6 +10,14 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.5
+
+- Fixed insurance and PA PDFs opening to pages again by writing vault PDFs with base64 binary encoding, pointing the viewer at a bare cache path with `cache: false`, and falling back to the stored data URI when the path fails.
+- Fixed PDF prepare vs viewer errors so a failed materialize says **Could not prepare the file.** and a viewer failure says **The viewer could not read this PDF.**
+- Changed PDF rendering to turn off annotation rendering for AcroForm-heavy policies.
+- Added attach copy and toasts that show PDF and photo size limits on the paper attach row.
+- Changed photo attach quality and raised the on-phone photo cap so thumbnails stay legible.
+
 ## v0.9.4
 
 - Fixed PDF open so insurance and other vault PDFs show pages offline again (local cache write checks and PDF viewer cache flag).

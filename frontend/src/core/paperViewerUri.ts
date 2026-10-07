@@ -1,55 +1,66 @@
-import { Directory, File, Paths } from "expo-file-system";
-import { EncodingType, readAsStringAsync, writeAsStringAsync } from "expo-file-system/legacy";
-import { attachmentNeedsViewerMaterialize, looksLikePdfMagicFromBase64, stripDataUriBase64 } from "./paperNormalize";
+import { File } from "expo-file-system";
+import { EncodingType, readAsStringAsync } from "expo-file-system/legacy";
+import ReactNativeBlobUtil from "react-native-blob-util";
+import { attachmentNeedsViewerMaterialize, looksLikeJpegMagicFromBase64, looksLikePdfMagicFromBase64, stripDataUriBase64 } from "./paperNormalize";
+import { base64DecodedByteLength, toPdfSourcePath, validateMaterializedPdfBytes } from "./paperViewerPath";
 
 export { attachmentNeedsViewerMaterialize } from "./paperNormalize";
+export { toPdfSourcePath, pdfSourceUsesCache } from "./paperViewerPath";
 
-const LARGE_B64_CHARS = 2_000_000;
-
-function decodeBase64(b64: string): Uint8Array {
-  if (typeof atob !== "function") throw new Error("base64 decode unavailable");
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+export class MistaggedJpegError extends Error {
+  constructor() {
+    super("mistagged jpeg");
+    this.name = "MistaggedJpegError";
+  }
 }
 
-function ensurePaperViewDir(): Directory {
-  const dir = new Directory(Paths.cache, "paper-view");
-  if (!dir.exists) dir.create();
+const PAPER_VIEW_SUBDIR = "paper-view";
+
+function fileUriForPath(path: string): string {
+  const bare = toPdfSourcePath(path);
+  if (bare.startsWith("/")) return `file://${bare}`;
+  return path.startsWith("file:") ? path : `file://${bare}`;
+}
+
+async function assertMaterializedPdfAtPath(path: string, expectedBytes: number): Promise<void> {
+  const uri = fileUriForPath(path);
+  const stat = await ReactNativeBlobUtil.fs.stat(path);
+  const size = typeof stat.size === "number" ? stat.size : Number(stat.size);
+  const headB64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64, length: 4, position: 0 });
+  const head = atob(headB64);
+  const tailLen = Math.min(32, size);
+  const tailPos = Math.max(0, size - tailLen);
+  const tailB64 = await readAsStringAsync(uri, { encoding: EncodingType.Base64, length: tailLen, position: tailPos });
+  const tail = atob(tailB64);
+  validateMaterializedPdfBytes(size, head, tail, expectedBytes);
+}
+
+async function ensurePaperViewDir(): Promise<string> {
+  const dir = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${PAPER_VIEW_SUBDIR}`;
+  const exists = await ReactNativeBlobUtil.fs.exists(dir);
+  if (!exists) await ReactNativeBlobUtil.fs.mkdir(dir);
   return dir;
 }
 
-async function assertMaterializedPdf(dest: File): Promise<void> {
-  if (!dest.exists) throw new Error("materialized file missing");
-  if (dest.size <= 4) throw new Error("materialized file empty");
-  const headB64 = await readAsStringAsync(dest.uri, { encoding: EncodingType.Base64, length: 4, position: 0 });
-  const head = atob(headB64);
-  if (!head.startsWith("%PDF")) throw new Error("materialized file is not a PDF");
-}
-
-async function writePdfToFile(dest: File, rawB64: string): Promise<void> {
+async function writePdfToCachePath(cacheKey: string, rawB64: string): Promise<string> {
   const b64 = stripDataUriBase64(rawB64);
   if (!b64) throw new Error("empty data URI");
-  if (!looksLikePdfMagicFromBase64(b64)) throw new Error("data is not a PDF");
-
-  if (dest.exists) dest.delete();
-  dest.create();
-
-  const preferLegacy = b64.length > LARGE_B64_CHARS;
-  if (preferLegacy) {
-    await writeAsStringAsync(dest.uri, b64, { encoding: EncodingType.Base64 });
-  } else {
-    try {
-      const maybePromise = dest.write(decodeBase64(b64)) as void | Promise<void>;
-      if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
-        await maybePromise;
-      }
-    } catch {
-      await writeAsStringAsync(dest.uri, b64, { encoding: EncodingType.Base64 });
-    }
+  if (!looksLikePdfMagicFromBase64(b64)) {
+    if (looksLikeJpegMagicFromBase64(b64)) throw new MistaggedJpegError();
+    throw new Error("data is not a PDF");
   }
-  await assertMaterializedPdf(dest);
+
+  const dir = await ensurePaperViewDir();
+  const safe = cacheKey.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const path = `${dir}/${safe}.pdf`;
+  const expectedBytes = base64DecodedByteLength(b64);
+
+  if (await ReactNativeBlobUtil.fs.exists(path)) {
+    await ReactNativeBlobUtil.fs.unlink(path);
+  }
+  await ReactNativeBlobUtil.fs.writeFile(path, b64, "base64");
+  await assertMaterializedPdfAtPath(path, expectedBytes);
+  return path;
 }
 
 /** True when a stored file/content URI cannot be opened (missing or zero length). */
@@ -65,13 +76,9 @@ export function localViewerUriMissing(uri: string): boolean {
 
 /** Write data-URI PDFs to a local file so native PDF views can open them offline. */
 export async function viewerUriForAttachment(uri: string, mime: string, cacheKey: string): Promise<string> {
-  if (!uri.startsWith("data:")) return uri;
+  if (!uri.startsWith("data:")) return toPdfSourcePath(uri);
   if (!attachmentNeedsViewerMaterialize(uri, mime)) return uri;
-  const dir = ensurePaperViewDir();
-  const safe = cacheKey.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const dest = new File(dir, `${safe}.pdf`);
   const comma = uri.indexOf(",");
   const b64 = comma >= 0 ? uri.slice(comma + 1) : "";
-  await writePdfToFile(dest, b64);
-  return dest.uri;
+  return writePdfToCachePath(cacheKey, b64);
 }
