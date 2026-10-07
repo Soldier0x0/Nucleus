@@ -6,6 +6,8 @@
  */
 import type { DB, EntityKind, FuelEntry, OdometerLog, Ref, ServiceEntry, Subscription, Txn, Vehicle, VehicleJourney } from "./types";
 import { addDays, addMonths, todayISO, uid } from "./format";
+import { bestEffortDeletePaperFiles } from "./paperFiles";
+import { syncVehicleExpiryFields } from "./vehicleDocs";
 
 export type DomainEvent =
   | { type: "fuel.added"; entry: FuelEntry }
@@ -156,9 +158,23 @@ export function paySubscription(db: DB, id: string): DB {
   return dispatch(upsertSubscription(db, updated), [{ type: "subscription.paid", sub, date: todayISO() }]);
 }
 
+export function removePaper(db: DB, id: string): DB {
+  const paper = db.papers.find((p) => p.id === id);
+  if (!paper) return db;
+  bestEffortDeletePaperFiles(paper);
+  const vehicleId = paper.vehicleId;
+  let next = dispatch(
+    { ...db, papers: db.papers.filter((p) => p.id !== id) },
+    [{ type: "entity.deleted", ref: { kind: "paper", id } }],
+  );
+  if (vehicleId) next = syncVehicleExpiryFields(next, vehicleId);
+  return next;
+}
+
 export function deleteEntity(db: DB, ref: Ref): DB {
   const key: Record<EntityKind, keyof DB> = { vehicle: "vehicles", fuel: "fuel", service: "services", txn: "txns", subscription: "subscriptions", trip: "trips", appliance: "appliances", note: "notes", media: "media", paper: "papers" };
   if (ref.kind === "vehicle") return deleteVehicle(db, ref.id);
+  if (ref.kind === "paper") return removePaper(db, ref.id);
   const list = (db[key[ref.kind]] as { id: string }[]).filter((x) => x.id !== ref.id);
   return dispatch({ ...db, [key[ref.kind]]: list }, [{ type: "entity.deleted", ref }]);
 }

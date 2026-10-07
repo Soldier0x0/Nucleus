@@ -3,9 +3,10 @@ import { ActivityIndicator, Platform, View, useWindowDimensions } from "react-na
 import Pdf from "react-native-pdf";
 import { useTheme } from "@/src/theme";
 import { paperMime } from "@/src/core/paperFiles";
+import { attachmentNeedsViewerMaterialize } from "@/src/core/paperNormalize";
 import { viewerUriForAttachment } from "@/src/core/paperViewerUri";
 import type { Paper } from "@/src/core/types";
-import { EmptyState, T } from "./ui";
+import { EmptyState } from "./ui";
 import { ZoomableImage } from "./ZoomableImage";
 
 export function DocumentContent({ paper, testID }: { paper: Paper; testID?: string }) {
@@ -19,9 +20,18 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
     let alive = true;
     if (!uri) {
       setLocalUri(null);
+      setFailed(false);
       return;
     }
     setFailed(false);
+    const needsMaterialize = attachmentNeedsViewerMaterialize(uri, mime ?? "image/jpeg");
+    if (!needsMaterialize) {
+      setLocalUri(uri);
+      return () => {
+        alive = false;
+      };
+    }
+    setLocalUri(null);
     viewerUriForAttachment(uri, mime ?? "image/jpeg", paper.id)
       .then((next) => {
         if (alive) setLocalUri(next);
@@ -36,15 +46,15 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
   if (!uri) {
     return <EmptyState icon="file-document-outline" title="No file" body="Attach an image or PDF on the edit sheet." />;
   }
+  if (failed) {
+    return <EmptyState icon="file-alert-outline" title="Could not open file" body="Try attaching the document again." />;
+  }
   if (!localUri) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <ActivityIndicator color={colors.brandPrimary} />
       </View>
     );
-  }
-  if (failed) {
-    return <EmptyState icon="file-alert-outline" title="Could not open file" body="Try attaching the document again." />;
   }
   if (mime === "application/pdf") {
     return (

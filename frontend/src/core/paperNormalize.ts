@@ -19,6 +19,12 @@ export function paperIsPdf(paper: Paper): boolean {
   return paperMime(paper) === "application/pdf";
 }
 
+/** PDF data URIs must be materialized for react-native-pdf; images can use the data URI directly. */
+export function attachmentNeedsViewerMaterialize(uri: string, mime: string): boolean {
+  if (!uri.startsWith("data:")) return false;
+  return mime === "application/pdf";
+}
+
 export function paperBadge(paper: Paper): "PDF" | "Image" | null {
   const uri = paperAttachmentUri(paper);
   if (!uri) return null;

@@ -204,7 +204,12 @@ export function ServiceSheet({ visible, onClose, vehicle }: { visible: boolean; 
           }}
         />
       </View>
-      {billFile ? <T muted style={{ fontSize: 12, marginBottom: 8 }}>Bill attached ({billMime === "application/pdf" ? "PDF" : "image"})</T> : null}
+      {billFile ? (
+        <>
+          <T muted style={{ fontSize: 12, marginBottom: 8 }}>Bill attached ({billMime === "application/pdf" ? "PDF" : "image"})</T>
+          <Button small kind="ghost" label="Remove bill" testID="service-bill-clear" onPress={() => { setBillFile(undefined); setBillMime(undefined); }} style={{ marginBottom: 8 }} />
+        </>
+      ) : null}
       {kind === "general" || kind === "oil" ? <T muted style={{ fontSize: 12 }}>Counts toward your learned service interval.</T> : null}
     </Sheet>
   );

@@ -59,6 +59,7 @@ export function ReceiptSheet({ text, onClose }: { text: string; onClose: () => v
         A photo is optional and fills the page, like a scan. The amount, date, and shop are read from the words on this phone. They count only after you confirm. Nothing is sent to a model.
       </T>
       {photo ? <Image source={{ uri: photo }} style={{ width: "100%", aspectRatio: page.w / page.h, borderRadius: 8, marginBottom: 8, backgroundColor: colors.surfaceTertiary }} contentFit="cover" /> : null}
+      {photo ? <Button small kind="ghost" label="Remove photo" testID="receipt-photo-clear" onPress={() => setPhoto(undefined)} style={{ marginBottom: 8 }} /> : null}
       <Button
         small
         kind="secondary"

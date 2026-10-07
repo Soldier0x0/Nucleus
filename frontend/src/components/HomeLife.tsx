@@ -107,6 +107,9 @@ export function HomeLife({ showEmpty, onAddAppliance }: { showEmpty: boolean; on
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Icon name={k.icon} size={18} color={colors.muted} />
                 <T v="label" style={{ flex: 1 }}>{k.label}</T>
+                {est.last ? (
+                  <Button small kind="ghost" label="Edit last" testID={`utility-edit-${k.id}`} onPress={() => setBill(est.last!)} />
+                ) : null}
                 {est.last ? <Amount value={est.last.amount} v="mono" /> : null}
               </View>
               <T muted style={{ fontSize: 12 }} numberOfLines={2}>
