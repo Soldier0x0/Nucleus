@@ -17,6 +17,8 @@ import { Sheet } from "@/src/components/Sheet";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { VehicleArt } from "@/src/components/VehicleArt";
 import { VehicleCare } from "@/src/components/VehicleCare";
+import { VehicleJourneySection } from "@/src/components/VehicleJourneySection";
+import { Image } from "expo-image";
 import { fuelLabel, vehicleBody } from "@/src/core/life";
 
 export default function VehicleDetail() {
@@ -81,7 +83,11 @@ export default function VehicleDetail() {
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 96, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <Card testID="vehicle-art">
           <View style={{ alignItems: "center" }}>
-            <VehicleArt body={vehicleBody(v)} width={220} color={colors.onSurface} accent={colors.brandPrimary} />
+            {v.cover ? (
+              <Image source={{ uri: v.cover }} style={{ width: 220, height: 140, borderRadius: 12, marginBottom: 8 }} contentFit="cover" />
+            ) : (
+              <VehicleArt body={vehicleBody(v)} width={220} color={colors.onSurface} accent={colors.brandPrimary} />
+            )}
             <T muted style={{ fontSize: 12 }}>{[v.make, v.model, fuelLabel(v)].filter(Boolean).join(" · ")}</T>
           </View>
         </Card>
@@ -126,6 +132,7 @@ export default function VehicleDetail() {
           </View>
         </Card>
         <VehicleCare vehicle={v} />
+        <VehicleJourneySection vehicle={v} />
 
         <Card testID="vehicle-mileage-chart">
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>

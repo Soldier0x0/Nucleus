@@ -10,7 +10,9 @@ import type { FuelType, HybridFrom, VehicleBody } from "@/src/core/types";
 import { Sheet } from "./Sheet";
 import { DateField, Field } from "./inputs";
 import { Button, Chip, Eyebrow, Segmented, T } from "./ui";
+import { Image } from "expo-image";
 import { VehicleArt } from "./VehicleArt";
+import { pickSmallPhoto } from "./PhotoPick";
 import { useTheme } from "@/src/theme";
 import { useToast } from "./Toast";
 
@@ -33,6 +35,8 @@ export function VehicleSheet({ visible, onClose, vehicle }: { visible: boolean; 
     serviceIntervalKm: vehicle ? String(vehicle.serviceIntervalKm) : "",
     insuranceExpiry: vehicle?.insuranceExpiry,
     pucExpiry: vehicle?.pucExpiry,
+    tankLitres: vehicle?.tankLitres != null ? String(vehicle.tankLitres) : "",
+    cover: vehicle?.cover,
   }));
   const [err, setErr] = useState<string>();
   const set = (p: Partial<typeof f>) => setF((x) => {
@@ -63,6 +67,8 @@ export function VehicleSheet({ visible, onClose, vehicle }: { visible: boolean; 
       serviceIntervalKm: parseNum(f.serviceIntervalKm) || defaultInterval,
       insuranceExpiry: f.insuranceExpiry,
       pucExpiry: f.pucExpiry,
+      ...(f.cover ? { cover: f.cover } : {}),
+      ...(f.tankLitres ? { tankLitres: parseNum(f.tankLitres) } : {}),
     };
     update((d) => upsertVehicle(d, v));
     onClose();
@@ -74,8 +80,26 @@ export function VehicleSheet({ visible, onClose, vehicle }: { visible: boolean; 
     <Sheet visible={visible} onClose={onClose} title={vehicle ? "Edit vehicle" : "Add vehicle"} testID="vehicle-sheet" footer={<Button label="Save vehicle" icon="check" onPress={save} testID="vehicle-save-button" />}>
       <Segmented testID="vehicle-type" value={f.type} onChange={(v) => set({ type: v })} options={[{ value: "car", label: "Car" }, { value: "bike", label: "Bike" }, { value: "other", label: "Other" }]} />
       <View style={{ alignItems: "center", marginTop: 12, marginBottom: 4 }}>
-        <VehicleArt body={f.body} color={colors.onSurface} accent={colors.brandPrimary} />
-        <T muted style={{ fontSize: 12 }}>{BODY_LABEL[f.body]} · drawn from the name, not a photo of the model</T>
+        {f.cover ? (
+          <Image source={{ uri: f.cover }} style={{ width: "100%", height: 140, borderRadius: 12, marginBottom: 8 }} contentFit="cover" />
+        ) : (
+          <VehicleArt body={f.body} color={colors.onSurface} accent={colors.brandPrimary} />
+        )}
+        <Button
+          small
+          kind="secondary"
+          icon="image-outline"
+          label={f.cover ? "Change cover photo" : "Add cover photo"}
+          testID="vehicle-cover-photo"
+          onPress={async () => {
+            const next = await pickSmallPhoto();
+            if (next === "too-big") return toast("That photo is too large.", "image-off-outline");
+            if (next === "denied") return toast("Photo access is off.", "image-off-outline");
+            if (next) set({ cover: next });
+          }}
+        />
+        {f.cover ? <Button small kind="ghost" label="Remove cover" testID="vehicle-cover-clear" onPress={() => set({ cover: undefined })} /> : null}
+        <T muted style={{ fontSize: 12, marginTop: 4 }}>{BODY_LABEL[f.body]} · gallery cover is optional</T>
       </View>
       <View style={{ height: 8 }} />
       <Field label="Name" testID="vehicle-name-input" value={f.name} onChangeText={(t) => (set({ name: t }), setErr(undefined))} placeholder="e.g. Activa, Family car" error={err} />
@@ -107,6 +131,7 @@ export function VehicleSheet({ visible, onClose, vehicle }: { visible: boolean; 
         <Field style={{ flex: 1 }} numeric label="Service every" unit={dist} testID="vehicle-interval-input" value={f.serviceIntervalKm} onChangeText={(t) => set({ serviceIntervalKm: t })} placeholder={String(defaultInterval)} />
       </View>
       <T muted style={{ fontSize: 12, marginTop: -4, marginBottom: 12 }}>After 3 logged services Nucleus learns your real interval.</T>
+      <Field label="Tank size (optional)" numeric unit="L" testID="vehicle-tank-input" value={f.tankLitres} onChangeText={(t) => set({ tankLitres: t })} placeholder="For range estimate after a full fill" />
       <DateField label="Insurance expiry" optional testID="vehicle-insurance-date" value={f.insuranceExpiry} onChange={(v) => set({ insuranceExpiry: v })} />
       <DateField label="PUC / emission expiry" optional testID="vehicle-puc-date" value={f.pucExpiry} onChange={(v) => set({ pucExpiry: v })} />
     </Sheet>

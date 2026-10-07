@@ -10,6 +10,16 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.2
+
+- Fixed the document viewer so insurance PDFs and images open on the phone with pinch zoom instead of a white screen.
+- Fixed attach so Add photo and Add document are separate actions.
+- Fixed Vehicle tile titles so they do not split mid-word; Motor Policy is one large tile with RSA and ZeroDep badges instead of a second Roadside insurance tile.
+- Changed fuel logging to Full vs Partial fills and removed the last-fill-vs-tank fraction display.
+- Added timed odometer updates, vehicle journeys (start/end odo) separate from Travel trips, and a gallery cover photo on the vehicle.
+- Added a capture word-list refresh across Money, Health, Travel, Vehicle, and Papers targets.
+- Added Settings download for scrubbed developer logs (share/save only — no mail in this release).
+
 ## v0.9.1
 
 - Added image and PDF attachments on papers with an in-app viewer that works offline from the stored URI.

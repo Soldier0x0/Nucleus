@@ -108,6 +108,18 @@ export function homeFace(db: DB, id: string, forecast?: HomeWeather | null): Hom
         lines: rest.map((title) => ({ icon: card.icon, title })),
       };
     }
+    case "vdoc-motor":
+    case "vdoc-pa":
+    case "vdoc-puc": {
+      const [first, ...rest] = card.lines;
+      return {
+        ...base,
+        eyebrow: card.title,
+        figure: first ?? "",
+        detail: rest.join(" · "),
+        wide: id === "vdoc-motor",
+      };
+    }
     default:
       return {
         ...base,

@@ -1,6 +1,6 @@
 /**
  * Capture bar grammar (fixed, deterministic, documented):
- *   litres, total, and rate in any order, with an optional date, km, and station
+ *   litres, total, and rate in any order, with optional date, time, km, station, full/partial
  *   a named saved vehicle becomes a fuel entry; otherwise fuel-like numbers are a Fuel expense
  *   <name> <amount> weekly|monthly|quarterly|yearly -> subscription
  *   <amount> <category> [note]               -> expense
@@ -40,10 +40,24 @@ export function parseCapture(db: DB, input: string): Capture | null {
     const date = fuel.date ?? "";
     const stationBit = fuel.station ? ` · ${fuel.station}` : "";
     const odoBit = estimated ? " · odometer estimated" : ` · ${num(odo, 0)} km`;
+    const kindBit = fuel.fillKind === "partial" ? " · partial" : fuel.fillKind === "full" ? " · full" : "";
     return {
       icon: "gas-station-outline",
-      label: `Fuel · ${v.name} · ${litres} L · ${money(total, cur)} · ${num(rate, 2)}/L${odoBit}${stationBit}`,
-      apply: (d) => addFuel(d, { id: uid(), vehicleId: v.id, date, odometer: odo, odometerEstimated: estimated || undefined, ...(fuel.station ? { station: fuel.station } : {}), litres, total, price: rate }),
+      label: `Fuel · ${v.name} · ${litres} L · ${money(total, cur)} · ${num(rate, 2)}/L${kindBit}${odoBit}${stationBit}`,
+      apply: (d) =>
+        addFuel(d, {
+          id: uid(),
+          vehicleId: v.id,
+          date,
+          odometer: odo,
+          odometerEstimated: estimated || undefined,
+          fillKind: fuel.fillKind ?? "full",
+          ...(fuel.loggedAt ? { loggedAt: fuel.loggedAt } : {}),
+          ...(fuel.station ? { station: fuel.station } : {}),
+          litres,
+          total,
+          price: rate,
+        }),
     };
   }
   let m = s.match(/^(.+?)\s+([\d.]+)\s+(weekly|monthly|quarterly|yearly)$/i);

@@ -129,6 +129,32 @@ export function DateField({ label, value, onChange, testID, optional }: { label:
   );
 }
 
+/** 24-hour time as HH:MM for odo and fuel timestamps. */
+export function TimeField({ label, value, onChange, testID }: { label: string; value: string; onChange: (v: string) => void; testID?: string }) {
+  const { colors } = useTheme();
+  const chips = ["08:00", "12:30", "18:00", "21:00"];
+  return (
+    <View style={{ marginBottom: 12 }}>
+      <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
+      <TextInput
+        testID={testID}
+        value={value}
+        onChangeText={(t) => onChange(t.replace(/[^\d:]/g, "").slice(0, 5))}
+        placeholder="14:30"
+        keyboardType="numbers-and-punctuation"
+        style={[styles.box, styles.input, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong, fontFamily: fonts.monoMedium }]}
+      />
+      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+        {chips.map((chip) => (
+          <Press key={chip} onPress={() => onChange(chip)} style={[styles.quick, { borderColor: colors.borderStrong }]}>
+            <Text style={{ fontFamily: fonts.textMedium, fontSize: 13, color: colors.onSurface }}>{chip}</Text>
+          </Press>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** Option picker presented in a sheet (for units, categories, etc). */
 export function OptionSheet({ visible, onClose, title, options, value, onPick, testID }: { visible: boolean; onClose: () => void; title: string; options: { value: string; label: string }[]; value?: string; onPick: (v: string) => void; testID?: string }) {
   const { colors } = useTheme();

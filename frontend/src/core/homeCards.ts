@@ -6,7 +6,7 @@ import { vehicleOwnership } from "./life";
 import { balanceOverTime, monthFlow, repeatingBills } from "./moneyDesk";
 import { parseTransitTileId, publicTransitSpend, transitSpendLine } from "./travelSpend";
 import { transitLabel } from "./transit";
-import { costPerKmLine, fuelAgainstTank, serviceLeftLine } from "./vehicleMath";
+import { costPerKmLine, lastFullFill, rangeAfterFullLine, serviceLeftLine } from "./vehicleMath";
 import { paperForVehicleDocTile, vehicleDocTileLines, vehicleDocTileTitle, type VehicleDocTileId } from "./vehicleDocs";
 import { lowStash } from "./cycle";
 import { formatWaterTime } from "./water";
@@ -175,9 +175,8 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
     }
     case "fueltank": {
       const vehicle = db.vehicles[0];
-      const last = vehicle ? db.fuel.filter((row) => row.vehicleId === vehicle.id).sort((a, b) => b.date.localeCompare(a.date))[0] : undefined;
-      const line = vehicle?.tankLitres && last ? fuelAgainstTank(last.litres, vehicle.tankLitres).line : "Set a tank size";
-      return card("Fuel vs tank", id, [line], vehicle ? `/vehicles/${vehicle.id}` : "/vehicles");
+      const route = vehicle ? `/vehicles/${vehicle.id}` : "/vehicles";
+      return card("Last fill", id, ["Log a fill on Vehicle"], route);
     }
     case "servleft": {
       const vehicle = db.vehicles[0];
@@ -195,8 +194,7 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
     }
     case "vdoc-motor":
     case "vdoc-pa":
-    case "vdoc-puc":
-    case "vdoc-rsa": {
+    case "vdoc-puc": {
       const vehicle = db.vehicles[0];
       const tile = id as VehicleDocTileId;
       const paper = vehicle ? paperForVehicleDocTile(db, vehicle.id, tile) : undefined;
@@ -223,8 +221,19 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
       const last = db.services[db.services.length - 1];
       return card("Service", id, [last ? money(last.cost, cur) : money(0, cur)], db.vehicles[0] ? `/vehicles/${db.vehicles[0].id}` : "/vehicles");
     }
-    case "range":
-      return card("Range", id, [db.fuel.length ? `${db.fuel[db.fuel.length - 1].litres} L` : "0 L"], db.vehicles[0] ? `/vehicles/${db.vehicles[0].id}` : "/vehicles");
+    case "range": {
+      const vehicle = db.vehicles[0];
+      const unit = db.settings.distanceUnit;
+      if (!vehicle) return card("Range", id, ["No vehicle"], "/vehicles");
+      const mine = db.fuel.filter((row) => row.vehicleId === vehicle.id);
+      const lastFull = lastFullFill(mine);
+      const avgKm = vehicleStats(db, vehicle).avgMileage;
+      const line =
+        lastFull && vehicle.tankLitres && Number.isFinite(avgKm)
+          ? rangeAfterFullLine(avgKm, vehicle.tankLitres, unit)
+          : null;
+      return card("Range", id, [line ?? "After a full fill"], `/vehicles/${vehicle.id}`);
+    }
     case "stops":
       return card("Stops", id, [String(db.trips.reduce((sum, trip) => sum + trip.itinerary.filter((item) => item.stop).length, 0))], "/travel");
     case "packing": {

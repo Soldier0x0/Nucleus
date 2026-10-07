@@ -1,7 +1,8 @@
 import type { DB, Paper } from "./types";
 import { daysBetween, todayISO } from "./format";
+import { motorPolicyBadges } from "./vehicleMath";
 
-export type VehicleDocTileId = "vdoc-motor" | "vdoc-pa" | "vdoc-puc" | "vdoc-rsa";
+export type VehicleDocTileId = "vdoc-motor" | "vdoc-pa" | "vdoc-puc";
 
 export function motorPaper(db: DB, vehicleId: string): Paper | undefined {
   return db.papers.find(
@@ -20,25 +21,18 @@ export function pucPaper(db: DB, vehicleId: string): Paper | undefined {
   return db.papers.find((p) => p.vehicleId === vehicleId && p.kind === "puc");
 }
 
-export function rsaPaper(db: DB, vehicleId: string): Paper | undefined {
-  const motor = motorPaper(db, vehicleId);
-  if (!motor?.rsaAddOn) return undefined;
-  return db.papers.find((p) => p.vehicleId === vehicleId && p.kind === "insurance" && p.rsaAddOn) ?? motor;
-}
-
 export function vehicleDocTileIds(db: DB, vehicleId: string): VehicleDocTileId[] {
   const out: VehicleDocTileId[] = [];
   if (motorPaper(db, vehicleId)) out.push("vdoc-motor");
   if (personalAccidentPaper(db, vehicleId)) out.push("vdoc-pa");
   if (pucPaper(db, vehicleId)) out.push("vdoc-puc");
-  if (rsaPaper(db, vehicleId)) out.push("vdoc-rsa");
   return out;
 }
 
-export function vehicleDocBoardItems(db: DB): { id: string; size: "small" }[] {
+export function vehicleDocBoardItems(db: DB): { id: string; size: "large" | "small" }[] {
   const vehicle = db.vehicles[0];
   if (!vehicle) return [];
-  return vehicleDocTileIds(db, vehicle.id).map((id) => ({ id, size: "small" as const }));
+  return vehicleDocTileIds(db, vehicle.id).map((id) => ({ id, size: id === "vdoc-motor" ? "large" as const : "small" as const }));
 }
 
 export function paperForVehicleDocTile(db: DB, vehicleId: string, tile: VehicleDocTileId): Paper | undefined {
@@ -49,8 +43,6 @@ export function paperForVehicleDocTile(db: DB, vehicleId: string, tile: VehicleD
       return personalAccidentPaper(db, vehicleId);
     case "vdoc-puc":
       return pucPaper(db, vehicleId);
-    case "vdoc-rsa":
-      return rsaPaper(db, vehicleId);
     default: {
       const never: never = tile;
       return never;
@@ -100,8 +92,6 @@ export function vehicleDocTileTitle(tile: VehicleDocTileId): string {
       return "Personal accident";
     case "vdoc-puc":
       return "PUC";
-    case "vdoc-rsa":
-      return "Roadside";
     default: {
       const never: never = tile;
       return never;
@@ -113,6 +103,10 @@ export function vehicleDocTileLines(db: DB, vehicleId: string, tile: VehicleDocT
   const paper = paperForVehicleDocTile(db, vehicleId, tile);
   if (!paper) return ["Not on file"];
   const lines = [paper.title];
+  if (tile === "vdoc-motor") {
+    const badges = motorPolicyBadges(paper);
+    if (badges.length) lines.push(badges.join(" · "));
+  }
   if (paper.expiry) {
     const d = daysBetween(today, paper.expiry);
     lines.push(d < 0 ? `Expired ${paper.expiry}` : d === 0 ? "Expires today" : `${d} days left`);
@@ -125,4 +119,9 @@ export function vehicleDocTileLines(db: DB, vehicleId: string, tile: VehicleDocT
 export function paperExpiryDays(paper: Paper, today = todayISO()): number | null {
   if (!paper.expiry) return null;
   return daysBetween(today, paper.expiry);
+}
+
+/** Drop legacy RSA-only board tiles from saved home order. */
+export function stripLegacyDocTiles(ids: string[]): string[] {
+  return ids.filter((id) => id !== "vdoc-rsa" && id !== "fueltank");
 }

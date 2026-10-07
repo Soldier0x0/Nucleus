@@ -62,10 +62,8 @@ const VEHICLE: PresetItem[] = [
   { id: "fuel", size: "small" },
   { id: "servleft", size: "small" },
   { id: "costkm", size: "small" },
-  { id: "fueltank", size: "small" },
   { id: "service", size: "small" },
   { id: "range", size: "small" },
-  { id: "papers", size: "small" },
 ];
 
 const TRAVEL: PresetItem[] = [
@@ -486,9 +484,12 @@ export function visiblePresetItems(db: DB, preset: HomePresetId): PresetItem[] {
     case "bills":
       items = billBoardItems(db);
       break;
-    case "vehicle":
-      items = [...presetItems(preset), ...vehicleDocBoardItems(db)];
+    case "vehicle": {
+      const docs = vehicleDocBoardItems(db);
+      items = [...presetItems(preset), ...docs, { id: "papers", size: "small" }];
+      items = items.filter((item) => item.id !== "fueltank" && item.id !== "vdoc-rsa");
       break;
+    }
     case "money":
     case "travel":
     case "home":

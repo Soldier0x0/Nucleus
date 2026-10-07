@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { emptyDB, normalizeDB } from "./defaults.ts";
 import { paperExpiryDays } from "./vehicleDocs.ts";
-import { applyMotorXor, motorPaper, rsaPaper, vehicleDocTileIds } from "./vehicleDocs.ts";
+import { applyMotorXor, motorPaper, vehicleDocTileIds } from "./vehicleDocs.ts";
 import { migrateHomePresetOnLoad, presetItems, homePresetTiles } from "./presets.ts";
 import { publicTransitSpend, vehicleFuelSpendMonth } from "./travelSpend.ts";
 import { costPerKmLine, serviceLeftLine } from "./vehicleMath.ts";
@@ -45,9 +45,9 @@ test("vehicle doc tiles follow motor XOR, PA, PUC, and RSA add-on", () => {
   db.papers.push({ id: "pa", kind: "personal_accident", title: "PA cover", vehicleId: "v", createdAt: "2026-01-01" });
   db.papers.push({ id: "puc", kind: "puc", title: "PUC", vehicleId: "v", expiry: "2026-12-01", createdAt: "2026-01-01" });
   assert.deepEqual(vehicleDocTileIds(db, "v"), ["vdoc-motor", "vdoc-pa", "vdoc-puc"]);
-  assert.equal(rsaPaper(db, "v"), undefined);
   db.papers[0].rsaAddOn = true;
-  assert.deepEqual(vehicleDocTileIds(db, "v"), ["vdoc-motor", "vdoc-pa", "vdoc-puc", "vdoc-rsa"]);
+  db.papers[0].zeroDepAddOn = true;
+  assert.deepEqual(vehicleDocTileIds(db, "v"), ["vdoc-motor", "vdoc-pa", "vdoc-puc"]);
   const swapped = applyMotorXor(db, {
     id: "m2",
     kind: "insurance",
@@ -93,7 +93,7 @@ test("health board carries cycle; health off hides the tile", () => {
 test("paper expiry days and service left lines stay calm", () => {
   const paper = { id: "p", kind: "puc" as const, title: "PUC", expiry: "2026-04-10", createdAt: "2026-01-01" };
   assert.equal(paperExpiryDays(paper, "2026-04-01"), 9);
-  assert.equal(serviceLeftLine(80), "80 km left before service");
+  assert.equal(serviceLeftLine(80), "80 km to service");
   const fields = extractPaperFields("Policy number ABC-12345 expiry 2026-05-01");
   assert.equal(fields.number, "ABC-12345");
   assert.equal(fields.expiry, "2026-05-01");

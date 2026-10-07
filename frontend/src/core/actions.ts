@@ -4,7 +4,7 @@
  * apply cross-module effects (e.g. fuel.added -> Money expense + link). Modules never
  * call each other directly; they only meet through events and the links table.
  */
-import type { DB, EntityKind, FuelEntry, Ref, ServiceEntry, Subscription, Txn, Vehicle } from "./types";
+import type { DB, EntityKind, FuelEntry, OdometerLog, Ref, ServiceEntry, Subscription, Txn, Vehicle, VehicleJourney } from "./types";
 import { addDays, addMonths, todayISO, uid } from "./format";
 
 export type DomainEvent =
@@ -98,7 +98,14 @@ export function deleteVehicle(db: DB, id: string): DB {
     ...svcIds.map((sid) => ({ type: "entity.deleted" as const, ref: { kind: "service" as const, id: sid } })),
     { type: "entity.deleted", ref: { kind: "vehicle", id } },
   ]);
-  return { ...next, fuel: next.fuel.filter((f) => f.vehicleId !== id), services: next.services.filter((s) => s.vehicleId !== id), parts: next.parts.filter((p) => p.vehicleId !== id) };
+  return {
+    ...next,
+    fuel: next.fuel.filter((f) => f.vehicleId !== id),
+    services: next.services.filter((s) => s.vehicleId !== id),
+    parts: next.parts.filter((p) => p.vehicleId !== id),
+    odometerLogs: next.odometerLogs.filter((row) => row.vehicleId !== id),
+    vehicleJourneys: next.vehicleJourneys.filter((row) => row.vehicleId !== id),
+  };
 }
 
 export function addFuel(db: DB, entry: FuelEntry): DB {
@@ -107,6 +114,23 @@ export function addFuel(db: DB, entry: FuelEntry): DB {
 
 export function addService(db: DB, entry: ServiceEntry): DB {
   return dispatch({ ...db, services: [...db.services, entry] }, [{ type: "service.added", entry }]);
+}
+
+export function addOdometerLog(db: DB, entry: OdometerLog): DB {
+  return { ...db, odometerLogs: [...db.odometerLogs, entry] };
+}
+
+export function addVehicleJourney(db: DB, entry: VehicleJourney): DB {
+  return { ...db, vehicleJourneys: [...db.vehicleJourneys, entry] };
+}
+
+export function closeVehicleJourney(db: DB, id: string, endAt: string, endOdometer: number): DB {
+  return {
+    ...db,
+    vehicleJourneys: db.vehicleJourneys.map((row) =>
+      row.id === id ? { ...row, endAt, endOdometer: Math.round(endOdometer) } : row,
+    ),
+  };
 }
 
 export function addTxn(db: DB, txn: Txn): DB {
