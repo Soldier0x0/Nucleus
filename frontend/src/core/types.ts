@@ -51,8 +51,29 @@ export type MediaItem = { id: string; kind: MediaKind; title: string; status: Me
 export type UtilityKind = "electricity" | "water" | "lpg" | "internet";
 export type UtilityBill = { id: string; kind: UtilityKind; date: string; amount: number; reading?: number; note?: string; photo?: string };
 export type Person = { id: string; name: string; note?: string };
-export type PaperKind = "licence" | "registration" | "insurance" | "passport" | "fastag" | "warranty" | "other";
-export type Paper = { id: string; kind: PaperKind; title: string; number?: string; expiry?: string; note?: string; photo?: string; personId?: string; vehicleId?: string; createdAt: string };
+export type MotorCover = "comprehensive" | "third-party";
+export type PaperKind = "licence" | "registration" | "insurance" | "passport" | "fastag" | "warranty" | "puc" | "personal_accident" | "other";
+export type Paper = {
+  id: string;
+  kind: PaperKind;
+  title: string;
+  number?: string;
+  expiry?: string;
+  note?: string;
+  /** Legacy image attachment (data URI). */
+  photo?: string;
+  /** Local file URI or data URI for an image or PDF. */
+  file?: string;
+  mime?: string;
+  /** Motor policy only: comprehensive XOR third-party. */
+  motorCover?: MotorCover;
+  /** Roadside assistance on the motor policy. */
+  rsaAddOn?: boolean;
+  insurer?: string;
+  personId?: string;
+  vehicleId?: string;
+  createdAt: string;
+};
 export type WearPart = { id: string; vehicleId: string; kind: "tyre" | "battery" | "chain" | "brake" | "other"; name: string; installedOn?: string; odometer?: number; everyKm?: number; note?: string };
 export type HomeSpec = { id: string; label: string; value: string; room?: string; applianceId?: string };
 export type Chore = { id: string; name: string; everyDays: number; lastDone: string; room?: string; assignee?: string };
@@ -150,7 +171,7 @@ export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rul
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
-export type HomePresetId = "custom" | "money" | "travel" | "home" | "documents" | "bills" | "desk" | "workshop" | "adhd";
+export type HomePresetId = "custom" | "money" | "vehicle" | "travel" | "home" | "health" | "documents" | "bills" | "desk" | "workshop" | "adhd";
 export type AdhdKind = "money" | "trip" | "log";
 export type AdhdTask = {
   id: string;

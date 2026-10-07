@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tileModule, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { ADHD_VOICE, BOARD_CIRCLE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tileModule, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -106,13 +106,13 @@ test("a preset lists more than four relevant items in a stable priority order", 
   assert.deepEqual(presetItems("money").map((item) => item.id), money);
   assert.equal(travel[0], "route");
   assert.equal(money[0], "balance");
-  const travelOrder = ["route", "mileage", "fuel", "papers"];
+  const travelOrder = ["route", "transitmetro", "transittrain", "transitcab", "transitbus"];
   for (let i = 0; i < travelOrder.length - 1; i++) {
     assert.ok(travel.indexOf(travelOrder[i]) < travel.indexOf(travelOrder[i + 1]));
   }
-  for (const id of ["route", "mileage", "fuel", "papers", "vehicle", "service"]) assert.ok(travel.includes(id));
+  for (const id of ["route", "transitmetro", "transittrain", "transitcab", "transitbus", "stops", "weather", "packing", "heading"]) assert.ok(travel.includes(id));
   for (const id of ["balance", "spending", "charts", "receipts", "bills"]) assert.ok(money.includes(id));
-  assert.ok(PRESET_CHOICES.length < 10);
+  assert.ok(PRESET_CHOICES.length < 14);
   assert.ok(PRESET_CHOICES.some((choice) => choice.id === "custom"));
   assert.equal(PRESET_CHOICES.find((choice) => choice.id === "adhd")?.name, "ADHD mode");
 });
@@ -277,8 +277,7 @@ test("a preset still lists every tile when only some records exist", () => {
     createdAt: "2026-10-01",
   });
   const shown = visiblePresetItems(bare, "travel").map((item) => item.id);
-  assert.equal(shown.includes("fuel"), true);
-  assert.equal(shown.includes("mileage"), true);
+  assert.equal(shown.includes("transitmetro"), true);
   assert.equal(shown[0], "route");
   assert.deepEqual(shown, presetItems("travel").map((item) => item.id));
 
@@ -296,7 +295,7 @@ test("a preset still lists every tile when only some records exist", () => {
   assert.ok(money.length > 4);
   assert.deepEqual(travel, presetItems("travel").map((item) => item.id).filter((id) => travel.includes(id)));
   assert.equal(travel[0], "route");
-  assert.ok(travel.indexOf("mileage") < travel.indexOf("fuel"));
+  assert.ok(travel.indexOf("transitmetro") < travel.indexOf("heading"));
   assert.ok(money.includes("receipts"));
   assert.equal(visiblePresetItems(filled(), "money").some((item) => item.id === "receipts"), true);
 });
@@ -321,10 +320,9 @@ test("money and travel show different tiles, and each title names that tile", ()
   assert.equal(travel.includes("receipts"), false);
   assert.ok(money.length > 0);
   assert.ok(travel.length > 0);
-  const named = (id: string) => presetTileTitle(id).toLowerCase().replace(/[^a-z0-9]/g, "");
   for (const id of [...money, ...travel]) {
-    assert.equal(named(id), id, id);
     assert.notEqual(presetTileTitle(id), "Open");
+    assert.ok(presetTileTitle(id).length > 0, id);
   }
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
   const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
@@ -339,12 +337,12 @@ test("money and travel show different tiles, and each title names that tile", ()
 });
 
 test("every board is one circle and the last wraps to the first", () => {
-  const circle = ["custom", "money", "travel", "home", "documents", "bills", "desk", "workshop", "adhd"] as const;
+  const circle = BOARD_CIRCLE;
   for (const preset of circle) assert.deepEqual(swipeScreens(preset), [...circle]);
   assert.equal(swipeStartIndex("custom"), 0);
   assert.equal(swipeStartIndex("money"), 1);
-  assert.equal(swipeStartIndex("travel"), 2);
-  assert.equal(swipeStartIndex("adhd"), 8);
+  assert.equal(swipeStartIndex("travel"), circle.indexOf("travel"));
+  assert.equal(swipeStartIndex("adhd"), circle.indexOf("adhd"));
   assert.equal(swipeWrap(circle.length, circle.length), 0);
   assert.equal(swipeScreens("adhd")[swipeWrap(swipeScreens("adhd").length, swipeScreens("adhd").length)], "custom");
   assert.equal(swipePages("home").at(-1), "custom");
@@ -355,7 +353,7 @@ test("travel opens on the travel tiles and money opens on the money tiles", () =
   const db = emptyDB();
   const travel = homePresetTiles(db, "travel", "real").map((item) => item.id);
   const money = homePresetTiles(db, "money", "real").map((item) => item.id);
-  assert.deepEqual(travel.slice(0, 5), ["route", "mileage", "fuel", "papers", "vehicle"]);
+  assert.deepEqual(travel.slice(0, 5), ["route", "transitmetro", "transittrain", "transitcab", "transitbus"]);
   assert.deepEqual(money.slice(0, 5), ["balance", "spending", "charts", "receipts", "bills"]);
   assert.equal(swipeScreens("travel")[swipeStartIndex("travel")], "travel");
   assert.equal(swipeScreens("money")[swipeStartIndex("money")], "money");

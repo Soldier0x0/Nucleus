@@ -145,7 +145,15 @@ test("a module that is off is hidden on the home screen and the records stay", (
       modules: db.settings.modules.map((row) => (row.id === "cycle" ? { ...row, enabled: false } : row)),
     },
   };
-  assert.equal(homePresetTiles(cycleOff, "home", "real").some((item) => item.id === "cycle"), false);
+  assert.equal(homePresetTiles(cycleOff, "health", "real").some((item) => item.id === "cycle"), false);
+  const healthOff = {
+    ...db,
+    settings: {
+      ...db.settings,
+      modules: db.settings.modules.map((row) => (row.id === "health" ? { ...row, enabled: false } : row)),
+    },
+  };
+  assert.equal(homePresetTiles(healthOff, "health", "real").some((item) => item.id === "cycle"), false);
   assert.deepEqual(cycleOff.cycle.days, db.cycle.days);
 });
 

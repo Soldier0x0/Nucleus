@@ -1,4 +1,4 @@
-import type { DB, Settings, Txn } from "./types";
+import type { DB, HomePresetId, Settings, Txn } from "./types";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { emptyWater, normalizeWater } from "./water";
 import { cleanCallName } from "./greeting";
@@ -6,7 +6,8 @@ import { parseLauncher } from "./launcher";
 import { parseLook } from "./looks";
 import { parseLayout } from "./layouts";
 import { parseTileOrder } from "./homeOrder";
-import { emptyAdhd, emptyHeadsUp, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
+import { emptyAdhd, emptyHeadsUp, migrateHomePresetOnLoad, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
+import { normalizePaper } from "./paperNormalize";
 import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
@@ -177,7 +178,7 @@ export function normalizeDB(raw: any): DB {
   s.lockAlerts = raw?.settings?.lockAlerts === true;
   s.readOnly = raw?.settings?.readOnly === true;
   s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();
-  s.homePreset = parseHomePreset(raw?.settings?.homePreset);
+  s.homePreset = migrateHomePresetOnLoad(raw, parseHomePreset(raw?.settings?.homePreset));
   s.adhd = parseAdhd(raw?.settings?.adhd);
   s.presetLast = parsePresetLast(raw?.settings?.presetLast);
   s.headsUp = parseHeadsUp(raw?.settings?.headsUp);
@@ -232,7 +233,7 @@ export function normalizeDB(raw: any): DB {
     chores: Array.isArray(raw?.chores) ? raw.chores : [],
     media: Array.isArray(raw?.media) ? raw.media : [],
     people: Array.isArray(raw?.people) ? raw.people : [],
-    papers: Array.isArray(raw?.papers) ? raw.papers : [],
+    papers: Array.isArray(raw?.papers) ? raw.papers.map(normalizePaper) : [],
     parts: Array.isArray(raw?.parts) ? raw.parts : [],
     specs: Array.isArray(raw?.specs) ? raw.specs : [],
     kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],

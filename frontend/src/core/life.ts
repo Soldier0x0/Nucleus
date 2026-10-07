@@ -302,6 +302,8 @@ export const PAPER_KINDS: { id: Paper["kind"]; label: string }[] = [
   { id: "licence", label: "Licence" },
   { id: "registration", label: "Registration" },
   { id: "insurance", label: "Insurance" },
+  { id: "personal_accident", label: "Personal accident" },
+  { id: "puc", label: "PUC" },
   { id: "passport", label: "Passport" },
   { id: "fastag", label: "FASTag" },
   { id: "warranty", label: "Warranty" },
