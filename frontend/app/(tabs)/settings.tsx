@@ -147,6 +147,8 @@ export default function Settings() {
     };
   }, [locationOnce, setSettings]);
   const [showLog, setShowLog] = useState(false);
+  const [showDevLog, setShowDevLog] = useState(false);
+  const [devLogPreview, setDevLogPreview] = useState("");
   const [showExports, setShowExports] = useState(false);
   const [diag, setDiag] = useState<null | { scheduled: number }>(null);
   const router = useRouter();
@@ -496,17 +498,16 @@ export default function Settings() {
             label="Download logs for developer"
             sub="Perf and errors only — no personal data"
             testID="settings-dev-logs"
-            onPress={async () => {
-              const body = buildDeveloperLog({
-                app: Constants.expoConfig?.version ?? "unknown",
-                build: Constants.nativeBuildVersion ?? "dev",
-                platform: `${Device.osName ?? "unknown"} ${Device.osVersion ?? ""}`.trim(),
-                model: Device.modelName ?? "unknown",
-              });
-              const path = `${Paths.cache}/nucleus-dev-log.txt`;
-              await writeAsStringAsync(path, body);
-              if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path, { mimeType: "text/plain", dialogTitle: "Nucleus developer log" });
-              else toast("Log saved to app cache", "file-download-outline");
+            onPress={() => {
+              setDevLogPreview(
+                buildDeveloperLog({
+                  app: Constants.expoConfig?.version ?? "unknown",
+                  build: Constants.nativeBuildVersion ?? "dev",
+                  platform: `${Device.osName ?? "unknown"} ${Device.osVersion ?? ""}`.trim(),
+                  model: Device.modelName ?? "unknown",
+                }),
+              );
+              setShowDevLog(true);
             }}
             right={<Icon name="chevron-right" size={18} color={colors.muted} />}
           />
@@ -729,6 +730,32 @@ export default function Settings() {
             />
           </>
         ) : null}
+      </Sheet>
+
+      <Sheet
+        visible={showDevLog}
+        onClose={() => setShowDevLog(false)}
+        title="Developer log"
+        testID="devlog-sheet"
+        footer={
+          <Button
+            label="Share log file"
+            icon="share-variant-outline"
+            testID="devlog-share"
+            onPress={async () => {
+              const path = `${Paths.cache}/nucleus-dev-log.txt`;
+              await writeAsStringAsync(path, devLogPreview);
+              if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(path, { mimeType: "text/plain", dialogTitle: "Nucleus developer log" });
+              else toast("Log saved to app cache", "file-download-outline");
+              setShowDevLog(false);
+            }}
+          />
+        }
+      >
+        <T muted style={{ marginBottom: 8, fontSize: 12 }}>No names, amounts, odometer, capture text, or document contents. App, device, scrubbed errors, and timing breadcrumbs only.</T>
+        <ScrollView style={{ maxHeight: 320 }}>
+          <T v="mono" style={{ fontSize: 11 }}>{devLogPreview}</T>
+        </ScrollView>
       </Sheet>
 
       <Sheet visible={showExports} onClose={() => setShowExports(false)} title="Export a table" testID="exports-sheet">

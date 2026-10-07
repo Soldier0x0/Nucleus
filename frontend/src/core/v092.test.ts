@@ -78,6 +78,82 @@ test("pdf mime normalize for viewer path", () => {
   assert.equal(paperIsPdf(paper), true);
 });
 
+test("capture lexicon acceptance samples from v0.9.2 plan", () => {
+  const db = emptyDB();
+  db.vehicles.push({ id: "v", name: "Activa", type: "bike", fuelType: "petrol", initialOdometer: 10000, serviceIntervalKm: 3000, createdAt: "2026-01-01" });
+
+  const full = parseCapture(db, "Activa 5.4L 560 full 12450 km");
+  assert.ok(full && !("error" in full));
+  if (!full || "error" in full) return;
+  const saved = full.apply(db);
+  assert.equal(saved.fuel[0]?.fillKind, "full");
+  assert.equal(saved.fuel[0]?.odometer, 12450);
+
+  const partial = parseCapture(db, "Activa partial 3L 320");
+  assert.ok(partial && !("error" in partial));
+  if (!partial || "error" in partial) return;
+  assert.equal(partial.apply(db).fuel.at(-1)?.fillKind, "partial");
+
+  const odo = parseCapture(db, "Activa odo 12500");
+  assert.ok(odo && !("error" in odo));
+  if (!odo || "error" in odo) return;
+  assert.equal(odo.apply(db).odometerLogs[0]?.odometer, 12500);
+
+  const journey = parseCapture(db, "Activa journey 12450 12510");
+  assert.ok(journey && !("error" in journey));
+  if (!journey || "error" in journey) return;
+  const j = journey.apply(db).vehicleJourneys[0];
+  assert.equal(j?.startOdometer, 12450);
+  assert.equal(j?.endOdometer, 12510);
+  assert.equal(journey.apply(db).trips.length, 0);
+
+  const service = parseCapture(db, "Activa service oil 800");
+  assert.ok(service && !("error" in service));
+  if (!service || "error" in service) return;
+  assert.equal(service.apply(db).services[0]?.kind, "oil");
+
+  const tank = parseCapture(db, "Activa tank 5.3");
+  assert.ok(tank && !("error" in tank));
+  if (!tank || "error" in tank) return;
+  assert.equal(tank.apply(db).vehicles[0]?.tankLitres, 5.3);
+
+  const lunch = parseCapture(db, "450 food lunch");
+  assert.ok(lunch && !("error" in lunch));
+  if (!lunch || "error" in lunch) return;
+  assert.equal(lunch.apply(db).txns[0]?.category, "Food");
+  const income = parseCapture(db, "+50000 salary");
+  assert.ok(income && !("error" in income));
+  if (!income || "error" in income) return;
+  assert.equal(income.apply(db).txns[0]?.type, "income");
+
+  const uber = parseCapture(db, "uber 180");
+  assert.ok(uber && !("error" in uber));
+  if (!uber || "error" in uber) return;
+  assert.equal(uber.apply(db).txns[0]?.category, "Transport");
+
+  const hotel = parseCapture(db, "hotel 3200");
+  assert.ok(hotel && !("error" in hotel));
+  if (!hotel || "error" in hotel) return;
+  assert.equal(hotel.apply(db).txns[0]?.category, "Travel");
+
+  const cycle = parseCapture(db, "period started");
+  assert.ok(cycle && !("error" in cycle));
+  if (!cycle || "error" in cycle) return;
+  assert.ok(cycle.apply(db).cycle.days.some((d) => d.bleeding === "flow"));
+
+  const puc = parseCapture(db, "puc expiry 2026-12-01");
+  assert.ok(puc && !("error" in puc));
+  if (!puc || "error" in puc) return;
+  assert.equal(puc.apply(db).papers[0]?.expiry, "2026-12-01");
+
+  const legacy = parseCapture(db, "5.4L @103.7 Activa");
+  assert.ok(legacy && !("error" in legacy));
+  const sub = parseCapture(db, "netflix 649 monthly");
+  assert.ok(sub && !("error" in sub));
+  const gro = parseCapture(db, "onion 80 groceries");
+  assert.ok(gro && !("error" in gro));
+});
+
 test("vehicle journeys stay separate from travel trips", () => {
   const db = emptyDB();
   db.vehicles.push({ id: "v", name: "Bike", type: "bike", fuelType: "petrol", initialOdometer: 0, serviceIntervalKm: 3000, createdAt: "2026-01-01" });

@@ -10,6 +10,7 @@ import type { DB } from "./types";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./defaults";
 import { classifyMoney } from "./moneyWords";
 import { addFuel, addTxn, nextCycleDate, upsertSubscription } from "./actions";
+import { parseCycleCapture, parseMoneyCapture, parsePapersCapture, parseVehicleCapture } from "./captureLexicon";
 import { estimateOdometer, parseFuelDraft } from "./fuelCapture";
 import { money, num, todayISO, uid } from "./format";
 
@@ -21,6 +22,12 @@ export function parseCapture(db: DB, input: string): Capture | null {
   const s = input.trim();
   if (!s) return null;
   const cur = db.settings.currency;
+  const cycle = parseCycleCapture(db, s);
+  if (cycle) return cycle;
+  const papers = parsePapersCapture(db, s);
+  if (papers) return papers;
+  const vehicleCmd = parseVehicleCapture(db, s);
+  if (vehicleCmd) return vehicleCmd;
   const fuel = parseFuelDraft(db, s);
   if (fuel?.numbers) {
     const { litres, total, rate } = fuel.numbers;
@@ -65,6 +72,8 @@ export function parseCapture(db: DB, input: string): Capture | null {
     const name = m[1][0].toUpperCase() + m[1].slice(1), amount = Number(m[2]), cycle = m[3].toLowerCase() as any;
     return { icon: "autorenew", label: `Subscription · ${name} · ${money(amount, cur)} ${cycle}`, apply: (d) => upsertSubscription(d, { id: uid(), name, amount, cycle, nextRenewal: nextCycleDate(todayISO(), cycle), category: "Subscriptions", active: true }) };
   }
+  const wordFirst = parseMoneyCapture(db, s);
+  if (wordFirst) return wordFirst;
   m = s.match(/^(\+)?([\d.]+)\s+(\S+)(?:\s+(.*))?$/);
   if (m) {
     const income = !!m[1], amount = Number(m[2]);
@@ -77,5 +86,5 @@ export function parseCapture(db: DB, input: string): Capture | null {
     const detail = [category, item, note].filter((part, i, all) => part && all.indexOf(part) === i).join(" · ");
     return { icon: income ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline", label: `${income ? "Income" : "Expense"} · ${money(amount, cur)} · ${detail}`, apply: (d) => addTxn(d, { id: uid(), type: income ? "income" : "expense", amount, category, date: todayISO(), note, ...(item ? { item } : {}) }) };
   }
-  return { error: "Try: 450 food lunch · fuel 5.4L 560 · netflix 649 monthly" };
+  return { error: "Try: 450 food lunch · Activa 5.4L 560 full · period started · hotel 3200" };
 }

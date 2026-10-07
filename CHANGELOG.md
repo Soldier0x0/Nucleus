@@ -17,7 +17,7 @@ From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed
 - Fixed Vehicle tile titles so they do not split mid-word; Motor Policy is one large tile with RSA and ZeroDep badges instead of a second Roadside insurance tile.
 - Changed fuel logging to Full vs Partial fills and removed the last-fill-vs-tank fraction display.
 - Added timed odometer updates, vehicle journeys (start/end odo) separate from Travel trips, and a gallery cover photo on the vehicle.
-- Added a capture word-list refresh across Money, Health, Travel, Vehicle, and Papers targets.
+- Added a Capture lexicon refresh across Vehicle (odo, full/partial, journey, tank, service), Money, Health/Cycle, Travel, and Papers — existing `450 food lunch`, `5.4L @103.7 Activa`, `netflix 649 monthly`, and `onion 80 groceries` unchanged.
 - Added Settings download for scrubbed developer logs (share/save only — no mail in this release).
 
 ## v0.9.1
