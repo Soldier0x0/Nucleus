@@ -14,6 +14,7 @@ import { withoutSampleData, withSampleData } from "@/src/core/sample";
 import { BackupFile, decryptBackup, exportBackup, mergeDB, mergePreview, pickBackup } from "@/src/core/backup";
 import { passwordStrength, type PasswordEnvelope } from "@/src/core/crypto";
 import { biometricAvailable, biometricUnlock, clearFailures, clearPin, hasDecoyPin, hasPin, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
+import { LOCK_TIMEOUT_OPTIONS, lockTimeoutLabel, unlockSettingsForNewLock } from "@/src/core/lockSettings";
 import { MODULES } from "@/src/core/modules";
 import { EXPORTS, exportData, timeline } from "@/src/core/exports";
 import { allowLockScreenChannel, notifyOnce, scheduledCount } from "@/src/core/notify";
@@ -94,10 +95,15 @@ export default function Settings() {
   const [decoyFlow, setDecoyFlow] = useState<null | "enter" | "confirm">(null);
   const [decoyFirst, setDecoyFirst] = useState("");
   const [decoyOn, setDecoyOn] = useState(false);
+  const [bioEnrolled, setBioEnrolled] = useState(false);
   useEffect(() => {
     if (session === "real" && s.lockEnabled) hasDecoyPin().then(setDecoyOn);
     else setDecoyOn(false);
   }, [session, s.lockEnabled, pinKey]);
+  useEffect(() => {
+    if (session === "real") biometricAvailable().then(setBioEnrolled);
+    else setBioEnrolled(false);
+  }, [session, pinKey]);
   const [restore, setRestore] = useState<BackupFile | null>(null);
   const [restoreMode, setRestoreMode] = useState<"replace" | "merge">("replace");
   const [encBackup, setEncBackup] = useState<{ env: PasswordEnvelope; exportedAt: string } | null>(null);
@@ -302,12 +308,17 @@ export default function Settings() {
         ) : null}
 
         <Section title="Security & privacy">
-          <Row
-            first
-            icon="lock-outline"
-            label="App lock (PIN)"
-            sub={s.lockEnabled ? "On · locks on launch and after background timeout" : "Off"}
-            right={
+          <View style={{ padding: 12, gap: 10, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 44 }}>
+              <Icon name="lock-outline" size={20} color={colors.muted} />
+              <View style={{ flex: 1 }}>
+                <T v="label">App lock</T>
+                <T muted style={{ fontSize: 12 }}>
+                  {s.lockEnabled
+                    ? `On · asks on open, after the phone locks, and after ${lockTimeoutLabel(s.lockTimeoutSec ?? 30).toLowerCase()} away`
+                    : "Off · fingerprint or face unlock is available once lock is on and a PIN is set"}
+                </T>
+              </View>
               <Switch
                 testID="settings-lock-switch"
                 value={s.lockEnabled}
@@ -324,26 +335,47 @@ export default function Settings() {
                 }}
                 {...sw}
               />
-            }
-          />
+            </View>
+            <View style={{ opacity: s.lockEnabled ? 1 : 0.45 }} pointerEvents={s.lockEnabled ? "auto" : "none"}>
+              <T v="label" style={{ marginBottom: 4 }}>How you unlock</T>
+              <T muted style={{ fontSize: 12, marginBottom: 8 }}>Your PIN always works as a fallback.</T>
+              <Segmented
+                testID="settings-unlock-method"
+                value={s.unlockMethod}
+                onChange={async (v) => {
+                  if (!s.lockEnabled) return;
+                  if (v !== "pin" && !(await biometricAvailable())) return toast("No fingerprint or face enrolled on this device", "alert-circle-outline");
+                  setSettings({ unlockMethod: v, biometricEnabled: v !== "pin" });
+                }}
+                options={[
+                  { value: "pin", label: "PIN" },
+                  { value: "biometric", label: "Fingerprint or face" },
+                  { value: "both", label: "Both" },
+                ]}
+              />
+              {!bioEnrolled && s.lockEnabled ? (
+                <T muted style={{ fontSize: 12, marginTop: 6 }} testID="settings-bio-hint">Enroll a fingerprint or face in Android settings to use biometrics here.</T>
+              ) : null}
+            </View>
+            {s.lockEnabled ? (
+              <View>
+                <T v="label" style={{ marginBottom: 6 }}>Lock again after switching away</T>
+                <Segmented
+                  testID="settings-lock-timeout"
+                  value={String(s.lockTimeoutSec ?? 30)}
+                  onChange={(v) => setSettings({ lockTimeoutSec: Number(v) })}
+                  options={LOCK_TIMEOUT_OPTIONS.map((o) => ({ value: String(o.sec), label: o.label }))}
+                />
+              </View>
+            ) : null}
+          </View>
           {s.lockEnabled ? (
             <>
               <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
-                <T v="label" style={{ marginBottom: 4 }}>How you unlock</T>
-                <T muted style={{ fontSize: 12, marginBottom: 8 }}>Your PIN always works as a fallback, so you can never be locked out of your own data.</T>
-                <Segmented
-                  testID="settings-unlock-method"
-                  value={s.unlockMethod}
-                  onChange={async (v) => {
-                    if (v !== "pin" && !(await biometricAvailable())) return toast("No enrolled biometrics on this device", "alert-circle-outline");
-                    setSettings({ unlockMethod: v, biometricEnabled: v !== "pin" });
-                  }}
-                  options={[{ value: "pin", label: "PIN" }, { value: "biometric", label: "Biometric" }, { value: "both", label: "Both" }]}
-                />
-              </View>
-              <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
                 <T v="label" style={{ marginBottom: 8 }}>When the lock asks</T>
-                <T muted style={{ fontSize: 12 }} testID="settings-lock-policy">It asks when you open the app after it was fully closed, and after the phone was locked. Switching away and coming back does not ask, even after half a minute.</T>
+                <T muted style={{ fontSize: 12 }} testID="settings-lock-policy">
+                  It asks when you open the app, when the phone was locked or the screen turned off, and when you return after longer than {lockTimeoutLabel(s.lockTimeoutSec ?? 30).toLowerCase()}. Short trips to the photo picker or share sheet do not ask again.
+                </T>
               </View>
               <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
                 <T v="label" style={{ marginBottom: 4 }}>Ask again for these modules</T>
@@ -547,9 +579,12 @@ export default function Settings() {
               setPinKey((k) => k + 1);
             } else if (p === first) {
               await setPin(p);
-              setSettings({ lockEnabled: true });
+              const bio = await biometricAvailable();
+              const unlock = unlockSettingsForNewLock(bio);
+              setSettings({ lockEnabled: true, ...unlock });
               setPinFlow(null);
-              toast("App lock is on", "lock-outline");
+              if (bio) toast("App lock is on · fingerprint or face included", "lock-outline");
+              else toast("App lock is on · add a fingerprint or face in Android settings for biometrics", "lock-outline");
             } else {
               setPinErr("PINs didn't match");
               setPinFlow("enter");

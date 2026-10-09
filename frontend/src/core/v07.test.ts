@@ -68,7 +68,7 @@ test("an upgraded phone drops Activa mirror notes and keeps the real rows", () =
   const icon = launcherIconChange(states, "IconMetalDune");
   assert.equal(icon.changed, true);
   assert.deepEqual(icon.enable, ["IconMetalDune"]);
-  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), false);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: true, fullyClosed: false }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: true }), true);
 });

@@ -46,6 +46,8 @@ import java.util.concurrent.atomic.AtomicInteger
 class NucleusAndroidModule : Module() {
   private val scanning = AtomicBoolean(false)
   private val phoneLocked = AtomicBoolean(false)
+  private var receiversRegistered = false
+  private var appApplicationContext: Context? = null
   private var saveLauncher: AppContextActivityResultLauncher<String, Boolean>? = null
   private var accountLauncher: AppContextActivityResultLauncher<String, PickedAccount?>? = null
   private var consentLauncher: AppContextActivityResultLauncher<String, Boolean>? = null
@@ -70,27 +72,27 @@ class NucleusAndroidModule : Module() {
     Events("onLan", "onBank")
 
     OnCreate {
-      val ctx = appContext.reactContext ?: return@OnCreate
-      val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
-      val bank = IntentFilter(BANK_ACTION)
-      if (Build.VERSION.SDK_INT >= 33) {
-        ctx.registerReceiver(screenOff, filter, Context.RECEIVER_NOT_EXPORTED)
-        ctx.registerReceiver(bankReceiver, bank, Context.RECEIVER_NOT_EXPORTED)
-      } else {
-        ctx.registerReceiver(screenOff, filter)
-        ctx.registerReceiver(bankReceiver, bank)
-      }
+      registerLockReceivers(appContext.reactContext?.applicationContext)
+    }
+
+    OnActivityEntersForeground {
+      registerLockReceivers(appContext.currentActivity?.applicationContext)
     }
 
     OnDestroy {
-      try {
-        appContext.reactContext?.unregisterReceiver(screenOff)
-      } catch (_: Exception) {
+      val ctx = appApplicationContext
+      if (ctx != null) {
+        try {
+          ctx.unregisterReceiver(screenOff)
+        } catch (_: Exception) {
+        }
+        try {
+          ctx.unregisterReceiver(bankReceiver)
+        } catch (_: Exception) {
+        }
       }
-      try {
-        appContext.reactContext?.unregisterReceiver(bankReceiver)
-      } catch (_: Exception) {
-      }
+      receiversRegistered = false
+      appApplicationContext = null
     }
 
     RegisterActivityContracts {
@@ -173,7 +175,7 @@ class NucleusAndroidModule : Module() {
     }
 
     Function("consumePhoneLock") {
-      val ctx = appContext.reactContext ?: return@Function mapOf("deviceLocked" to false, "screenTurnedOff" to false)
+      val ctx = appContext.reactContext ?: return@Function mapOf("deviceLocked" to true, "screenTurnedOff" to false)
       val keyguard = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
       val deviceLocked = keyguard.isDeviceLocked
       val screenTurnedOff = phoneLocked.getAndSet(false)
@@ -335,6 +337,22 @@ class NucleusAndroidModule : Module() {
         pm.setComponentEnabledSetting(ComponentName(pkg, "$pkg.$alias"), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
       }
     }
+  }
+
+  private fun registerLockReceivers(context: Context?) {
+    if (context == null || receiversRegistered) return
+    val appCtx = context.applicationContext
+    appApplicationContext = appCtx
+    val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+    val bank = IntentFilter(BANK_ACTION)
+    if (Build.VERSION.SDK_INT >= 33) {
+      appCtx.registerReceiver(screenOff, filter, Context.RECEIVER_NOT_EXPORTED)
+      appCtx.registerReceiver(bankReceiver, bank, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+      appCtx.registerReceiver(screenOff, filter)
+      appCtx.registerReceiver(bankReceiver, bank)
+    }
+    receiversRegistered = true
   }
 
   private fun rememberIconRestart(ctx: Context) {

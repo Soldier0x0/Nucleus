@@ -6,6 +6,7 @@ import type { DB } from "./types";
 import { normalizeDB } from "./defaults";
 import { decryptWithPassword, encryptWithPassword, type PasswordEnvelope } from "./crypto";
 import { countsOf } from "./merge";
+import { withExternalActivity } from "./externalActivity";
 
 export { countsOf, mergeDB, mergePreview } from "./merge";
 
@@ -75,7 +76,9 @@ export async function decryptBackup(env: PasswordEnvelope, password: string): Pr
 }
 
 export async function pickBackup(): Promise<PickedBackup | null> {
-  const res = await DocumentPicker.getDocumentAsync({ type: ["application/json", "text/plain", "*/*"], copyToCacheDirectory: true });
+  const res = await withExternalActivity(() =>
+    DocumentPicker.getDocumentAsync({ type: ["application/json", "text/plain", "*/*"], copyToCacheDirectory: true }),
+  );
   if (res.canceled || !res.assets?.[0]) return null;
   const asset = res.assets[0];
   let text: string;

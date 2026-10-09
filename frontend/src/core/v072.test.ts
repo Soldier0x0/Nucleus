@@ -79,12 +79,16 @@ test("short cards share a row and a long press resizes only that tile", () => {
   assert.equal(back.settings.tileSizes?.tools, "large");
 });
 
-test("a screenshot on an unlocked phone does not ask for the thumbprint", () => {
-  assert.equal(askAfterLeave({ lockEnabled: true, deviceLocked: false, screenTurnedOff: false, screenshot: true }), false);
-  assert.equal(askAfterLeave({ lockEnabled: true, deviceLocked: false, screenTurnedOff: true, screenshot: true }), false);
-  assert.equal(askAfterLeave({ lockEnabled: true, deviceLocked: true, screenTurnedOff: false, screenshot: false }), true);
-  assert.equal(askAfterLeave({ lockEnabled: true, deviceLocked: false, screenTurnedOff: true, screenshot: false }), true);
-  assert.equal(askAfterLeave({ lockEnabled: false, deviceLocked: true, screenTurnedOff: true, screenshot: false }), false);
+test("relock on resume honours screen-off, timeout, and screenshots", () => {
+  const base = { lockEnabled: true, deviceLocked: false, screenTurnedOff: false, screenshot: false, backgroundMs: 0, lockTimeoutSec: 30, externalActivity: false };
+  assert.equal(askAfterLeave({ ...base, screenshot: true }), false);
+  assert.equal(askAfterLeave({ ...base, screenTurnedOff: true, screenshot: true }), true);
+  assert.equal(askAfterLeave({ ...base, deviceLocked: true, screenshot: true }), true);
+  assert.equal(askAfterLeave({ ...base, backgroundMs: 31_000, screenshot: true }), true);
+  assert.equal(askAfterLeave({ ...base, backgroundMs: 5_000 }), false);
+  assert.equal(askAfterLeave({ ...base, backgroundMs: 31_000 }), true);
+  assert.equal(askAfterLeave({ ...base, lockEnabled: false, deviceLocked: true, screenTurnedOff: true }), false);
+  assert.equal(askAfterLeave({ ...base, externalActivity: true, backgroundMs: 60_000 }), false);
   const gate = readFileSync(new URL("../components/LockGate.tsx", import.meta.url), "utf8");
   assert.match(gate, /askAfterLeave/);
   assert.match(gate, /screenshot/);

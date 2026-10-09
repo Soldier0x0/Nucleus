@@ -56,7 +56,7 @@ test("changing the icon on an unlocked phone does not ask, and a lock or a full 
   assert.equal(askAfterIconTap({ ...changed, phoneLocked: false, fullyClosed: false }), false);
   assert.equal(askAfterIconTap({ ...changed, phoneLocked: true, fullyClosed: false }), true);
   assert.equal(askAfterIconTap({ ...changed, phoneLocked: false, fullyClosed: true }), true);
-  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), false);
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: true, fullyClosed: false }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: true }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: false, phoneLocked: false, fullyClosed: true }), true);

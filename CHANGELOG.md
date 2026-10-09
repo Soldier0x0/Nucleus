@@ -10,6 +10,17 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.6
+
+- Fixed app lock so turning it on sets fingerprint or face unlock when the device has enrolled biometrics, and onboarding matches.
+- Fixed warm resume so Nucleus locks again after the phone locks, the screen turns off, or you stay away longer than the timeout.
+- Fixed the lock skipping after an icon change or install-over.
+- Fixed screen-off relock when a screenshot was taken with screen sharing allowed.
+- Fixed native lock signals failing open when the bridge was not ready.
+- Added Settings control for how long you can switch away before the lock asks again.
+- Changed the App lock row and unlock method labels so PIN, fingerprint or face, and Both are easier to find.
+- Changed pickers and the biometric sheet so short system trips do not relock in a loop.
+
 ## v0.9.5
 
 - Fixed insurance and PA PDFs opening to pages again by writing vault PDFs with base64 binary encoding, pointing the viewer at a bare cache path with `cache: false`, and falling back to the stored data URI when the path fails.
