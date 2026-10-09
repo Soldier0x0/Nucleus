@@ -9,6 +9,7 @@ import { CURRENCIES } from "@/src/core/format";
 import { MODULES } from "@/src/core/modules";
 import { withSampleData } from "@/src/core/sample";
 import { biometricAvailable, biometricUnlock, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
+import { unlockSettingsForNewLock } from "@/src/core/lockSettings";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Segmented, T } from "@/src/components/ui";
 import { PinPad } from "@/src/components/PinPad";
 import { Mark } from "@/src/components/Mark";
@@ -280,8 +281,9 @@ export default function Onboarding() {
                           return;
                         }
                         await setPin(p);
-                        setSettings({ lockEnabled: true });
-                        setBioOk(await biometricAvailable());
+                        const bio = await biometricAvailable();
+                        setSettings({ lockEnabled: true, ...unlockSettingsForNewLock(bio) });
+                        setBioOk(bio);
                         setPinStage("done");
                       } else if (pinStage === "decoy") {
                         if ((await verifyPin(p)) === "primary") {
@@ -315,7 +317,15 @@ export default function Onboarding() {
                       {bioOk ? "Also unlock with fingerprint / face?" : Platform.OS === "web" ? "Biometrics are available in the installed app." : "No enrolled biometrics found on this device."}
                     </T>
                   </View>
-                  {bioOk ? <Switch testID="onboarding-biometric-switch" value={s.biometricEnabled} onValueChange={(v) => setSettings({ biometricEnabled: v })} trackColor={{ true: colors.brandPrimary, false: colors.surfaceTertiary }} thumbColor={colors.surfaceSecondary} /> : null}
+                  {bioOk ? (
+                    <Switch
+                      testID="onboarding-biometric-switch"
+                      value={s.biometricEnabled}
+                      onValueChange={(v) => setSettings({ biometricEnabled: v, unlockMethod: v ? "both" : "pin" })}
+                      trackColor={{ true: colors.brandPrimary, false: colors.surfaceTertiary }}
+                      thumbColor={colors.surfaceSecondary}
+                    />
+                  ) : null}
                 </View>
               )}
               {pinStage === "done" ? (

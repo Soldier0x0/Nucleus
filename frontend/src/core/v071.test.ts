@@ -185,13 +185,14 @@ test("google pay, phonepe, and bank notices save once notification access is on"
   assert.doesNotMatch(kotlin, /setNotificationListenerAccessGranted/);
 });
 
-test("an unlocked icon restart does not ask for the thumbprint", () => {
-  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), false);
+test("an icon restart still asks for the lock, and the gate does not skip on install-over", () => {
+  assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: false, fullyClosed: false }), true);
   assert.equal(askOnRelaunch({ lockEnabled: true, marked: true, phoneLocked: true, fullyClosed: false }), true);
   const kotlin = readFileSync(new URL("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt", import.meta.url), "utf8");
   const gate = readFileSync(new URL("../components/LockGate.tsx", import.meta.url), "utf8");
   assert.match(kotlin, /rememberIconRestart/);
   assert.match(kotlin, /DONT_KILL_APP/);
   assert.doesNotMatch(kotlin, /startForeground|Process\.killProcess|System\.exit/);
-  assert.match(gate, /!consumeIconRestart\(\)/);
+  assert.doesNotMatch(gate, /consumeIconRestart/);
+  assert.match(gate, /s\.onboarded && s\.lockEnabled/);
 });

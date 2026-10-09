@@ -20,29 +20,35 @@ export function askAfterIconTap(input: {
   return false;
 }
 
-/** The new process asks unless the dying process marked an unlocked icon change. */
+/** A new process with app lock on always asks, including after an icon change or install-over. */
 export function askOnRelaunch(input: { lockEnabled: boolean; marked: boolean; phoneLocked: boolean; fullyClosed: boolean }): boolean {
   if (!input.lockEnabled) return false;
   if (input.phoneLocked) return true;
   if (input.fullyClosed) return true;
-  if (input.marked) return false;
   return true;
 }
 
 /**
- * A screenshot on an unlocked phone does not ask.
- * The phone being locked, or the screen having turned off, still does.
+ * Returning from background: phone lock and screen-off always relock.
+ * Background longer than lockTimeoutSec relocks. A screenshot alone does not block those.
+ * Within the grace period, a screenshot on an unlocked phone does not relock.
  */
 export function askAfterLeave(input: {
   lockEnabled: boolean;
   deviceLocked: boolean;
   screenTurnedOff: boolean;
   screenshot: boolean;
+  backgroundMs: number;
+  lockTimeoutSec: number;
+  externalActivity: boolean;
 }): boolean {
   if (!input.lockEnabled) return false;
-  if (input.screenshot && !input.deviceLocked) return false;
+  if (input.externalActivity) return false;
   if (input.deviceLocked) return true;
   if (input.screenTurnedOff) return true;
+  const graceMs = Math.max(0, input.lockTimeoutSec) * 1000;
+  if (input.backgroundMs >= graceMs) return true;
+  if (input.screenshot) return false;
   return false;
 }
 

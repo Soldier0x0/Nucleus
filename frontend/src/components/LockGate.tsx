@@ -11,12 +11,14 @@ import { NameAsk } from "./NameAsk";
 import { resolveLauncher } from "@/src/core/launcher";
 import { emergencyLockCard } from "@/src/core/featureAccess";
 import { askAfterLeave } from "@/src/core/lockPolicy";
-import { consumeIconRestart, hideLockCard, readPhoneLock, showLockCard } from "@/src/native/android";
+import { externalActivityActive, pulseExternalActivity } from "@/src/core/externalActivity";
+import { hideLockCard, readPhoneLock, showLockCard } from "@/src/native/android";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
 /**
- * App-wide lock + privacy cover. Asks on a cold start, and again only after the phone was locked.
+ * App-wide lock + privacy cover. Asks on a cold start, and again after phone lock,
+ * screen-off, or a background stay past the configured timeout.
  * Renders above the navigator so navigation state is preserved while locked.
  */
 export function LockGate() {
@@ -26,16 +28,14 @@ export function LockGate() {
   const mark = resolveLauncher(s.launcher, s.theme, scheme);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [locked, setLocked] = useState(() => {
-    if (!(s.onboarded && s.lockEnabled)) return false;
-    return !consumeIconRestart();
-  });
+  const [locked, setLocked] = useState(() => s.onboarded && s.lockEnabled);
   const [covered, setCovered] = useState(false);
   const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
   const [forgot, setForgot] = useState(false);
   const [waitSec, setWaitSec] = useState(0);
   const shot = useRef(false);
+  const backgroundAt = useRef<number | null>(null);
   const bioAllowed = s.unlockMethod !== "pin" && s.biometricEnabled && Platform.OS !== "web";
 
   useEffect(() => {
@@ -73,10 +73,25 @@ export function LockGate() {
           const phone = readPhoneLock();
           const screenshot = shot.current;
           shot.current = false;
-          if (askAfterLeave({ lockEnabled: s.lockEnabled, deviceLocked: phone.deviceLocked, screenTurnedOff: phone.screenTurnedOff, screenshot })) setLocked(true);
+          const backgroundMs = backgroundAt.current != null ? Math.max(0, Date.now() - backgroundAt.current) : 0;
+          backgroundAt.current = null;
+          if (
+            askAfterLeave({
+              lockEnabled: s.lockEnabled,
+              deviceLocked: phone.deviceLocked,
+              screenTurnedOff: phone.screenTurnedOff,
+              screenshot,
+              backgroundMs,
+              lockTimeoutSec: s.lockTimeoutSec ?? 30,
+              externalActivity: externalActivityActive(),
+            })
+          ) {
+            setLocked(true);
+          }
           return;
         }
         case "background":
+          backgroundAt.current = Date.now();
           setCovered(s.blockScreenshots || s.lockEnabled);
           return;
         case "inactive":
@@ -90,13 +105,15 @@ export function LockGate() {
       }
     });
     return () => sub.remove();
-  }, [s.lockEnabled, s.blockScreenshots]);
+  }, [s.lockEnabled, s.blockScreenshots, s.lockTimeoutSec]);
 
   const noteUnlock = useCallback(() => {
     setSettings({ cloud: { ...s.cloud, unlockedAt: new Date().toISOString(), askedSinceUnlock: false } });
   }, [setSettings, s.cloud]);
 
   const tryBio = useCallback(async () => {
+    if (AppState.currentState !== "active") return;
+    pulseExternalActivity(120_000);
     if (await biometricUnlock()) {
       await openReal();
       await clearFailures();
@@ -107,7 +124,7 @@ export function LockGate() {
   }, [openReal, noteUnlock]);
 
   useEffect(() => {
-    if (locked && bioAllowed) tryBio();
+    if (locked && bioAllowed && AppState.currentState === "active") tryBio();
   }, [locked, bioAllowed, tryBio]);
 
   // Wrong-PIN back-off countdown (persisted, survives app restarts).

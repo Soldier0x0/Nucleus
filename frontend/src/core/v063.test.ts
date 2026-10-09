@@ -116,7 +116,7 @@ test("the screen, the listener, and the upload say what this version does", () =
   assert.match(enable, /notification-listener/);
   assert.match(cloud, /storeLockedFile/);
   assert.doesNotMatch(cloud, /writeLockedFile/);
-  assert.match(gate, /consumeIconRestart/);
+  assert.match(gate, /askAfterLeave/);
   assert.match(gate, /emergencyLockCard/);
   assert.match(bank, /readBankNotices/);
   assert.doesNotMatch(bank, /readSmsInbox/);

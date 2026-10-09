@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { radius, useTheme } from "@/src/theme";
 import { Button, T } from "./ui";
 import { useToast } from "./Toast";
+import { withExternalActivity } from "@/src/core/externalActivity";
 
 const MAX = 180_000;
 
@@ -11,7 +12,9 @@ const MAX = 180_000;
 export async function pickSmallPhoto(): Promise<string | null | "too-big" | "denied"> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return "denied";
-  const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.25, base64: true, allowsEditing: true });
+  const res = await withExternalActivity(() =>
+    ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.25, base64: true, allowsEditing: true }),
+  );
   if (res.canceled || !res.assets[0]?.base64) return null;
   if (res.assets[0].base64.length > MAX) return "too-big";
   return `data:image/jpeg;base64,${res.assets[0].base64}`;

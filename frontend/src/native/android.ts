@@ -89,14 +89,17 @@ export type PhoneLock = { deviceLocked: boolean; screenTurnedOff: boolean };
 
 /** The screen-off latch and whether the phone is locked right now. A screenshot overlay is not a lock. */
 export function readPhoneLock(): PhoneLock {
+  const failClosed = { deviceLocked: true, screenTurnedOff: false };
   try {
-    const raw = bridge()?.consumePhoneLock();
+    const mod = bridge();
+    if (!mod) return failClosed;
+    const raw = mod.consumePhoneLock();
     if (raw && typeof raw === "object") {
       return { deviceLocked: raw.deviceLocked === true, screenTurnedOff: raw.screenTurnedOff === true };
     }
     return { deviceLocked: raw === true, screenTurnedOff: false };
   } catch {
-    return { deviceLocked: false, screenTurnedOff: false };
+    return failClosed;
   }
 }
 

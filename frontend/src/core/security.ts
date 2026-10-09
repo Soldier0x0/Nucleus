@@ -111,6 +111,10 @@ export async function biometricAvailable() {
 
 export async function biometricUnlock(prompt = "Unlock Nucleus") {
   if (Platform.OS === "web") return false;
-  const r = await LocalAuthentication.authenticateAsync({ promptMessage: prompt, cancelLabel: "Use PIN", disableDeviceFallback: true });
-  return r.success;
+  try {
+    const r = await LocalAuthentication.authenticateAsync({ promptMessage: prompt, cancelLabel: "Use PIN", disableDeviceFallback: true });
+    return r.success === true;
+  } catch {
+    return false;
+  }
 }
