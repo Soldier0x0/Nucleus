@@ -305,7 +305,7 @@ export default function Settings() {
                 }}
               />
               <TextInput testID="profile-rename-input" value={rename} onChangeText={setRename} placeholder="Rename the open profile" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
-              <Button small kind="ghost" label="Rename" testID="profile-rename-button" onPress={() => renameProfile(activeProfileId, rename).then(() => setRename(""))} />
+              <Button small kind="ghost" label="Rename" testID="profile-rename-button" disabled={!rename.trim()} onPress={() => renameProfile(activeProfileId, rename).then(() => setRename(""))} />
               {profiles.filter((p) => p.id !== activeProfileId).map((p) => (
                 <Button key={p.id} small kind="danger" label={`Delete ${p.name}`} testID={`profile-delete-${p.id}`} onPress={() => setDelProfile(p.id)} />
               ))}

@@ -292,7 +292,13 @@ export default function Lab() {
           <View style={{ marginHorizontal: -16, marginTop: 4 }}>
             <ChipRow testID="lab-sensor-row">
               {SENSORS.map((s) => (
-                <Chip key={s.id} label={s.label} icon={s.icon} selected={sensor === s.id} testID={`lab-sensor-${s.id}`} onPress={() => setSensor(s.id)} />
+                <Chip key={s.id} label={s.label} icon={s.icon} selected={sensor === s.id} testID={`lab-sensor-${s.id}`} onPress={() => {
+                  if (recording && s.id !== sensor) {
+                    toast("Stop recording first", "record-circle-outline");
+                    return;
+                  }
+                  setSensor(s.id);
+                }} />
               ))}
             </ChipRow>
           </View>

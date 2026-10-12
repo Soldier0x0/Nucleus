@@ -48,8 +48,9 @@ export default function Onboarding() {
   const [pendingEnc, setPendingEnc] = useState<{ env: PasswordEnvelope; exportedAt: string } | null>(null);
 
   const openPicked = (next: DB, line: string) => {
+    const samePhone = !next.settings.installId || next.settings.installId === s.installId;
     setPicked(next);
-    setFileLine(line);
+    setFileLine(samePhone ? line : `${line} This phone will be read-only for this file.`);
     setGate("file");
   };
 

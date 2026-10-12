@@ -149,6 +149,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
           label="Save"
           icon="check"
           testID="media-save-button"
+          disabled={!title.trim()}
           onPress={() => {
             const next: MediaItem = { ...item, kind, title: title.trim() || "Untitled", status, progress: status === "done" ? 100 : progress, rating, review: review.trim() || undefined, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), cover, updatedAt: new Date().toISOString() };
             update((d) => ({ ...d, media: exists ? d.media.map((m) => (m.id === next.id ? next : m)) : [next, ...d.media] }));

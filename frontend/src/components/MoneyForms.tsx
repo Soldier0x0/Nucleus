@@ -210,7 +210,8 @@ export function BudgetSheet({ visible, onClose }: { visible: boolean; onClose: (
     const m = parseNum(monthly);
     const categories = Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, parseNum(v)]).filter(([, v]) => (v as number) > 0)) as Record<string, number>;
     update((d) => ({ ...d, budget: { monthly: m > 0 ? m : 0, categories } }));
-    toast("Budget saved", "chart-donut");
+    const cleared = (m <= 0 && db.budget.monthly > 0) || Object.entries(db.budget.categories).some(([k, v]) => v > 0 && !categories[k]);
+    toast(cleared ? "Budget cleared" : "Budget saved", "chart-donut");
     onClose();
   };
   return (

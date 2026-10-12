@@ -108,7 +108,7 @@ export function MoneyDesk({ month }: { month: string }) {
             <View key={bill.name} style={{ marginTop: 10 }}>
               <T v="label">{bill.name}</T>
               <T muted>Next {bill.next}. Reminder {dayBefore(bill.next)}.{change?.changed ? ` Price changed from ${change.previous} to ${change.latest}.` : ""}</T>
-              <Button small kind="secondary" label={`Hand ${bill.name} to ${person || "someone"}`} testID={`money-share-${bill.name}`} onPress={() => person && Share.share({ message: shareBill(person, { name: bill.name, amount: bill.amount }) })} style={{ marginTop: 6 }} />
+              <Button small kind="secondary" label={`Hand ${bill.name} to ${person || "someone"}`} testID={`money-share-${bill.name}`} disabled={!person.trim()} onPress={() => person && Share.share({ message: shareBill(person, { name: bill.name, amount: bill.amount }) })} style={{ marginTop: 6 }} />
             </View>
           );
         })}
@@ -117,7 +117,7 @@ export function MoneyDesk({ month }: { month: string }) {
         <Eyebrow>Named categories</Eyebrow>
         <T muted style={{ marginTop: 6 }}>{db.settings.moneyNames.length ? db.settings.moneyNames.join(", ") : "Name a category and it stays on the list."}</T>
         {unused.map((name) => (
-          <Button key={name} small kind="ghost" label={`Remove ${name}`} testID={`money-remove-${name}`} onPress={() => setSettings({ moneyNames: db.settings.moneyNames.filter((item) => item !== name) })} style={{ marginTop: 6 }} />
+          <Button key={name} small kind="ghost" label={`Remove ${name}`} testID={`money-remove-${name}`} onPress={() => { setSettings({ moneyNames: db.settings.moneyNames.filter((item) => item !== name) }); toast("Name removed", "tag-outline"); }} style={{ marginTop: 6 }} />
         ))}
         <Button small kind="secondary" label="Add the categories you have used" testID="money-add-names" onPress={() => setSettings({ moneyNames: Array.from(new Set([...db.settings.moneyNames, ...db.txns.map((row) => row.category)])).slice(0, 40) })} style={{ marginTop: 8 }} />
       </Card>
