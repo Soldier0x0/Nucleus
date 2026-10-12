@@ -32,9 +32,7 @@ export default function Wiki() {
       setPage(found);
       return;
     }
-    const created = { ...blank(), title };
-    update((d) => ({ ...d, wiki: [...d.wiki, created] }));
-    setPage(created);
+    setPage({ ...blank(), title });
   };
 
   return (
@@ -79,6 +77,7 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
     >
       <Field label="Title" value={title} onChangeText={setTitle} testID="wiki-title" />
       <T muted style={{ fontSize: 12, marginBottom: 6 }}>Link another page with [[Page title]].</T>
+      {pages.some((p) => p.id === page.id) ? null : <T muted style={{ fontSize: 12, marginBottom: 6 }}>This page does not exist yet. Save page to create it.</T>}
       <TextInput testID="wiki-body" value={body} onChangeText={setBody} multiline placeholder="Write the page" placeholderTextColor={colors.muted} style={{ minHeight: 140, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, padding: 12, color: colors.onSurface, textAlignVertical: "top" }} />
       {links.length ? (
         <View style={{ marginTop: 12 }}>

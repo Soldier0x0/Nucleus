@@ -207,7 +207,7 @@ export default function MoneyPlan() {
       {debt ? <DebtSheet debt={debt} onClose={() => setDebt(null)} /> : null}
       {snap ? <SnapshotSheet snap={snap} onClose={() => setSnap(null)} /> : null}
 
-      <Sheet visible={!!addTo} onClose={() => setAddTo(null)} title={`Add to ${addTo?.name ?? ""}`} testID="fund-contribute-sheet" footer={<Button label="Add money" icon="check" testID="fund-contribute-save" onPress={() => {
+      <Sheet visible={!!addTo} onClose={() => setAddTo(null)} title={`Add to ${addTo?.name ?? ""}`} testID="fund-contribute-sheet" footer={<Button label="Add money" icon="check" disabled={!(parseNum(amount) > 0)} testID="fund-contribute-save" onPress={() => {
         const v = parseNum(amount);
         if (!addTo || !(v > 0)) return;
         update((d) => upsertFund(d, { ...addTo, contributions: [...addTo.contributions, { id: uid(), amount: v, date: todayISO() }] }));

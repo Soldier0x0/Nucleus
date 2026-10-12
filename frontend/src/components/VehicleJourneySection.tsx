@@ -8,9 +8,11 @@ import { useStore } from "@/src/core/store";
 import { Card, Button, Eyebrow, T } from "./ui";
 import { DateField, Field, TimeField } from "./inputs";
 import { Sheet } from "./Sheet";
+import { useToast } from "./Toast";
 
 export function VehicleJourneySection({ vehicle }: { vehicle: Vehicle }) {
   const { db, update } = useStore();
+  const toast = useToast();
   const [odoSheet, setOdoSheet] = useState(false);
   const [journeySheet, setJourneySheet] = useState(false);
   const odoNow = currentOdometer(db, vehicle);
@@ -52,7 +54,8 @@ export function VehicleJourneySection({ vehicle }: { vehicle: Vehicle }) {
       <Sheet visible={odoSheet} onClose={() => setOdoSheet(false)} title="Odometer reading" footer={<Button label="Save" icon="check" testID="vehicle-odo-save" onPress={() => {
         const O = parseNum(odo);
         const parts = time.match(/^(\d{1,2}):(\d{2})$/);
-        if (!parts || isNaN(O)) return;
+        if (!parts) return toast("Enter a time as HH:MM", "clock-outline");
+        if (isNaN(O)) return toast("Enter a valid odometer", "speedometer");
         const at = `${date}T${parts[1].padStart(2, "0")}:${parts[2]}:00`;
         update((d) => addOdometerLog(d, { id: uid(), vehicleId: vehicle.id, at, odometer: O }));
         setOdoSheet(false);
@@ -64,7 +67,7 @@ export function VehicleJourneySection({ vehicle }: { vehicle: Vehicle }) {
       <Sheet visible={journeySheet} onClose={() => setJourneySheet(false)} title="End journey" footer={<Button label="Save end" icon="flag-checkered" testID="vehicle-journey-save" onPress={() => {
         if (!openJourney) return;
         const O = parseNum(endOdo);
-        if (isNaN(O)) return;
+        if (isNaN(O)) return toast("Enter a valid odometer", "speedometer");
         update((d) => closeVehicleJourney(d, openJourney.id, new Date().toISOString(), O));
         setJourneySheet(false);
       }} />}>

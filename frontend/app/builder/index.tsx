@@ -134,6 +134,7 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const [unit, setUnit] = useState(tool.unit ?? "");
   const [sendToMoney, setSendToMoney] = useState(tool.sendToMoney);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [discard, setDiscard] = useState(false);
   const keyCursor = useRef(inputs.length);
   const usedKeys = new Set(inputs.map((i) => i.key));
   const dupKeys = inputs.filter((i, idx) => inputs.findIndex((x) => x.key === i.key) !== idx).map((i) => i.key);
@@ -147,6 +148,20 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
     }
   };
   const exists = db.customTools.some((t) => t.id === tool.id);
+
+  const dirty =
+    name.trim() !== tool.name ||
+    icon !== tool.icon ||
+    formula !== tool.formula ||
+    outputLabel.trim() !== tool.outputLabel ||
+    unit.trim() !== (tool.unit ?? "") ||
+    sendToMoney !== tool.sendToMoney ||
+    inputs.length !== tool.inputs.length ||
+    inputs.some((i, idx) => {
+      const base = tool.inputs[idx];
+      return !base || i.label !== base.label || i.key !== base.key || i.unit !== base.unit;
+    });
+  const tryClose = () => (dirty ? setDiscard(true) : onClose());
 
   const vars = Object.fromEntries(inputs.map((i) => [i.key, parseNum(i.value) || 1]));
   let preview = "";
@@ -171,7 +186,7 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
 
   return (
     <>
-    <Sheet visible onClose={onClose} title={exists ? "Edit tool" : "New tool"} testID="builder-sheet" footer={<Button label={exists ? "Save tool" : "Create tool"} icon="check" testID="builder-save-button" disabled={!!error || !!unknown.length} onPress={save} />}>
+    <Sheet visible onClose={tryClose} title={exists ? "Edit tool" : "New tool"} testID="builder-sheet" footer={<Button label={exists ? "Save tool" : "Create tool"} icon="check" testID="builder-save-button" disabled={!!error || !!unknown.length} onPress={save} />}>
       <Field label="Tool name" testID="builder-name-input" value={name} onChangeText={setName} placeholder="Paint needed" />
       <Eyebrow style={{ marginBottom: 8 }}>Icon</Eyebrow>
       <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
@@ -257,6 +272,11 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
           onClose();
         }}
       />
+    </Sheet>
+    <Sheet visible={discard} onClose={() => setDiscard(false)} title="Discard changes?" testID="builder-discard-sheet">
+      <T style={{ marginBottom: 16 }}>Your edits to this tool haven't been saved. Keep editing or discard them?</T>
+      <Button kind="secondary" label="Keep editing" testID="builder-discard-keep" onPress={() => setDiscard(false)} />
+      <Button kind="danger" label="Discard changes" icon="delete-outline" style={{ marginTop: 8 }} testID="builder-discard-confirm" onPress={() => { setDiscard(false); onClose(); }} />
     </Sheet>
     </>
   );

@@ -19,6 +19,7 @@ export function Result({ label, value, breakdown, tool, send, testID }: { label:
   const autoClear = useStore().db.settings.clipboardAutoClear;
   const toast = useToast();
   const [open, setOpen] = useState(false);
+  const none = value === "—";
   return (
     <View style={{ backgroundColor: colors.surfaceInverse, borderRadius: radius.lg, padding: 16, marginTop: 4 }} testID={testID ?? `${tool}-result`}>
       <T v="caption" color={colors.onSurfaceInverse} style={{ opacity: 0.7, letterSpacing: 1 }}>{label.toUpperCase()}</T>
@@ -35,8 +36,8 @@ export function Result({ label, value, breakdown, tool, send, testID }: { label:
       ) : null}
       <View style={{ flexDirection: "row", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         {breakdown ? <Button small kind="secondary" label={open ? "Hide breakdown" : "Breakdown"} icon={open ? "chevron-up" : "chevron-down"} onPress={() => setOpen(!open)} testID={`${tool}-breakdown-button`} /> : null}
-        <Button small kind="secondary" label="Copy" icon="content-copy" testID={`${tool}-copy-button`} onPress={async () => (autoClear ? await copyTemporary(value) : await Clipboard.setStringAsync(value), toast(autoClear ? "Copied · clears in 1 min" : "Copied", "content-copy"))} />
-        <Button small kind="secondary" label="Save" icon="history" testID={`${tool}-save-button`} onPress={() => (update((d) => ({ ...d, toolHistory: [{ id: uid(), tool, label, value, at: new Date().toISOString() }, ...d.toolHistory].slice(0, 50) })), toast("Saved to history", "history"))} />
+        <Button small kind="secondary" label="Copy" icon="content-copy" testID={`${tool}-copy-button`} disabled={none} onPress={async () => (autoClear ? await copyTemporary(value) : await Clipboard.setStringAsync(value), toast(autoClear ? "Copied · clears in 1 min" : "Copied", "content-copy"))} />
+        <Button small kind="secondary" label="Save" icon="history" testID={`${tool}-save-button`} disabled={none} onPress={() => (update((d) => ({ ...d, toolHistory: [{ id: uid(), tool, label, value, at: new Date().toISOString() }, ...d.toolHistory].slice(0, 50) })), toast("Saved to history", "history"))} />
         {send ? <Button small kind="secondary" label={send.label} icon="send-outline" testID={`${tool}-send-button`} onPress={send.run} /> : null}
       </View>
     </View>

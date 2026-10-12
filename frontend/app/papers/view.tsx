@@ -41,7 +41,7 @@ export default function PaperViewScreen() {
         }
       />
       <DocumentContent paper={paper} />
-      {edit ? <PaperSheet paper={paper} onClose={() => setEdit(false)} /> : null}
+      {edit ? <PaperSheet paper={paper} onClose={() => setEdit(false)} onDeleted={() => router.back()} /> : null}
       <Sheet visible={confirmDel} onClose={() => setConfirmDel(false)} title="Delete this paper?" testID="paper-view-delete-sheet">
         <T style={{ marginBottom: 16 }}>The file and expiry reminders for this document will be removed from Nucleus.</T>
         <Button

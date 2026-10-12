@@ -124,6 +124,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
   const [category, setCategory] = useState(customCategory ? "Other" : initialCategory);
   const [otherName, setOtherName] = useState(customCategory ? initialCategory : "");
   const [err, setErr] = useState<Record<string, string>>({});
+  const [del, setDel] = useState(false);
   const save = () => {
     const a = parseNum(amount);
     const e: Record<string, string> = {};
@@ -139,6 +140,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
   const a = parseNum(amount);
   const yearly = a > 0 ? (cycle === "weekly" ? a * 52 : cycle === "monthly" ? a * 12 : cycle === "quarterly" ? a * 4 : a) : 0;
   return (
+    <>
     <Sheet visible={visible} onClose={onClose} title={sub ? "Edit subscription" : "Add subscription"} testID="subscription-sheet" footer={<Button label="Save subscription" icon="check" onPress={save} testID="subscription-save-button" />}>
       <Field label="Name" testID="subscription-name-input" value={name} onChangeText={setName} placeholder="Netflix, Gym, Insurance…" error={err.name} />
       <Field numeric label="Amount" unit={db.settings.currency} testID="subscription-amount-input" value={amount} onChangeText={setAmount} error={err.amount} hint={yearly ? `${money(yearly, db.settings.currency)} per year` : undefined} />
@@ -156,6 +158,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
       </View>
       {category === "Other" ? <Field label="Name this category (optional)" testID="subscription-other-name" value={otherName} onChangeText={setOtherName} placeholder="School fees" hint="Leave blank and it stays Other." /> : null}
       {sub ? (
+        <>
         <Button
           kind="ghost"
           small
@@ -167,8 +170,33 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
             onClose();
           }}
         />
+        <Button
+          kind="ghost"
+          small
+          label="Delete subscription"
+          icon="delete-outline"
+          testID="subscription-delete"
+          onPress={() => setDel(true)}
+        />
+        </>
       ) : null}
     </Sheet>
+      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this subscription?" testID="subscription-delete-sheet">
+        <T style={{ marginBottom: 16 }}>{sub ? `“${sub.name}” will be removed. This can't be undone.` : ""}</T>
+        <Button
+          kind="danger"
+          label="Delete subscription"
+          icon="delete-outline"
+          testID="subscription-delete-confirm"
+          onPress={() => {
+            if (sub) update((d) => ({ ...d, subscriptions: d.subscriptions.filter((x) => x.id !== sub.id) }));
+            setDel(false);
+            toast("Subscription deleted", "delete-outline");
+            onClose();
+          }}
+        />
+      </Sheet>
+    </>
   );
 }
 

@@ -51,7 +51,7 @@ export function VehicleSheet({ visible, onClose, vehicle }: { visible: boolean; 
   const save = () => {
     if (!f.name.trim()) return setErr("Give your vehicle a name");
     const odo = f.initialOdometer ? parseNum(f.initialOdometer) : 0;
-    if (isNaN(odo) || odo < 0) return setErr(undefined);
+    if (isNaN(odo) || odo < 0) return setErr("Enter a valid odometer");
     const v: Vehicle = {
       id: vehicle?.id ?? uid(),
       createdAt: vehicle?.createdAt ?? new Date().toISOString(),

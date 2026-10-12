@@ -93,6 +93,8 @@ export default function Settings() {
   const [profileName, setProfileName] = useState("");
   const [rename, setRename] = useState("");
   const [delProfile, setDelProfile] = useState<string | null>(null);
+  const [switchTo, setSwitchTo] = useState<string | null>(null);
+  const [sampleFlow, setSampleFlow] = useState<null | "add" | "remove">(null);
   const [decoyFlow, setDecoyFlow] = useState<null | "enter" | "confirm">(null);
   const [decoyFirst, setDecoyFirst] = useState("");
   const [decoyOn, setDecoyOn] = useState(false);
@@ -283,7 +285,7 @@ export default function Settings() {
               <T muted style={{ fontSize: 12 }}>Each profile keeps its own records, theme and boards. Hold is for tiles — tap a profile to switch.</T>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 {profiles.map((p) => (
-                  <Chip key={p.id} label={p.id === activeProfileId && s.givenName ? s.givenName : p.name} selected={p.id === activeProfileId} testID={`profile-${p.id}`} onPress={() => switchProfile(p.id)} />
+                  <Chip key={p.id} label={p.id === activeProfileId && s.givenName ? s.givenName : p.name} selected={p.id === activeProfileId} testID={`profile-${p.id}`} onPress={() => { if (p.id !== activeProfileId) setSwitchTo(p.id); }} />
                 ))}
               </View>
               <TextInput testID="profile-name-input" value={profileName} onChangeText={setProfileName} placeholder="New profile name" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
@@ -559,8 +561,8 @@ export default function Settings() {
             }}
             right={<Icon name="chevron-right" size={18} color={colors.muted} />}
           />
-          <Row icon="flask-outline" label="Add sample data" sub="Explore insights with a demo workspace" testID="settings-sample-button" onPress={() => (update(withSampleData), toast("Sample data added", "flask-outline"))} right={<Icon name="plus" size={18} color={colors.muted} />} />
-          <Row icon="flask-empty-outline" label="Remove sample data" sub="Takes out the demo rows. Entries you added stay." testID="settings-sample-remove-button" onPress={() => (update(withoutSampleData), toast("Sample data removed", "flask-empty-outline"))} right={<Icon name="minus" size={18} color={colors.muted} />} />
+          <Row icon="flask-outline" label="Add sample data" sub="Explore insights with a demo workspace" testID="settings-sample-button" onPress={() => setSampleFlow("add")} right={<Icon name="plus" size={18} color={colors.muted} />} />
+          <Row icon="flask-empty-outline" label="Remove sample data" sub="Takes out the demo rows. Entries you added stay." testID="settings-sample-remove-button" onPress={() => setSampleFlow("remove")} right={<Icon name="minus" size={18} color={colors.muted} />} />
           <Row icon="delete-outline" label="Erase all data" sub="Cannot be undone" testID="settings-reset-button" onPress={() => setConfirmReset(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
         </Section>
 
@@ -968,6 +970,61 @@ export default function Settings() {
               deleteProfile(delProfile);
               setDelProfile(null);
               toast("Profile deleted", "account-remove-outline");
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </Sheet>
+
+      <Sheet visible={!!switchTo} onClose={() => setSwitchTo(null)} title={`Switch to ${profiles.find((p) => p.id === switchTo)?.name ?? "profile"}?`} testID="profile-switch-sheet">
+        <T style={{ marginBottom: 16 }}>Your current records are hidden until you switch back.</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" label="Cancel" testID="profile-switch-cancel" onPress={() => setSwitchTo(null)} style={{ flex: 1 }} />
+          <Button
+            label="Switch"
+            icon="account-switch-outline"
+            testID="profile-switch-confirm"
+            onPress={() => {
+              if (!switchTo) return;
+              switchProfile(switchTo);
+              setSwitchTo(null);
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </Sheet>
+
+      <Sheet visible={sampleFlow === "add"} onClose={() => setSampleFlow(null)} title="Add sample data?" testID="settings-sample-sheet">
+        <T style={{ marginBottom: 16 }}>Demo vehicles and transactions will be mixed into your Money, Vehicles and the rest. Remove sample data takes them out again; entries you add yourself stay.</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" label="Cancel" testID="settings-sample-cancel" onPress={() => setSampleFlow(null)} style={{ flex: 1 }} />
+          <Button
+            label="Add sample data"
+            icon="flask-outline"
+            testID="settings-sample-confirm"
+            onPress={() => {
+              setSampleFlow(null);
+              update(withSampleData);
+              toast("Sample data added", "flask-outline");
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </Sheet>
+
+      <Sheet visible={sampleFlow === "remove"} onClose={() => setSampleFlow(null)} title="Remove sample data?" testID="settings-sample-remove-sheet">
+        <T style={{ marginBottom: 16 }}>Every demo row added by Add sample data is dropped from this profile. Entries you added yourself stay. This cannot be undone.</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" label="Cancel" testID="settings-sample-remove-cancel" onPress={() => setSampleFlow(null)} style={{ flex: 1 }} />
+          <Button
+            kind="danger"
+            label="Remove sample data"
+            icon="flask-empty-outline"
+            testID="settings-sample-remove-confirm"
+            onPress={() => {
+              setSampleFlow(null);
+              update(withoutSampleData);
+              toast("Sample data removed", "flask-empty-outline");
             }}
             style={{ flex: 1 }}
           />

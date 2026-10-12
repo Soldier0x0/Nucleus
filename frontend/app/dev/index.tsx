@@ -174,6 +174,7 @@ export default function DevTools() {
               label="Hash it"
               icon="fingerprint"
               testID="dev-hash-button"
+              disabled={!a.trim()}
               onPress={async () => {
                 const map: Record<string, Crypto.CryptoDigestAlgorithm> = { SHA256: Crypto.CryptoDigestAlgorithm.SHA256, SHA512: Crypto.CryptoDigestAlgorithm.SHA512, SHA1: Crypto.CryptoDigestAlgorithm.SHA1, MD5: Crypto.CryptoDigestAlgorithm.MD5 };
                 try {

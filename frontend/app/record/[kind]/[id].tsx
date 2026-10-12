@@ -29,6 +29,7 @@ export default function RecordDetail() {
   const router = useRouter();
   const toast = useToast();
   const [del, setDel] = useState(false);
+  const [detach, setDetach] = useState<null | "photo" | "bill">(null);
   const [fuelEdit, setFuelEdit] = useState(false);
   const [fuelDate, setFuelDate] = useState("");
   const [fuelOdo, setFuelOdo] = useState("");
@@ -104,7 +105,7 @@ export default function RecordDetail() {
               kind="ghost"
               label="Remove photo"
               testID="txn-photo-clear-saved"
-              onPress={() => update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }))}
+              onPress={() => setDetach("photo")}
             />
           </View>
         ) : null}
@@ -123,12 +124,7 @@ export default function RecordDetail() {
                 kind="ghost"
                 label="Remove bill"
                 testID="service-bill-clear-saved"
-                onPress={() =>
-                  update((d) => ({
-                    ...d,
-                    services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)),
-                  }))
-                }
+                onPress={() => setDetach("bill")}
               />
               <Button
                 small
@@ -167,7 +163,7 @@ export default function RecordDetail() {
       </ScrollView>
       <Sheet visible={fuelEdit && kind === "fuel"} onClose={() => setFuelEdit(false)} title="Fill details" testID="fuel-edit-sheet" footer={<Button label="Save" testID="fuel-edit-save" onPress={() => {
         const odometer = Number(fuelOdo);
-        update((d) => setFuelFacts(d, id, { date: fuelDate, station: fuelStation, ...(fuelOdo.trim() && Number.isFinite(odometer) ? { odometer } : {}) }));
+        update((d) => setFuelFacts(d, id, { ...(fuelDate ? { date: fuelDate } : {}), station: fuelStation, ...(fuelOdo.trim() && Number.isFinite(odometer) ? { odometer } : {}) }));
         setFuelEdit(false);
         toast("Saved");
       }} />}>
@@ -187,6 +183,21 @@ export default function RecordDetail() {
             setDel(false);
             toast("Deleted", "delete-outline");
             router.back();
+          }}
+        />
+      </Sheet>
+      <Sheet visible={!!detach} onClose={() => setDetach(null)} title={detach === "bill" ? "Remove the bill file?" : "Remove the photo?"} testID="record-detach-sheet">
+        <T style={{ marginBottom: 16 }}>{detach === "bill" ? "The attached bill file will be detached from this record. The record itself stays." : "The attached photo will be detached from this record. The record itself stays."}</T>
+        <Button
+          kind="danger"
+          label="Remove"
+          icon="delete-outline"
+          testID="record-detach-confirm"
+          onPress={() => {
+            if (detach === "photo") update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }));
+            else if (detach === "bill") update((d) => ({ ...d, services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)) }));
+            setDetach(null);
+            toast("Removed", "delete-outline");
           }}
         />
       </Sheet>

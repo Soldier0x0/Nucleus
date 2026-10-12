@@ -9,6 +9,7 @@ import { Header } from "@/src/components/Header";
 import { Button, Card, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
 import { Field } from "@/src/components/inputs";
+import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
 const fresh = (name: string): KanbanBoard => {
@@ -20,6 +21,7 @@ export default function Kanban() {
   const { db, update } = useStore();
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const [boardId, setBoardId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -28,9 +30,14 @@ export default function Kanban() {
   const [renaming, setRenaming] = useState<KanbanBoard | null>(null);
   const [renameName, setRenameName] = useState("");
   const [delBoard, setDelBoard] = useState<KanbanBoard | null>(null);
+  const [confirmCardDel, setConfirmCardDel] = useState(false);
   const board = db.kanban.find((b) => b.id === boardId) ?? null;
 
   const save = (next: KanbanBoard) => update((d) => ({ ...d, kanban: d.kanban.map((b) => (b.id === next.id ? next : b)) }));
+
+  const cardColumns = board ? [...board.columns].sort((a, b) => a.order - b.order) : [];
+  const cardColIndex = card ? cardColumns.findIndex((c) => c.id === card.columnId) : -1;
+  const nextColumn = cardColIndex >= 0 ? cardColumns[cardColIndex + 1] : undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -114,8 +121,28 @@ export default function Kanban() {
         }
       >
         <Field label="Title" value={cardTitle} onChangeText={setCardTitle} testID="kanban-card-title" />
-        <Button kind="secondary" label="Move to the next column" testID="kanban-card-move" onPress={() => { if (board && card) { const next = moveCard(board, card); save(next); setCard(next.cards.find((c) => c.id === card.id) ?? null); } }} />
-        <Button kind="danger" label="Delete card" testID="kanban-card-delete" onPress={() => { if (board && card) { save({ ...board, cards: board.cards.filter((c) => c.id !== card.id) }); setCard(null); } }} />
+        <Button kind="secondary" label={nextColumn ? `Move to ${nextColumn.name}` : "Already in the last column"} testID="kanban-card-move" disabled={!nextColumn} onPress={() => { if (board && card) { const next = moveCard(board, card); save(next); setCard(next.cards.find((c) => c.id === card.id) ?? null); } }} />
+        <Button kind="danger" label="Delete card" testID="kanban-card-delete" onPress={() => { if (board && card) setConfirmCardDel(true); }} />
+      </Sheet>
+      <Sheet visible={confirmCardDel} onClose={() => setConfirmCardDel(false)} title="Delete this card?" testID="kanban-card-delete-sheet">
+        <T style={{ marginBottom: 16 }}>"{card?.title ?? "This card"}" will be removed from this board. This cannot be undone.</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" label="Cancel" testID="kanban-card-delete-cancel" onPress={() => setConfirmCardDel(false)} style={{ flex: 1 }} />
+          <Button
+            kind="danger"
+            label="Delete card"
+            icon="delete-outline"
+            testID="kanban-card-delete-confirm"
+            onPress={() => {
+              if (!board || !card) return;
+              setConfirmCardDel(false);
+              save({ ...board, cards: board.cards.filter((c) => c.id !== card.id) });
+              setCard(null);
+              toast("Card deleted", "delete-outline");
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
       </Sheet>
       <ModuleGate id="kanban" name="Kanban" icon="view-column-outline" />
     </View>

@@ -70,7 +70,7 @@ export function TripDesk({ trip }: { trip: Trip }) {
         <View key={stop.id} style={{ marginTop: 8 }}>
           <T v="label">{stop.kind === "fuel" ? "Fuel" : "Snack"} · {stop.name}</T>
           <T muted>{stop.at}</T>
-          <Button small kind="secondary" label={`Hand this stop to ${person || "someone"}`} testID={`trip-share-${stop.id}`} onPress={() => person && Share.share({ message: shareStop(person, { name: stop.name }) })} style={{ marginTop: 6 }} />
+          <Button small kind="secondary" disabled={!person.trim()} label={`Hand this stop to ${person || "someone"}`} testID={`trip-share-${stop.id}`} onPress={() => person && Share.share({ message: shareStop(person, { name: stop.name }) })} style={{ marginTop: 6 }} />
         </View>
       ))}
       <TextInput testID="trip-share-person" value={person} onChangeText={setPerson} placeholder="One person" placeholderTextColor={colors.muted} style={{ marginTop: 10, height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />

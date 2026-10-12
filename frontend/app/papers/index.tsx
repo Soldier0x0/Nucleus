@@ -125,6 +125,7 @@ export default function Papers() {
 function PersonSheet({ person, onClose }: { person?: Person; onClose: () => void }) {
   const { db, update } = useStore();
   const toast = useToast();
+  const [confirmDel, setConfirmDel] = useState(false);
   const [name, setName] = useState(person?.name ?? "");
   const [note, setNote] = useState(person?.note ?? "");
   const save = () => {
@@ -135,12 +136,33 @@ function PersonSheet({ person, onClose }: { person?: Person; onClose: () => void
     onClose();
   };
   return (
-    <Sheet visible onClose={onClose} title={person ? "Person" : "Add a person"} testID="person-sheet" footer={<Button label="Save" icon="check" testID="person-save" onPress={save} />}>
-      <Field label="Name" testID="person-name" value={name} onChangeText={setName} placeholder="A name in the house" />
-      <Field label="Note" testID="person-note" value={note} onChangeText={setNote} placeholder="Optional" />
-      {person ? (
-        <Button kind="danger" label="Remove" testID="person-delete" onPress={() => { update((d) => ({ ...d, people: d.people.filter((p) => p.id !== person.id) })); onClose(); }} />
-      ) : null}
-    </Sheet>
+    <>
+      <Sheet visible onClose={onClose} title={person ? "Person" : "Add a person"} testID="person-sheet" footer={<Button label="Save" icon="check" testID="person-save" onPress={save} />}>
+        <Field label="Name" testID="person-name" value={name} onChangeText={setName} placeholder="A name in the house" />
+        <Field label="Note" testID="person-note" value={note} onChangeText={setNote} placeholder="Optional" />
+        {person ? (
+          <Button kind="danger" label="Remove" testID="person-delete" onPress={() => setConfirmDel(true)} />
+        ) : null}
+      </Sheet>
+      <Sheet visible={confirmDel} onClose={() => setConfirmDel(false)} title={`Remove ${name.trim() || person?.name || "this person"}?`} testID="person-delete-sheet">
+        <T style={{ marginBottom: 16 }}>Papers assigned to this person are kept, but they will no longer show a name. This cannot be undone.</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" label="Cancel" testID="person-delete-cancel" onPress={() => setConfirmDel(false)} style={{ flex: 1 }} />
+          <Button
+            kind="danger"
+            label="Remove"
+            icon="delete-outline"
+            testID="person-delete-confirm"
+            onPress={() => {
+              if (!person) return;
+              setConfirmDel(false);
+              update((d) => ({ ...d, people: d.people.filter((p) => p.id !== person.id) }));
+              onClose();
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </Sheet>
+    </>
   );
 }

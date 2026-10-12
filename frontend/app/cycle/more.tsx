@@ -55,6 +55,7 @@ import { copyTemporary } from "@/src/core/clipboard";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, Eyebrow, IconButton, Press, T } from "@/src/components/ui";
 import { ModuleGate } from "@/src/components/ModuleGate";
+import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
 import { useRealSession } from "@/src/components/useRealSession";
 
@@ -84,6 +85,7 @@ export default function CycleDetails() {
   const on = db.settings.modules.find((m) => m.id === "cycle")?.enabled !== false;
   const [query, setQuery] = useState("");
   const [custom, setCustom] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
   const reportRef = useRef<View>(null);
 
   useEffect(() => {
@@ -162,6 +164,7 @@ export default function CycleDetails() {
   };
 
   return (
+    <>
     <View style={{ flex: 1, backgroundColor: wash }}>
       <Header title="Details" testID="cycle-details-header" />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 28, gap: 14, maxWidth: 720, width: "100%", alignSelf: "center" }}>
@@ -176,7 +179,7 @@ export default function CycleDetails() {
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             <Chip label="Spotting" selected={log?.bleeding === "spotting"} testID="cycle-spotting" onPress={() => setCycle({ ...db.cycle, days: setBleeding(db.cycle.days, date, "spotting") })} />
             <Chip label="Flow" selected={log?.bleeding === "flow"} testID="cycle-flow" onPress={() => setCycle({ ...db.cycle, days: setBleeding(db.cycle.days, date, "flow") })} />
-            <Chip label="Clear" testID="cycle-clear" onPress={() => setCycle({ ...db.cycle, days: clearDay(db.cycle.days, date) })} />
+            <Chip label="Clear" testID="cycle-clear" onPress={() => setConfirmClear(true)} />
           </View>
           {log?.ended ? <T muted style={{ marginTop: 8 }}>Marked as the end.</T> : null}
           {log?.bleeding === "flow" ? (
@@ -222,9 +225,18 @@ export default function CycleDetails() {
             testID="cycle-custom-add"
             style={{ marginTop: 8 }}
             onPress={() => {
-              const next = addCustomSymptom(db.cycle, custom);
-              if (next === db.cycle) return;
-              setCycle({ ...next, days: toggleSymptom(next.days, date, next.customSymptoms.at(-1) ?? custom.trim()) });
+              const name = custom.trim();
+              if (!name) return;
+              const next = addCustomSymptom(db.cycle, name);
+              if (next === db.cycle) {
+                toast(db.cycle.customSymptoms.length >= 12 ? "Twelve is the limit" : "Already added");
+                return;
+              }
+              if (next.customSymptoms.length === db.cycle.customSymptoms.length) {
+                toast("Twelve is the limit");
+                return;
+              }
+              setCycle({ ...next, days: toggleSymptom(next.days, date, next.customSymptoms.at(-1) ?? name) });
               setCustom("");
             }}
           />
@@ -366,6 +378,26 @@ export default function CycleDetails() {
       </ScrollView>
       <ModuleGate id="cycle" name="Cycle" icon="calendar-blank-outline" />
     </View>
+      <Sheet visible={confirmClear} onClose={() => setConfirmClear(false)} title="Clear this day?" testID="cycle-clear-sheet">
+        <T muted style={{ marginBottom: 12 }}>Flow, symptoms and changes logged for {fmtDate(date)} are removed from this phone.</T>
+        <Button label="Cancel" kind="secondary" testID="cycle-clear-cancel" onPress={() => setConfirmClear(false)} />
+        <Button
+          kind="danger"
+          label="Clear"
+          testID="cycle-clear-confirm"
+          style={{ marginTop: 8 }}
+          onPress={() => {
+            const parts: string[] = [];
+            if (log?.bleeding) parts.push(log.bleeding === "flow" ? "flow" : "spotting");
+            if (log?.bleeding === "flow" && log.flow) parts.push(log.flow);
+            parts.push(...(log ? listedSymptoms(log).map(symptomLabel) : []));
+            setCycle({ ...db.cycle, days: clearDay(db.cycle.days, date) });
+            setConfirmClear(false);
+            toast(parts.length ? `Cleared ${parts.join(", ")}` : "Nothing to clear");
+          }}
+        />
+      </Sheet>
+    </>
   );
 }
 
