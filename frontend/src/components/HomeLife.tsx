@@ -200,6 +200,7 @@ function BillSheet({ bill, onClose }: { bill: UtilityBill; onClose: () => void }
     onClose();
   };
   return (
+    <>
     <Sheet visible onClose={onClose} title="Utility bill" testID="utility-sheet" footer={<Button label="Save bill" icon="check" testID="utility-save" onPress={save} />}>
       <ChipRow testID="utility-kind-row">
         {UTILITY_KINDS.map((k) => (
@@ -230,6 +231,7 @@ function BillSheet({ bill, onClose }: { bill: UtilityBill; onClose: () => void }
         }}
       />
     </Sheet>
+    </>
   );
 }
 

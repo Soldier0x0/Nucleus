@@ -130,6 +130,7 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
     onClose();
   };
   return (
+    <>
     <Sheet visible onClose={onClose} title={appliance ? "Edit appliance" : "Add appliance"} testID="appliance-sheet" footer={<Button label="Save appliance" icon="check" onPress={save} testID="appliance-save-button" />}>
       <Field label="Name" testID="appliance-name-input" value={f.name} onChangeText={(t) => (set({ name: t }), setErr(undefined))} placeholder="Split AC" error={err} />
       <View style={{ marginHorizontal: -16 }}><ChipRow testID="appliance-room-row">{ROOMS.map((r) => <Chip key={r} label={r} selected={f.room === r} onPress={() => set({ room: r })} testID={`appliance-room-${r}`} />)}</ChipRow></View>
@@ -175,6 +176,7 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
         }}
       />
     </Sheet>
+    </>
   );
 }
 

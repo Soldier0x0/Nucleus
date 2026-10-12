@@ -68,6 +68,7 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
   const links = linkedTitles(body);
   const incoming = backlinks(pages, title);
   return (
+    <>
     <Sheet
       visible
       onClose={onClose}
@@ -109,5 +110,6 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
         }}
       />
     </Sheet>
+    </>
   );
 }

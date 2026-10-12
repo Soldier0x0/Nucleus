@@ -139,6 +139,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
   };
 
   return (
+    <>
     <Sheet
       visible
       onClose={onClose}
@@ -221,6 +222,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
         }}
       />
     </Sheet>
+    </>
   );
 }
 
