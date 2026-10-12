@@ -163,6 +163,11 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Run the core unit tests
+        if: steps.plan.outputs.build == 'true'
+        working-directory: frontend
+        run: yarn test
+
       - name: Set the Android version
         if: steps.plan.outputs.build == 'true'
         working-directory: frontend

@@ -38,6 +38,7 @@
     "src/core/v081.test.ts",
     "src/core/v082.test.ts",
     "src/core/v083.test.ts",
-    "src/core/v09.test.ts"
+    "src/core/v09.test.ts",
+    "src/core/__stubs__"
   ]
 }

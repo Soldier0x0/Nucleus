@@ -15,8 +15,8 @@ export function fuelAgainstTank(litres: number, tankLitres: number): { litres: n
 
 export function serviceLeftLine(km: number): string {
   const left = Math.round(km);
-  if (left <= 0) return `${-left} km past service`;
-  return `${left} km to service`;
+  if (left <= 0) return `${-left} km past this vehicle's service interval`;
+  return `${left} km left before service`;
 }
 
 export function fillKindOf(entry: FuelEntry): FuelFillKind {
