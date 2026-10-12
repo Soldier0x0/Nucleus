@@ -10,6 +10,25 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.7
+
+- Fixed a backup from another phone offered as Merge that actually replaced everything; the action, label, and toast now tell the truth, and Merge only runs when it really merges.
+- Fixed the setup PIN pad trapping a first run — a Cancel button now leaves it.
+- Fixed Erase all data doing nothing when no PIN or biometrics is set — an explicit confirm replaces the dead button.
+- Added a confirm step before deleting a profile, sinking-fund jar, debt, net-worth snapshot, custom tool, appliance, wiki page, media item, kanban board, kanban card, utility bill, subscription, person, cycle day, and tool-history bulk clear.
+- Added Remove controls for saved bank-account endings, and reasons when Remember this account refuses input.
+- Added rename and delete for kanban boards, and a delete path for bills and subscriptions that had none.
+- Fixed saving a vehicle with a bad odometer clearing the form with no message; it now says Enter a valid odometer.
+- Fixed Phone Lab claiming to export a recording it discards on a phone, and it now warns before leaving with unsaved samples.
+- Fixed Tool Builder reusing an input short name after a delete (two inputs could share one value) and discarding unsaved edits on close.
+- Changed buttons that did nothing to say why: Randomise without options, Hash without text, Copy/Save on an empty result, Due on a fresh bill, hand-a-stop without a name, save without a title, Add money without an amount, and a sensor switch mid-recording.
+- Fixed false success messages: Remember these dates, Add reminder, Add symptom, budget clearing, and sample data changes now tell the truth or ask first.
+- Fixed the fuel editor writing an empty date when the date field is cleared.
+- Added a warning on the restore sheet when a backup from another phone makes this device read-only.
+- Changed profile switching and sample-data changes to confirm before touching your records.
+- Changed Attention's See more to toggle back to See less, and phone exports to fall back to the clipboard when sharing is unavailable.
+- Changed the Android build to run the core unit tests before compiling an APK.
+
 ## v0.9.6
 
 - Fixed app lock so turning it on sets fingerprint or face unlock when the device has enrolled biometrics, and onboarding matches.

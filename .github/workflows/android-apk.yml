@@ -168,6 +168,10 @@ jobs:
         working-directory: frontend
         run: yarn test
 
+      - name: Run the release script tests
+        if: steps.plan.outputs.build == 'true'
+        run: node --test ".github/scripts/*.test.js" "frontend/plugins/*.test.js"
+
       - name: Set the Android version
         if: steps.plan.outputs.build == 'true'
         working-directory: frontend
