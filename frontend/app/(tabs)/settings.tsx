@@ -92,6 +92,7 @@ export default function Settings() {
   const [pinKey, setPinKey] = useState(0);
   const [profileName, setProfileName] = useState("");
   const [rename, setRename] = useState("");
+  const [delProfile, setDelProfile] = useState<string | null>(null);
   const [decoyFlow, setDecoyFlow] = useState<null | "enter" | "confirm">(null);
   const [decoyFirst, setDecoyFirst] = useState("");
   const [decoyOn, setDecoyOn] = useState(false);
@@ -113,6 +114,7 @@ export default function Settings() {
   const [eraseAuth, setEraseAuth] = useState(false);
   const [eraseError, setEraseError] = useState("");
   const [eraseReset, setEraseReset] = useState(0);
+  const [eraseNoAuth, setEraseNoAuth] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const currencies = [...CURRENCIES].sort((a, b) => a.localeCompare(b, "en"));
   const [cloudPassOpen, setCloudPassOpen] = useState(false);
@@ -184,6 +186,8 @@ export default function Settings() {
     toast(message, "cloud-off-outline");
   }
 
+  const restoreReadOnly = !!restore && accessMode(!restore.data.settings.installId || restore.data.settings.installId === s.installId) === "read-only";
+  const restoreEffective = restoreMode === "merge" && !restoreReadOnly ? "merge" : "replace";
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: sp.lg, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
@@ -301,7 +305,7 @@ export default function Settings() {
               <TextInput testID="profile-rename-input" value={rename} onChangeText={setRename} placeholder="Rename the open profile" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
               <Button small kind="ghost" label="Rename" testID="profile-rename-button" onPress={() => renameProfile(activeProfileId, rename).then(() => setRename(""))} />
               {profiles.filter((p) => p.id !== activeProfileId).map((p) => (
-                <Button key={p.id} small kind="danger" label={`Delete ${p.name}`} testID={`profile-delete-${p.id}`} onPress={() => deleteProfile(p.id)} />
+                <Button key={p.id} small kind="danger" label={`Delete ${p.name}`} testID={`profile-delete-${p.id}`} onPress={() => setDelProfile(p.id)} />
               ))}
             </View>
           </Section>
@@ -742,11 +746,14 @@ export default function Settings() {
             <Segmented
               testID="restore-mode"
               value={restoreMode}
-              onChange={setRestoreMode}
+              onChange={(v) => {
+                if (restoreReadOnly && v === "merge") return;
+                setRestoreMode(v as "replace" | "merge");
+              }}
               options={[{ value: "replace", label: "Replace" }, { value: "merge", label: "Merge" }]}
             />
             <View style={[styles.group, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary, marginTop: 12 }]}>
-              {Object.entries(restoreMode === "merge" ? mergePreview(db, restore.data) : restore.counts).map(([k, v], i) => (
+              {Object.entries(restoreEffective === "merge" ? mergePreview(db, restore.data) : restore.counts).map(([k, v], i) => (
                 <View key={k} style={[styles.row, { minHeight: 40 }, i > 0 && { borderTopWidth: 1, borderTopColor: colors.divider }]}>
                   <T style={{ flex: 1, textTransform: "capitalize" }}>{k}</T>
                   <T v="mono">{v}</T>
@@ -754,25 +761,23 @@ export default function Settings() {
               ))}
             </View>
             <View style={[styles.warn, { backgroundColor: colors.brandTertiary, marginTop: 12 }]}>
-              <Icon name={restoreMode === "merge" ? "merge" : "swap-horizontal"} size={20} color={colors.onBrandTertiary} />
+              <Icon name={restoreEffective === "merge" ? "merge" : "swap-horizontal"} size={20} color={colors.onBrandTertiary} />
               <T color={colors.onBrandTertiary} style={{ flex: 1 }}>
-                {restoreMode === "merge"
+                {restoreEffective === "merge"
                   ? "Records are added to what you already have. If the same record exists in both, the one from the backup wins. Your settings stay as they are."
                   : "All current data on this device will be replaced. Your PIN and lock settings stay as they are."}
               </T>
             </View>
             <Button
               style={{ marginTop: 12 }}
-              label={restoreMode === "merge" ? "Merge into my data" : "Replace and restore"}
-              icon={restoreMode === "merge" ? "merge" : "backup-restore"}
+              label={restoreEffective === "merge" ? "Merge into my data" : "Replace and restore"}
+              icon={restoreEffective === "merge" ? "merge" : "backup-restore"}
               testID="restore-confirm-button"
               onPress={() => {
-                const samePhone = !restore.data.settings.installId || restore.data.settings.installId === s.installId;
-                const readOnly = accessMode(samePhone) === "read-only";
-                if (restoreMode === "merge" && !readOnly) update((d) => mergeDB(d, restore.data));
-                else replace({ ...restore.data, settings: { ...restore.data.settings, onboarded: true, lockEnabled: s.lockEnabled, unlockMethod: s.unlockMethod, biometricEnabled: s.biometricEnabled, moduleLocks: s.moduleLocks, installId: s.installId || restore.data.settings.installId, readOnly } });
+                if (restoreEffective === "merge") update((d) => mergeDB(d, restore.data));
+                else replace({ ...restore.data, settings: { ...restore.data.settings, onboarded: true, lockEnabled: s.lockEnabled, unlockMethod: s.unlockMethod, biometricEnabled: s.biometricEnabled, moduleLocks: s.moduleLocks, installId: s.installId || restore.data.settings.installId, readOnly: restoreReadOnly } });
                 setRestore(null);
-                toast(restoreMode === "merge" ? "Backup merged" : "Backup restored", "check-circle-outline");
+                toast(restoreEffective === "merge" ? "Backup merged" : "Backup restored", "check-circle-outline");
               }}
             />
           </>
@@ -883,7 +888,7 @@ export default function Settings() {
         </ScrollView>
       </Sheet>
 
-      <Sheet visible={confirmReset} onClose={() => (setConfirmReset(false), setEraseAuth(false), setEraseError(""))} title="Erase everything?" testID="reset-sheet">
+      <Sheet visible={confirmReset} onClose={() => (setConfirmReset(false), setEraseAuth(false), setEraseError(""), setEraseNoAuth(false))} title="Erase everything?" testID="reset-sheet">
         <T style={{ marginBottom: 16 }}>{session === "real" ? "This removes every profile on this device, including the PIN. Export a backup first if you might want it back." : "This removes the records in the workspace you have open. Export a backup first if you might want them back."}</T>
         {eraseAuth ? (
           <>
@@ -915,6 +920,21 @@ export default function Settings() {
               }}
             />
           </>
+        ) : eraseNoAuth ? (
+          <>
+            <T style={{ marginBottom: 12 }}>No PIN or biometrics are set, so there is nothing extra to check. This still cannot be undone.</T>
+            <Button
+              kind="danger"
+              icon="delete-forever-outline"
+              label="Erase everything now"
+              testID="reset-confirm-final"
+              onPress={async () => {
+                await wipeVisible();
+                setConfirmReset(false);
+                setEraseNoAuth(false);
+              }}
+            />
+          </>
         ) : (
           <Button
             kind="danger"
@@ -924,7 +944,7 @@ export default function Settings() {
             onPress={async () => {
               const [pin, bio] = await Promise.all([hasPin(), biometricAvailable()]);
               if (!pin && !bio) {
-                toast("Add a PIN or biometrics before erasing", "lock-outline");
+                setEraseNoAuth(true);
                 return;
               }
               setEraseError("");
@@ -932,6 +952,26 @@ export default function Settings() {
             }}
           />
         )}
+      </Sheet>
+
+      <Sheet visible={!!delProfile} onClose={() => setDelProfile(null)} title={`Delete ${profiles.find((p) => p.id === delProfile)?.name ?? "profile"}?`} testID="profile-delete-sheet">
+        <T style={{ marginBottom: 16 }}>Every record in this profile is removed. This cannot be undone.</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button kind="ghost" label="Cancel" testID="profile-delete-cancel" onPress={() => setDelProfile(null)} style={{ flex: 1 }} />
+          <Button
+            kind="danger"
+            label="Delete"
+            icon="delete-outline"
+            testID="profile-delete-confirm"
+            onPress={() => {
+              if (!delProfile) return;
+              deleteProfile(delProfile);
+              setDelProfile(null);
+              toast("Profile deleted", "account-remove-outline");
+            }}
+            style={{ flex: 1 }}
+          />
+        </View>
       </Sheet>
     </View>
   );

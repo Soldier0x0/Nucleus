@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -32,6 +32,8 @@ export default function Builder() {
   const router = useRouter();
   const toast = useToast();
   const [edit, setEdit] = useState<CustomTool | null>(null);
+  const [pendingDel, setPendingDel] = useState<string | null>(null);
+  const pendingTool = db.customTools.find((t) => t.id === pendingDel);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -71,10 +73,7 @@ export default function Builder() {
                 label="Delete"
                 icon="delete-outline"
                 testID={`custom-tool-delete-${t.id}`}
-                onPress={() => {
-                  update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== t.id) }));
-                  toast("Tool deleted", "delete-outline");
-                }}
+                onPress={() => setPendingDel(t.id)}
               />
             </View>
           </Card>
@@ -104,6 +103,20 @@ export default function Builder() {
         </View>
       </KeyboardAwareScrollView>
       {edit ? <ToolSheet tool={edit} onClose={() => setEdit(null)} /> : null}
+      <Sheet visible={!!pendingTool} onClose={() => setPendingDel(null)} title="Delete this tool?" testID="builder-delete-sheet">
+        <T style={{ marginBottom: 16 }}>{pendingTool ? `“${pendingTool.name}” and its saved results will be removed. This can't be undone.` : ""}</T>
+        <Button
+          kind="danger"
+          label="Delete"
+          icon="delete-outline"
+          testID="builder-delete-confirm"
+          onPress={() => {
+            if (pendingTool) update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== pendingTool.id) }));
+            setPendingDel(null);
+            toast("Tool deleted", "delete-outline");
+          }}
+        />
+      </Sheet>
       <ModuleGate id="builder" name="Tool Builder" icon="puzzle-outline" />
     </View>
   );
@@ -120,6 +133,19 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const [outputLabel, setOutputLabel] = useState(tool.outputLabel);
   const [unit, setUnit] = useState(tool.unit ?? "");
   const [sendToMoney, setSendToMoney] = useState(tool.sendToMoney);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const keyCursor = useRef(inputs.length);
+  const usedKeys = new Set(inputs.map((i) => i.key));
+  const dupKeys = inputs.filter((i, idx) => inputs.findIndex((x) => x.key === i.key) !== idx).map((i) => i.key);
+  const nextKey = () => {
+    for (let n = keyCursor.current; ; n++) {
+      const k = n < 26 ? String.fromCharCode(97 + n) : `k${n}`;
+      if (!usedKeys.has(k)) {
+        keyCursor.current = n + 1;
+        return k;
+      }
+    }
+  };
   const exists = db.customTools.some((t) => t.id === tool.id);
 
   const vars = Object.fromEntries(inputs.map((i) => [i.key, parseNum(i.value) || 1]));
@@ -133,6 +159,10 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const unknown = formulaNames(formula).filter((n) => !(n in vars));
 
   const save = () => {
+    if (dupKeys.length) {
+      toast("Two inputs share a short name — rename one before saving", "alert-circle-outline");
+      return;
+    }
     const next: CustomTool = { ...tool, name: name.trim() || "My tool", icon, inputs, formula, outputLabel: outputLabel.trim() || "Result", unit: unit.trim() || undefined, sendToMoney };
     update((d) => ({ ...d, customTools: exists ? d.customTools.map((t) => (t.id === next.id ? next : t)) : [...d.customTools, next] }));
     toast(exists ? "Tool updated" : "Tool added to Tools", "puzzle-outline");
@@ -140,6 +170,7 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   };
 
   return (
+    <>
     <Sheet visible onClose={onClose} title={exists ? "Edit tool" : "New tool"} testID="builder-sheet" footer={<Button label={exists ? "Save tool" : "Create tool"} icon="check" testID="builder-save-button" disabled={!!error || !!unknown.length} onPress={save} />}>
       <Field label="Tool name" testID="builder-name-input" value={name} onChangeText={setName} placeholder="Paint needed" />
       <Eyebrow style={{ marginBottom: 8 }}>Icon</Eyebrow>
@@ -158,7 +189,12 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
           {inputs.length > 1 ? <IconButton icon="close" label="Remove input" testID={`builder-input-remove-${idx}`} onPress={() => setInputs(inputs.filter((x) => x.id !== i.id))} /> : null}
         </View>
       ))}
-      <Button small kind="ghost" icon="plus" label="Add input" testID="builder-add-input" style={{ alignSelf: "flex-start", marginBottom: 16 }} onPress={() => setInputs([...inputs, { id: uid(), label: `Value ${inputs.length + 1}`, key: String.fromCharCode(97 + inputs.length), unit: "", value: "" }])} />
+      <Button small kind="ghost" icon="plus" label="Add input" testID="builder-add-input" style={{ alignSelf: "flex-start", marginBottom: 16 }} onPress={() => setInputs([...inputs, { id: uid(), label: `Value ${inputs.length + 1}`, key: nextKey(), unit: "", value: "" }])} />
+      {dupKeys.length ? (
+        <T style={{ color: colors.error, marginTop: -8, marginBottom: 16 }} testID="builder-duplicate-keys">
+          Duplicate input name{dupKeys.length > 1 ? "s" : ""}: {[...new Set(dupKeys)].join(", ")} — each input needs its own short name.
+        </T>
+      ) : null}
 
       <Field label="Formula" testID="builder-formula-input" value={formula} onChangeText={setFormula} autoCapitalize="none" hint={`Allowed: + - * / % ^ ( ) and ${FUNCTION_NAMES.join(", ")}`} />
       <View style={{ flexDirection: "row", gap: 10 }}>
@@ -204,12 +240,24 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
           label="Delete tool"
           testID="builder-delete-button"
           style={{ marginTop: 16 }}
-          onPress={() => {
-            update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
-            onClose();
-          }}
+          onPress={() => setConfirmDel(true)}
         />
       ) : null}
     </Sheet>
+    <Sheet visible={confirmDel} onClose={() => setConfirmDel(false)} title="Delete this tool?" testID="builder-delete-sheet">
+      <T style={{ marginBottom: 16 }}>This tool and its saved results will be removed. This can't be undone.</T>
+      <Button
+        kind="danger"
+        label="Delete tool"
+        icon="delete-outline"
+        testID="builder-delete-confirm"
+        onPress={() => {
+          update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
+          setConfirmDel(false);
+          onClose();
+        }}
+      />
+    </Sheet>
+    </>
   );
 }

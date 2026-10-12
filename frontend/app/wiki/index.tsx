@@ -10,6 +10,7 @@ import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
 import { Field } from "@/src/components/inputs";
+import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
 const blank = (): WikiPage => ({ id: uid(), title: "", body: "", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -63,6 +64,8 @@ export default function Wiki() {
 function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: WikiPage; pages: WikiPage[]; onClose: () => void; onSave: (page: WikiPage) => void; onDelete: () => void; onOpen: (title: string) => void }) {
   const [title, setTitle] = useState(page.title);
   const [body, setBody] = useState(page.body);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const toast = useToast();
   const { colors } = useTheme();
   const links = linkedTitles(body);
   const incoming = backlinks(pages, title);
@@ -91,7 +94,21 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
           {incoming.map((p) => <T key={p.id} style={{ marginTop: 6 }} onPress={() => onOpen(p.title)}>{p.title}</T>)}
         </View>
       ) : null}
-      {pages.some((p) => p.id === page.id) ? <Button kind="danger" label="Delete page" testID="wiki-delete" onPress={onDelete} style={{ marginTop: 16 }} /> : null}
+      {pages.some((p) => p.id === page.id) ? <Button kind="danger" label="Delete page" testID="wiki-delete" onPress={() => setConfirmDelete(true)} style={{ marginTop: 16 }} /> : null}
+    </Sheet>
+    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this page?" testID="wiki-delete-sheet">
+      <T style={{ marginBottom: 16 }}>"{title.trim() || page.title || "Untitled"}" will be removed, along with any backlinks to it.</T>
+      <Button
+        kind="danger"
+        label="Delete page"
+        icon="delete-outline"
+        testID="wiki-delete-confirm"
+        onPress={() => {
+          setConfirmDelete(false);
+          onDelete();
+          toast("Page deleted", "delete-outline");
+        }}
+      />
     </Sheet>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
@@ -25,6 +25,9 @@ export default function Kanban() {
   const [name, setName] = useState("");
   const [card, setCard] = useState<KanbanCard | null>(null);
   const [cardTitle, setCardTitle] = useState("");
+  const [renaming, setRenaming] = useState<KanbanBoard | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [delBoard, setDelBoard] = useState<KanbanBoard | null>(null);
   const board = db.kanban.find((b) => b.id === boardId) ?? null;
 
   const save = (next: KanbanBoard) => update((d) => ({ ...d, kanban: d.kanban.map((b) => (b.id === next.id ? next : b)) }));
@@ -42,10 +45,14 @@ export default function Kanban() {
             <EmptyState testID="kanban-empty" icon="view-column-outline" title="No boards yet" body="A board is columns of cards. It stays on this phone." action={<Button label="New board" icon="plus" testID="kanban-empty-add" onPress={() => setCreating(true)} />} />
           ) : (
             db.kanban.map((b) => (
-              <Card key={b.id} testID={`kanban-board-${b.id}`} onPress={() => setBoardId(b.id)}>
-                <T v="h2">{b.name}</T>
-                <T muted style={{ marginTop: 4 }}>{b.cards.length} cards · {b.columns.length} columns</T>
-              </Card>
+              <View key={b.id} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Card style={{ flex: 1 }} testID={`kanban-board-${b.id}`} onPress={() => setBoardId(b.id)}>
+                  <T v="h2">{b.name}</T>
+                  <T muted style={{ marginTop: 4 }}>{b.cards.length} cards · {b.columns.length} columns</T>
+                </Card>
+                <IconButton icon="pencil-outline" label={`Rename ${b.name}`} testID={`kanban-rename-${b.id}`} onPress={() => (setRenameName(b.name), setRenaming(b))} />
+                <IconButton icon="delete-outline" label={`Delete ${b.name}`} testID={`kanban-delete-${b.id}`} onPress={() => setDelBoard(b)} />
+              </View>
             ))
           )}
         </ScrollView>
@@ -70,6 +77,23 @@ export default function Kanban() {
       )}
       <Sheet visible={creating} onClose={() => setCreating(false)} title="New board" testID="kanban-new" footer={<Button label="Create" testID="kanban-create" disabled={!name.trim()} onPress={() => { const next = fresh(name.trim()); update((d) => ({ ...d, kanban: [...d.kanban, next] })); setBoardId(next.id); setCreating(false); }} />}>
         <Field label="Name" value={name} onChangeText={setName} testID="kanban-name" />
+      </Sheet>
+      <Sheet visible={!!renaming} onClose={() => setRenaming(null)} title="Rename board" testID="kanban-rename-sheet" footer={<Button label="Save" testID="kanban-rename-save" disabled={!renameName.trim()} onPress={() => { if (renaming) save({ ...renaming, name: renameName.trim() }); setRenaming(null); }} />}>
+        <Field label="Name" value={renameName} onChangeText={setRenameName} testID="kanban-rename-input" />
+      </Sheet>
+      <Sheet visible={!!delBoard} onClose={() => setDelBoard(null)} title="Delete this board?" testID="kanban-delete-sheet">
+        <T style={{ marginBottom: 16 }}>"{delBoard?.name ?? ""}" will be removed, along with its {delBoard?.columns.length ?? 0} columns and {delBoard?.cards.length ?? 0} cards.</T>
+        <Button
+          kind="danger"
+          label="Delete board"
+          icon="delete-outline"
+          testID="kanban-delete-confirm"
+          onPress={() => {
+            if (delBoard) update((d) => ({ ...d, kanban: d.kanban.filter((b) => b.id !== delBoard.id) }));
+            if (boardId === delBoard?.id) setBoardId(null);
+            setDelBoard(null);
+          }}
+        />
       </Sheet>
       <Sheet
         visible={!!card && !!board}

@@ -136,7 +136,9 @@ export default function CycleScreen() {
           kind="secondary"
           style={{ marginTop: 8 }}
           onPress={() => {
-            update((d) => ({ ...d, cycle: { ...d.cycle, days: rememberPeriod(d.cycle.days, pastStart, pastEnd) } }));
+            const days = rememberPeriod(db.cycle.days, pastStart, pastEnd);
+            if (days === db.cycle.days) return toast("Check both dates");
+            update((d) => ({ ...d, cycle: { ...d.cycle, days } }));
             toast("Saved");
           }}
         />

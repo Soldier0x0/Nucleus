@@ -9,7 +9,8 @@ import { memoryKey, type BankAsk } from "@/src/core/smsMoney";
 import { suggestShared } from "@/src/core/recordLinks";
 import { shareBill } from "@/src/core/shareLine";
 import { syncBankInbox } from "./BankTextSync";
-import { Button, Card, Eyebrow, T } from "./ui";
+import { Button, Card, Eyebrow, IconButton, T } from "./ui";
+import { useToast } from "./Toast";
 
 /** Charts, bills, bank texts, and links. Visible on Money, not behind another tap. */
 export function MoneyDesk({ month }: { month: string }) {
@@ -20,6 +21,7 @@ export function MoneyDesk({ month }: { month: string }) {
   const [account, setAccount] = useState("");
   const [asks, setAsks] = useState<BankAsk[]>([]);
   const [readNote, setReadNote] = useState("");
+  const toast = useToast();
   const flow = monthFlow(db.txns, month);
   const split = categorySplit(db.txns, month);
   const previousMonth = addMonths(`${month}-01`, -1).slice(0, 7);
@@ -133,11 +135,17 @@ export function MoneyDesk({ month }: { month: string }) {
           <TextInput testID="money-own-account" value={account} onChangeText={setAccount} placeholder="Your account ending" placeholderTextColor={colors.muted} style={{ marginTop: 8, height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
           <Button small kind="secondary" label="Remember this account" testID="money-save-account" onPress={() => {
             const ending = account.trim();
-            if (ending.length < 3 || db.settings.ownAccounts.includes(ending)) return;
+            if (ending.length < 3) { toast("Add at least 3 digits"); return; }
+            if (db.settings.ownAccounts.includes(ending)) { toast("Already saved"); return; }
             setSettings({ ownAccounts: [...db.settings.ownAccounts, ending].slice(0, 12) });
             setAccount("");
           }} style={{ marginTop: 8 }} />
-          {db.settings.ownAccounts.length ? <T muted style={{ marginTop: 6 }}>Your accounts: {db.settings.ownAccounts.join(", ")}</T> : null}
+          {db.settings.ownAccounts.map((own, index) => (
+            <View key={own} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+              <T muted>Account ending {own}</T>
+              <IconButton icon="close" label={`Forget account ending ${own}`} testID={`bank-account-remove-${index}`} onPress={() => setSettings({ ownAccounts: db.settings.ownAccounts.filter((item) => item !== own) })} />
+            </View>
+          ))}
           <Button small label="Check bank texts" testID="money-read-sms" onPress={readBank} style={{ marginTop: 8 }} />
           {readNote ? <T style={{ marginTop: 8 }}>{readNote}</T> : null}
           {asks.map((ask) => (

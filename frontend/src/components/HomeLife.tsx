@@ -189,6 +189,7 @@ function BillSheet({ bill, onClose }: { bill: UtilityBill; onClose: () => void }
   const [date, setDate] = useState(bill.date);
   const [note, setNote] = useState(bill.note ?? "");
   const [photo, setPhoto] = useState(bill.photo);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const meta = UTILITY_KINDS.find((k) => k.id === kind)!;
   const save = () => {
     const value = parseNum(amount);
@@ -210,6 +211,24 @@ function BillSheet({ bill, onClose }: { bill: UtilityBill; onClose: () => void }
       <DateField label="Bill date" value={date} onChange={(v) => v && setDate(v)} testID="utility-date" />
       <Field label="Note" testID="utility-note-input" value={note} onChangeText={setNote} placeholder="Optional" />
       <PhotoNote uri={photo} onChange={setPhoto} testID="utility-photo" />
+      {db.utilities.some((u) => u.id === bill.id) ? (
+        <Button kind="danger" small icon="delete-outline" label="Delete bill" testID="utility-delete" style={{ marginTop: 12 }} onPress={() => setConfirmDelete(true)} />
+      ) : null}
+    </Sheet>
+    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this bill?" testID="utility-delete-sheet">
+      <T style={{ marginBottom: 16 }}>The bill will be removed and the usual amount for {meta.label} will adjust.</T>
+      <Button
+        kind="danger"
+        label="Delete bill"
+        icon="delete-outline"
+        testID="utility-delete-confirm"
+        onPress={() => {
+          update((d) => ({ ...d, utilities: d.utilities.filter((u) => u.id !== bill.id) }));
+          setConfirmDelete(false);
+          toast("Deleted", "delete-outline");
+          onClose();
+        }}
+      />
     </Sheet>
   );
 }

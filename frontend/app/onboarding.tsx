@@ -306,6 +306,20 @@ export default function Onboarding() {
                       }
                     }}
                   />
+                  <Button
+                    kind="ghost"
+                    label="Cancel"
+                    icon="close"
+                    testID="onboarding-pin-cancel"
+                    style={{ marginTop: 12 }}
+                    onPress={() => {
+                      setPinStage(s.lockEnabled ? "done" : "off");
+                      setFirstPin("");
+                      setDecoyFirst("");
+                      setPinErr(undefined);
+                      setPinKey((k) => k + 1);
+                    }}
+                  />
                 </View>
               )}
               {pinStage === "done" && (

@@ -298,7 +298,11 @@ export default function Lab() {
                         a.click();
                         URL.revokeObjectURL(url);
                       }
-                      toast(`${rows.length - 1} samples exported`, "download-outline");
+                      if (Platform.OS === "web") {
+                        toast(`${rows.length - 1} samples exported`, "download-outline");
+                      } else {
+                        toast(`Recording stopped · ${rows.length - 1} samples — export is available on web`, "content-save-outline");
+                      }
                     } else setRecording([]);
                   }}
                 />

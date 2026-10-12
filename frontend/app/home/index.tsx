@@ -121,6 +121,7 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
   const [pName, setPName] = useState("");
   const [pEvery, setPEvery] = useState("3");
   const [err, setErr] = useState<string>();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
   const save = () => {
     if (!f.name.trim()) return setErr("Name is required");
@@ -156,8 +157,23 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
         </View>
       </View>
       <Button small kind="ghost" icon="plus" label="Add plan" testID="plan-add-button" onPress={() => pName.trim() && (setPlans([...plans, { id: uid(), name: pName.trim(), everyMonths: Number(pEvery), lastDone: todayISO() }]), setPName(""))} />
-      {appliance ? <Button small kind="danger" icon="delete-outline" label="Delete appliance" testID="appliance-delete-button" style={{ marginTop: 12 }} onPress={() => (update((d) => deleteEntity(d, { kind: "appliance", id: appliance.id })), onClose())} /> : null}
+      {appliance ? <Button small kind="danger" icon="delete-outline" label="Delete appliance" testID="appliance-delete-button" style={{ marginTop: 12 }} onPress={() => setConfirmDelete(true)} /> : null}
       <T muted style={{ fontSize: 11, marginTop: 8 }}>{num(plans.length, 0)} plan(s). New plans start counting from today.</T>
+    </Sheet>
+    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this appliance?" testID="appliance-delete-sheet">
+      <T style={{ marginBottom: 16 }}>{appliance?.name} will be removed, along with its {plans.length} maintenance plan(s) and linked history.</T>
+      <Button
+        kind="danger"
+        label="Delete appliance"
+        icon="delete-outline"
+        testID="appliance-delete-confirm"
+        onPress={() => {
+          update((d) => deleteEntity(d, { kind: "appliance", id: appliance!.id }));
+          setConfirmDelete(false);
+          toast("Appliance deleted", "delete-outline");
+          onClose();
+        }}
+      />
     </Sheet>
   );
 }

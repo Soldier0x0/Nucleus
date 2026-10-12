@@ -126,6 +126,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
   const [review, setReview] = useState(item.review ?? "");
   const [tags, setTags] = useState(item.tags.join(", "));
   const [cover, setCover] = useState(item.cover);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const exists = db.media.some((m) => m.id === item.id);
   const pickCover = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [2, 3], quality: 0.35, base64: true });
@@ -200,12 +201,24 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
           label="Remove from shelf"
           testID="media-delete-button"
           style={{ marginTop: 8 }}
-          onPress={() => {
-            update((d) => deleteEntity(d, { kind: "media", id: item.id }));
-            onClose();
-          }}
+          onPress={() => setConfirmDelete(true)}
         />
       ) : null}
+    </Sheet>
+    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Remove from shelf?" testID="media-delete-sheet">
+      <T style={{ marginBottom: 16 }}>"{title.trim() || item.title}" and its review will be removed.</T>
+      <Button
+        kind="danger"
+        label="Remove from shelf"
+        icon="delete-outline"
+        testID="media-delete-confirm"
+        onPress={() => {
+          update((d) => deleteEntity(d, { kind: "media", id: item.id }));
+          setConfirmDelete(false);
+          toast("Removed", "delete-outline");
+          onClose();
+        }}
+      />
     </Sheet>
   );
 }

@@ -225,11 +225,14 @@ const blankDebt = (): Debt => ({ id: uid(), name: "", principal: 0, balance: 0, 
 
 function FundSheet({ fund, onClose }: { fund: Fund; onClose: () => void }) {
   const { db, update } = useStore();
+  const toast = useToast();
   const [name, setName] = useState(fund.name);
   const [target, setTarget] = useState(fund.target ? String(fund.target) : "");
   const [date, setDate] = useState(fund.targetDate);
   const exists = db.funds.some((f) => f.id === fund.id);
+  const [del, setDel] = useState(false);
   return (
+    <>
     <Sheet visible onClose={onClose} title={exists ? "Edit jar" : "New jar"} testID="fund-sheet" footer={<Button label="Save jar" icon="check" testID="fund-save-button" onPress={() => {
       update((d) => upsertFund(d, { ...fund, name: name.trim() || "Jar", target: parseNum(target) || 0, targetDate: date }));
       onClose();
@@ -237,20 +240,33 @@ function FundSheet({ fund, onClose }: { fund: Fund; onClose: () => void }) {
       <Field label="What is it for" testID="fund-name-input" value={name} onChangeText={setName} placeholder="New phone" />
       <Field numeric label="Target amount" unit={db.settings.currency} testID="fund-target-input" value={target} onChangeText={setTarget} placeholder="0" />
       <DateField label="Need it by (optional)" value={date} onChange={setDate} testID="fund-date" optional />
-      {exists ? <Button kind="danger" small icon="delete-outline" label="Delete jar" testID="fund-delete-button" onPress={() => (update((d) => ({ ...d, funds: d.funds.filter((f) => f.id !== fund.id) })), onClose())} /> : null}
+      {exists ? <Button kind="danger" small icon="delete-outline" label="Delete jar" testID="fund-delete-button" onPress={() => setDel(true)} /> : null}
     </Sheet>
+      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this jar?" testID="fund-delete-sheet">
+        <T style={{ marginBottom: 16 }}>The {fund.contributions.length} contribution(s) you have saved to it and its progress history are removed. This cannot be undone.</T>
+        <Button kind="danger" label="Delete" icon="delete-outline" testID="fund-delete-confirm" onPress={() => {
+          update((d) => ({ ...d, funds: d.funds.filter((f) => f.id !== fund.id) }));
+          setDel(false);
+          toast("Jar deleted", "delete-outline");
+          onClose();
+        }} />
+      </Sheet>
+    </>
   );
 }
 
 function DebtSheet({ debt, onClose }: { debt: Debt; onClose: () => void }) {
   const { db, update } = useStore();
+  const toast = useToast();
   const [name, setName] = useState(debt.name);
   const [principal, setPrincipal] = useState(debt.principal ? String(debt.principal) : "");
   const [balance, setBalance] = useState(debt.balance ? String(debt.balance) : "");
   const [rate, setRate] = useState(debt.ratePct ? String(debt.ratePct) : "");
   const [emi, setEmi] = useState(debt.emi ? String(debt.emi) : "");
   const exists = db.debts.some((d) => d.id === debt.id);
+  const [del, setDel] = useState(false);
   return (
+    <>
     <Sheet visible onClose={onClose} title={exists ? "Edit debt" : "New debt"} testID="debt-sheet" footer={<Button label="Save debt" icon="check" testID="debt-save-button" onPress={() => {
       const bal = parseNum(balance) || 0;
       update((d) => upsertDebt(d, { ...debt, name: name.trim() || "Debt", principal: parseNum(principal) || bal, balance: bal, ratePct: parseNum(rate) || 0, emi: parseNum(emi) || undefined }));
@@ -261,20 +277,33 @@ function DebtSheet({ debt, onClose }: { debt: Debt; onClose: () => void }) {
       <Field numeric label="Balance left" unit={db.settings.currency} testID="debt-balance-input" value={balance} onChangeText={setBalance} />
       <Field numeric label="Interest" unit="% p.a." testID="debt-rate-input" value={rate} onChangeText={setRate} />
       <Field numeric label="Monthly payment" unit={db.settings.currency} testID="debt-emi-input" value={emi} onChangeText={setEmi} hint="Used to work out the payoff date" />
-      {exists ? <Button kind="danger" small icon="delete-outline" label="Delete debt" testID="debt-delete-button" onPress={() => (update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) })), onClose())} /> : null}
+      {exists ? <Button kind="danger" small icon="delete-outline" label="Delete debt" testID="debt-delete-button" onPress={() => setDel(true)} /> : null}
     </Sheet>
+      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this debt?" testID="debt-delete-sheet">
+        <T style={{ marginBottom: 16 }}>The balance and payoff date are removed, and it will no longer count against your net worth. This cannot be undone.</T>
+        <Button kind="danger" label="Delete" icon="delete-outline" testID="debt-delete-confirm" onPress={() => {
+          update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }));
+          setDel(false);
+          toast("Debt deleted", "delete-outline");
+          onClose();
+        }} />
+      </Sheet>
+    </>
   );
 }
 
 function SnapshotSheet({ snap, onClose }: { snap: NetWorthSnapshot; onClose: () => void }) {
   const { db, update } = useStore();
+  const toast = useToast();
   const [date, setDate] = useState(snap.date);
   const [assets, setAssets] = useState(snap.assets ? String(snap.assets) : "");
   const [liab, setLiab] = useState(snap.liabilities ? String(snap.liabilities) : "");
   const [note, setNote] = useState(snap.note ?? "");
   const exists = db.netWorth.some((s) => s.id === snap.id);
+  const [del, setDel] = useState(false);
   const suggested = db.debts.reduce((s, d) => s + d.balance, 0);
   return (
+    <>
     <Sheet visible onClose={onClose} title={exists ? "Edit snapshot" : "New snapshot"} testID="snapshot-sheet" footer={<Button label="Save snapshot" icon="check" testID="snapshot-save-button" onPress={() => {
       update((d) => addSnapshot(d, { ...snap, date, assets: parseNum(assets) || 0, liabilities: parseNum(liab) || 0, note: note.trim() || undefined }));
       onClose();
@@ -283,7 +312,17 @@ function SnapshotSheet({ snap, onClose }: { snap: NetWorthSnapshot; onClose: () 
       <Field numeric label="What you own" unit={db.settings.currency} testID="snapshot-assets-input" value={assets} onChangeText={setAssets} hint="Savings, deposits, investments, vehicles" />
       <Field numeric label="What you owe" unit={db.settings.currency} testID="snapshot-liabilities-input" value={liab} onChangeText={setLiab} hint={suggested > 0 ? `Your tracked debts add up to ${num(suggested, 0)}` : undefined} />
       <Field label="Note (optional)" testID="snapshot-note-input" value={note} onChangeText={setNote} />
-      {exists ? <Button kind="danger" small icon="delete-outline" label="Delete snapshot" testID="snapshot-delete-button" onPress={() => (update((d) => ({ ...d, netWorth: d.netWorth.filter((s) => s.id !== snap.id) })), onClose())} /> : null}
+      {exists ? <Button kind="danger" small icon="delete-outline" label="Delete snapshot" testID="snapshot-delete-button" onPress={() => setDel(true)} /> : null}
     </Sheet>
+      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this snapshot?" testID="snapshot-delete-sheet">
+        <T style={{ marginBottom: 16 }}>This point in your net-worth history is removed and the trend line will skip it. This cannot be undone.</T>
+        <Button kind="danger" label="Delete" icon="delete-outline" testID="snapshot-delete-confirm" onPress={() => {
+          update((d) => ({ ...d, netWorth: d.netWorth.filter((s) => s.id !== snap.id) }));
+          setDel(false);
+          toast("Snapshot deleted", "delete-outline");
+          onClose();
+        }} />
+      </Sheet>
+    </>
   );
 }
