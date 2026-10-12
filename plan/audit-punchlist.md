@@ -1,10 +1,13 @@
 # Nucleus — First-Run Module Audit (Track 1)
 
+> **Status: fully resolved in v0.9.7** (PR #36). All 49 findings fixed across
+> commits `294256a` (HIGH), `f140174` (MEDIUM), `839b8aa` (LOW). Kept for
+> history and as a reference pattern for future audits.
+
 **Method:** four parallel code audits walked every module's create → use → delete
 path as a brand-new user, hunting dead buttons, dead-ends, missing empty-states,
 and data-loss risks. Findings are ranked by user impact. Every item has file:line,
-severity, and a one-line fix. **No code changed yet** — this is the punch-list to
-work from.
+severity, and a one-line fix.
 
 Severity: **HIGH** = data loss or a broken core flow · **MEDIUM** = dead-end,
 silent no-op, or confusing state · **LOW** = polish.
