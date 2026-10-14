@@ -94,3 +94,8 @@ export function median(a: number[]) {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
+
+/** "1 card", "3 cards"; pass `many` for irregular plurals. */
+export function plural(n: number, one: string, many = `${one}s`) {
+  return `${n} ${n === 1 ? one : many}`;
+}
