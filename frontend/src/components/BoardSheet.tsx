@@ -7,6 +7,8 @@ import type { Board, TileId } from "@/src/core/types";
 import { uid } from "@/src/core/format";
 import { Button, Chip, Eyebrow, Icon, IconButton, T } from "./ui";
 import { Sheet } from "./Sheet";
+import { ConfirmSheet } from "./ConfirmSheet";
+import { useToast } from "./Toast";
 import { Field } from "./inputs";
 
 const ICONS = ["view-dashboard-outline", "bag-suitcase-outline", "wallet-outline", "car-side", "home-outline", "chart-box-outline"];
@@ -26,6 +28,8 @@ export function BoardSheet({ board, onClose }: { board: Board | null; onClose: (
   const [name, setName] = useState(board?.name ?? "");
   const [icon, setIcon] = useState(board?.icon ?? ICONS[0]);
   const [tiles, setTiles] = useState<TileId[]>(board?.tiles ?? ["attention"]);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const toast = useToast();
   const all = Object.keys(TILE_META) as TileId[];
 
   const save = () => {
@@ -36,6 +40,7 @@ export function BoardSheet({ board, onClose }: { board: Board | null; onClose: (
   };
 
   return (
+    <>
     <Sheet visible onClose={onClose} title={board ? "Edit board" : "New board"} testID="board-sheet" footer={<Button label={board ? "Save board" : "Create board"} icon="check" testID="board-save-button" onPress={save} />}>
       <Field label="Board name" testID="board-name-input" value={name} onChangeText={setName} placeholder="Goa trip, Month end…" />
       <T muted style={{ fontSize: 12, marginTop: -4, marginBottom: 8 }}>A board is temporary. Home stays as it is until you switch back.</T>
@@ -80,13 +85,25 @@ export function BoardSheet({ board, onClose }: { board: Board | null; onClose: (
           label="Delete board"
           testID="board-delete-button"
           style={{ marginTop: 18 }}
-          onPress={() => {
-            setSettings({ boards: db.settings.boards.filter((b) => b.id !== board.id), activeBoardId: undefined });
-            onClose();
-          }}
+          onPress={() => setConfirmDel(true)}
         />
       ) : null}
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDel}
+      id="board-delete"
+      title="Delete this board?"
+      body={`“${board?.name ?? ""}” is removed from Today. Your records stay. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={() => {
+        if (board) setSettings({ boards: db.settings.boards.filter((b) => b.id !== board.id), activeBoardId: undefined });
+        setConfirmDel(false);
+        toast("Board deleted", "delete-outline");
+        onClose();
+      }}
+    />
+    </>
   );
 }
 
