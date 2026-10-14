@@ -5,6 +5,7 @@ import { useStore } from "@/src/core/store";
 import { addTxn } from "@/src/core/actions";
 import { money, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { chanceFrames } from "@/src/core/chance";
+import { clockOk } from "@/src/core/clock";
 import { evaluateFormula } from "@/src/core/formula";
 import { Field, OptionSheet } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, IconButton, Segmented, T } from "./ui";
@@ -83,11 +84,6 @@ export function CookingTool() {
 
 // ---------- Time ----------
 const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, "0");
-const clockOk = (s: string) => {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
-  if (!m) return false;
-  return Number(m[1]) < 24 && Number(m[2]) < 60;
-};
 
 export function TimeTool() {
   const { colors } = useTheme();
