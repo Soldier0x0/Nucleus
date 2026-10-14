@@ -126,8 +126,8 @@ export default function Attention() {
                     </Swipeable>
                   </Animated.View>
                 ))}
-                {list.length > 4 && expanded[g.sev] !== true ? (
-                  <Button kind="ghost" small label="See more" testID={`attention-more-${g.sev}`} onPress={() => setExpanded((prev) => ({ ...prev, [g.sev]: true }))} />
+                {list.length > 4 ? (
+                  <Button kind="ghost" small label={expanded[g.sev] === true ? "See less" : "See more"} testID={`attention-more-${g.sev}`} onPress={() => setExpanded((prev) => ({ ...prev, [g.sev]: prev[g.sev] !== true }))} />
                 ) : null}
               </View>
             );

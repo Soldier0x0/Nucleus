@@ -8,11 +8,12 @@ import { applianceIcon, applianceOwnership, dueDayLabel } from "@/src/core/life"
 import { HomeLife } from "@/src/components/HomeLife";
 import { deleteEntity } from "@/src/core/actions";
 import type { Appliance } from "@/src/core/types";
-import { addMonths, daysBetween, fmtDate, money, num, parseNum, todayISO, uid } from "@/src/core/format";
+import { addMonths, daysBetween, fmtDate, money, num, parseNum, plural, todayISO, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, Eyebrow, Icon, IconButton, Segmented, StatusBadge, T } from "@/src/components/ui";
 import { Countdown } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -121,6 +122,7 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
   const [pName, setPName] = useState("");
   const [pEvery, setPEvery] = useState("3");
   const [err, setErr] = useState<string>();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
   const save = () => {
     if (!f.name.trim()) return setErr("Name is required");
@@ -129,6 +131,7 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
     onClose();
   };
   return (
+    <>
     <Sheet visible onClose={onClose} title={appliance ? "Edit appliance" : "Add appliance"} testID="appliance-sheet" footer={<Button label="Save appliance" icon="check" onPress={save} testID="appliance-save-button" />}>
       <Field label="Name" testID="appliance-name-input" value={f.name} onChangeText={(t) => (set({ name: t }), setErr(undefined))} placeholder="Split AC" error={err} />
       <View style={{ marginHorizontal: -16 }}><ChipRow testID="appliance-room-row">{ROOMS.map((r) => <Chip key={r} label={r} selected={f.room === r} onPress={() => set({ room: r })} testID={`appliance-room-${r}`} />)}</ChipRow></View>
@@ -156,9 +159,24 @@ function ApplianceSheet({ appliance, onClose }: { appliance?: Appliance; onClose
         </View>
       </View>
       <Button small kind="ghost" icon="plus" label="Add plan" testID="plan-add-button" onPress={() => pName.trim() && (setPlans([...plans, { id: uid(), name: pName.trim(), everyMonths: Number(pEvery), lastDone: todayISO() }]), setPName(""))} />
-      {appliance ? <Button small kind="danger" icon="delete-outline" label="Delete appliance" testID="appliance-delete-button" style={{ marginTop: 12 }} onPress={() => (update((d) => deleteEntity(d, { kind: "appliance", id: appliance.id })), onClose())} /> : null}
+      {appliance ? <Button small kind="danger" icon="delete-outline" label="Delete appliance" testID="appliance-delete-button" style={{ marginTop: 12 }} onPress={() => setConfirmDelete(true)} /> : null}
       <T muted style={{ fontSize: 11, marginTop: 8 }}>{num(plans.length, 0)} plan(s). New plans start counting from today.</T>
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDelete}
+      id="appliance-delete"
+      title="Delete this appliance?"
+      body={`${appliance?.name ?? "This appliance"} will be removed, along with its ${plural(plans.length, "maintenance plan")} and linked history. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={() => {
+        if (appliance) update((d) => deleteEntity(d, { kind: "appliance", id: appliance.id }));
+        setConfirmDelete(false);
+        toast("Appliance deleted", "delete-outline");
+        onClose();
+      }}
+    />
+    </>
   );
 }
 

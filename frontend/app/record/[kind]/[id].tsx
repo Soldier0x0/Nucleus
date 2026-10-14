@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity, getEntity, SERVICE_LABEL } from "@/src/core/actions";
-import { setFuelFacts } from "@/src/core/fuelCapture";
+import { fuelFactsPatch, setFuelFacts } from "@/src/core/fuelCapture";
 import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import type { EntityKind, Paper } from "@/src/core/types";
 import { fmtDate, money, num } from "@/src/core/format";
@@ -16,6 +16,7 @@ import { Button, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui"
 import { DateField, Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
 
 const TITLES: Record<EntityKind, string> = { vehicle: "Vehicle", fuel: "Fuel entry", service: "Service record", txn: "Transaction", subscription: "Subscription", trip: "Trip", appliance: "Appliance", note: "Note", media: "Shelf item", paper: "Paper" };
@@ -29,6 +30,7 @@ export default function RecordDetail() {
   const router = useRouter();
   const toast = useToast();
   const [del, setDel] = useState(false);
+  const [detach, setDetach] = useState<null | "photo" | "bill">(null);
   const [fuelEdit, setFuelEdit] = useState(false);
   const [fuelDate, setFuelDate] = useState("");
   const [fuelOdo, setFuelOdo] = useState("");
@@ -104,7 +106,7 @@ export default function RecordDetail() {
               kind="ghost"
               label="Remove photo"
               testID="txn-photo-clear-saved"
-              onPress={() => update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }))}
+              onPress={() => setDetach("photo")}
             />
           </View>
         ) : null}
@@ -123,12 +125,7 @@ export default function RecordDetail() {
                 kind="ghost"
                 label="Remove bill"
                 testID="service-bill-clear-saved"
-                onPress={() =>
-                  update((d) => ({
-                    ...d,
-                    services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)),
-                  }))
-                }
+                onPress={() => setDetach("bill")}
               />
               <Button
                 small
@@ -166,8 +163,7 @@ export default function RecordDetail() {
         <LinkedSection refTo={{ kind, id }} />
       </ScrollView>
       <Sheet visible={fuelEdit && kind === "fuel"} onClose={() => setFuelEdit(false)} title="Fill details" testID="fuel-edit-sheet" footer={<Button label="Save" testID="fuel-edit-save" onPress={() => {
-        const odometer = Number(fuelOdo);
-        update((d) => setFuelFacts(d, id, { date: fuelDate, station: fuelStation, ...(fuelOdo.trim() && Number.isFinite(odometer) ? { odometer } : {}) }));
+        update((d) => setFuelFacts(d, id, fuelFactsPatch(fuelDate, fuelStation, fuelOdo)));
         setFuelEdit(false);
         toast("Saved");
       }} />}>
@@ -175,21 +171,34 @@ export default function RecordDetail() {
         <Field label="Odometer" numeric testID="fuel-edit-odometer" value={fuelOdo} onChangeText={setFuelOdo} />
         <Field label="Station" testID="fuel-edit-station" value={fuelStation} onChangeText={setFuelStation} />
       </Sheet>
-      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this record?" testID="record-delete-sheet">
-        <T style={{ marginBottom: 16 }}>{kind === "fuel" || kind === "service" ? "The expense that was auto-created from it will be removed too." : "Its links to other records will be removed."}</T>
-        <Button
-          kind="danger"
-          label="Delete"
-          icon="delete-outline"
-          testID="record-delete-confirm"
-          onPress={() => {
-            update((d) => deleteEntity(d, { kind, id }));
-            setDel(false);
-            toast("Deleted", "delete-outline");
-            router.back();
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={del}
+        id="record-delete"
+        title="Delete this record?"
+        body={`${kind === "fuel" || kind === "service" ? "The expense that was auto-created from it will be removed too." : "Its links to other records will be removed."} This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
+          update((d) => deleteEntity(d, { kind, id }));
+          setDel(false);
+          toast("Deleted", "delete-outline");
+          router.back();
+        }}
+      />
+      <ConfirmSheet
+        visible={!!detach}
+        id="record-detach"
+        title={detach === "bill" ? "Remove the bill file?" : "Remove the photo?"}
+        body={detach === "bill" ? "The attached bill file will be detached from this record. The record itself stays." : "The attached photo will be detached from this record. The record itself stays."}
+        confirmLabel="Remove"
+        onCancel={() => setDetach(null)}
+        onConfirm={() => {
+          if (detach === "photo") update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }));
+          else if (detach === "bill") update((d) => ({ ...d, services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)) }));
+          setDetach(null);
+          toast(detach === "bill" ? "Bill file removed" : "Photo removed", "delete-outline");
+        }}
+      />
     </View>
   );
 }

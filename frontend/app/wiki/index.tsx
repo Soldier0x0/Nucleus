@@ -9,7 +9,9 @@ import { backlinks, linkedTitles, pageByTitle } from "@/src/core/wiki";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
+import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
 const blank = (): WikiPage => ({ id: uid(), title: "", body: "", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -31,9 +33,7 @@ export default function Wiki() {
       setPage(found);
       return;
     }
-    const created = { ...blank(), title };
-    update((d) => ({ ...d, wiki: [...d.wiki, created] }));
-    setPage(created);
+    setPage({ ...blank(), title });
   };
 
   return (
@@ -63,10 +63,13 @@ export default function Wiki() {
 function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: WikiPage; pages: WikiPage[]; onClose: () => void; onSave: (page: WikiPage) => void; onDelete: () => void; onOpen: (title: string) => void }) {
   const [title, setTitle] = useState(page.title);
   const [body, setBody] = useState(page.body);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const toast = useToast();
   const { colors } = useTheme();
   const links = linkedTitles(body);
   const incoming = backlinks(pages, title);
   return (
+    <>
     <Sheet
       visible
       onClose={onClose}
@@ -76,6 +79,7 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
     >
       <Field label="Title" value={title} onChangeText={setTitle} testID="wiki-title" />
       <T muted style={{ fontSize: 12, marginBottom: 6 }}>Link another page with [[Page title]].</T>
+      {pages.some((p) => p.id === page.id) ? null : <T muted style={{ fontSize: 12, marginBottom: 6 }}>This page does not exist yet. Save page to create it.</T>}
       <TextInput testID="wiki-body" value={body} onChangeText={setBody} multiline placeholder="Write the page" placeholderTextColor={colors.muted} style={{ minHeight: 140, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, padding: 12, color: colors.onSurface, textAlignVertical: "top" }} />
       {links.length ? (
         <View style={{ marginTop: 12 }}>
@@ -91,7 +95,21 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
           {incoming.map((p) => <T key={p.id} style={{ marginTop: 6 }} onPress={() => onOpen(p.title)}>{p.title}</T>)}
         </View>
       ) : null}
-      {pages.some((p) => p.id === page.id) ? <Button kind="danger" label="Delete page" testID="wiki-delete" onPress={onDelete} style={{ marginTop: 16 }} /> : null}
+      {pages.some((p) => p.id === page.id) ? <Button kind="danger" label="Delete page" testID="wiki-delete" onPress={() => setConfirmDelete(true)} style={{ marginTop: 16 }} /> : null}
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDelete}
+      id="wiki-delete"
+      title="Delete this page?"
+      body={`“${title.trim() || page.title || "Untitled"}” will be removed, along with any backlinks to it. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={() => {
+        setConfirmDelete(false);
+        onDelete();
+        toast("Page deleted", "delete-outline");
+      }}
+    />
+    </>
   );
 }

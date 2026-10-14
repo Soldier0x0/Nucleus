@@ -44,7 +44,7 @@ export default function Bills() {
               <T v="mono" style={{ marginTop: 6 }}>{money(row.amount, db.settings.currency)}</T>
               <T muted style={{ marginTop: 6 }}>{billReminder(row)}</T>
               <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-                <Button small kind="secondary" label="Due" testID={`bill-due-${row.id}`} onPress={() => update((current) => setBillMark(current, row.id, "due", today))} />
+                <Button small kind="secondary" label="Due" disabled={row.mark === "due"} testID={`bill-due-${row.id}`} onPress={() => update((current) => setBillMark(current, row.id, "due", today))} />
                 <Button small kind="secondary" label="Paid" testID={`bill-paid-${row.id}`} onPress={() => update((current) => setBillMark(current, row.id, "paid", today))} />
                 <Button small kind="secondary" label="Snooze" testID={`bill-snooze-${row.id}`} onPress={() => update((current) => setBillMark(current, row.id, "snoozed", today))} />
               </View>

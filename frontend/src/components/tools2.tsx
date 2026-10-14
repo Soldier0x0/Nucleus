@@ -5,6 +5,7 @@ import { useStore } from "@/src/core/store";
 import { addTxn } from "@/src/core/actions";
 import { money, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { chanceFrames } from "@/src/core/chance";
+import { clockOk } from "@/src/core/clock";
 import { evaluateFormula } from "@/src/core/formula";
 import { Field, OptionSheet } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, IconButton, Segmented, T } from "./ui";
@@ -85,6 +86,7 @@ export function CookingTool() {
 const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, "0");
 
 export function TimeTool() {
+  const { colors } = useTheme();
   const [mode, setMode] = useState<"diff" | "add" | "zones">("diff");
   const [a, setA] = useState("09:30");
   const [b, setB] = useState("18:15");
@@ -95,7 +97,11 @@ export function TimeTool() {
   };
   let value = "—";
   let bd: [string, string][] = [];
-  if (mode === "diff") {
+  const badClock = mode !== "zones" && (!clockOk(a) || (mode === "diff" && !clockOk(b)));
+  if (badClock) {
+    value = "—";
+    bd = [];
+  } else if (mode === "diff") {
     const d = mins(b) - mins(a);
     const dd = d < 0 ? d + 1440 : d;
     value = `${pad(dd / 60)}:${pad(dd % 60)}`;
@@ -121,6 +127,12 @@ export function TimeTool() {
       {mode !== "zones" ? <Field label="Start time (HH:MM)" testID="time-a-input" value={a} onChangeText={setA} placeholder="09:30" /> : null}
       {mode === "diff" ? <Field label="End time (HH:MM)" testID="time-b-input" value={b} onChangeText={setB} placeholder="18:15" /> : null}
       {mode === "add" ? <Field numeric label="Minutes (use - to go back)" unit="min" testID="time-n-input" value={n} onChangeText={setN} keyboardType="numbers-and-punctuation" /> : null}
+      {badClock ? (
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <Icon name="alert-circle-outline" size={18} color={colors.error} />
+          <T style={{ flex: 1, color: colors.error, fontSize: 13 }} testID="time-error">Enter both times as HH:MM</T>
+        </View>
+      ) : null}
       <Result tool="time" label={mode === "zones" ? "Your local time" : mode === "diff" ? "Duration" : "Resulting time"} value={value} breakdown={bd} />
       {mode === "zones" ? <T muted style={{ fontSize: 12, marginTop: 8 }}>Fixed standard offsets — daylight saving is not tracked offline.</T> : null}
     </View>
@@ -250,6 +262,9 @@ export function RandomTool() {
     }
   };
 
+  const needsList = mode === "teams" || mode === "wheel";
+  const noOptions = needsList && !names.split(/[,\n]/).map((x) => x.trim()).filter(Boolean).length;
+
   return (
     <View>
       <View style={{ marginHorizontal: -16 }}>
@@ -292,7 +307,10 @@ export function RandomTool() {
           ) : null}
         </>
       ) : null}
-      <Button label={mode === "wheel" ? "Decide for me" : "Randomise"} icon="dice-multiple-outline" testID="random-roll-button" onPress={roll} />
+      <Button label={mode === "wheel" ? "Decide for me" : "Randomise"} icon="dice-multiple-outline" testID="random-roll-button" disabled={noOptions} onPress={roll} />
+      {noOptions ? (
+        <T muted style={{ fontSize: 12, marginTop: 8 }} testID="random-empty-hint">Add at least one option.</T>
+      ) : null}
       {out.length ? (
         <View style={[{ backgroundColor: colors.surfaceInverse, borderRadius: radius.lg, padding: 16, marginTop: 12 }]} testID="random-result">
           <T v="caption" color={colors.onSurfaceInverse} style={{ opacity: 0.7, letterSpacing: 1 }}>

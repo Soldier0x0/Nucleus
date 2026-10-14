@@ -37,6 +37,14 @@ export default function HealthScreen() {
       toast("Notifications are off", "bell-off-outline");
       return;
     }
+    if (db.water.times.some((time) => time.hour === hour && time.minute === minute)) {
+      toast("That time is already on the list");
+      return;
+    }
+    if (db.water.times.length >= 8) {
+      toast("Eight reminders is the limit");
+      return;
+    }
     update((d) => ({ ...d, water: addWaterTime(d.water, hour, minute) }));
   };
 

@@ -48,8 +48,9 @@ export default function Onboarding() {
   const [pendingEnc, setPendingEnc] = useState<{ env: PasswordEnvelope; exportedAt: string } | null>(null);
 
   const openPicked = (next: DB, line: string) => {
+    const samePhone = !next.settings.installId || next.settings.installId === s.installId;
     setPicked(next);
-    setFileLine(line);
+    setFileLine(samePhone ? line : `${line} This phone will be read-only for this file.`);
     setGate("file");
   };
 
@@ -304,6 +305,20 @@ export default function Onboarding() {
                         setPinStage("decoy");
                         setPinKey((k) => k + 1);
                       }
+                    }}
+                  />
+                  <Button
+                    kind="ghost"
+                    label="Cancel"
+                    icon="close"
+                    testID="onboarding-pin-cancel"
+                    style={{ marginTop: 12 }}
+                    onPress={() => {
+                      setPinStage(s.lockEnabled ? "done" : "off");
+                      setFirstPin("");
+                      setDecoyFirst("");
+                      setPinErr(undefined);
+                      setPinKey((k) => k + 1);
                     }}
                   />
                 </View>

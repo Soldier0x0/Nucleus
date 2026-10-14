@@ -6,6 +6,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { Header } from "@/src/components/Header";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
+import { useToast } from "@/src/components/Toast";
+import { plural } from "@/src/core/format";
 import { Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
 import { DatesTool, EmiTool, PercentTool, SplitTool, UnitsTool } from "@/src/components/tools";
 import { CookingTool, CustomToolRunner, GrowthTool, RandomTool, RoadTripTool, TimeTool } from "@/src/components/tools2";
@@ -43,6 +46,8 @@ export default function Tools() {
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const [tool, setTool] = useState<string>(params.tool && (TOOLS.some((t) => t.id === params.tool) || db.customTools.some((t) => `custom:${t.id}` === params.tool)) ? params.tool : "units");
+  const [clearOpen, setClearOpen] = useState(false);
+  const toast = useToast();
   const active = TOOLS.find((t) => t.id === tool);
   const customId = tool.startsWith("custom:") ? tool.slice(7) : null;
   const history = db.toolHistory.filter((h) => h.tool === tool).slice(0, 8);
@@ -91,7 +96,7 @@ export default function Tools() {
           <View style={{ marginTop: 20 }} testID="tools-history">
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Eyebrow style={{ flex: 1 }}>Saved results</Eyebrow>
-              <IconButton icon="delete-sweep-outline" label="Clear history" testID="tools-history-clear" onPress={() => update((d) => ({ ...d, toolHistory: d.toolHistory.filter((h) => h.tool !== tool) }))} />
+              <IconButton icon="delete-sweep-outline" label="Clear history" testID="tools-history-clear" onPress={() => setClearOpen(true)} />
             </View>
             <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surfaceSecondary }}>
               {history.map((h, i) => (
@@ -102,6 +107,7 @@ export default function Tools() {
                     <T v="mono">{h.value}</T>
                   </View>
                   <T muted style={{ fontSize: 11 }}>{new Date(h.at).toLocaleDateString()}</T>
+                  <IconButton icon="close" label={`Delete ${h.label}`} testID={`tool-history-delete-${h.id}`} onPress={() => update((d) => ({ ...d, toolHistory: d.toolHistory.filter((x) => x.id !== h.id) }))} />
                 </View>
               ))}
             </View>
@@ -109,6 +115,20 @@ export default function Tools() {
         ) : null}
       </KeyboardAwareScrollView>
       <ModuleGate id="tools" name="Tools" icon="calculator-variant-outline" />
+      <ConfirmSheet
+        visible={clearOpen}
+        id="tools-history-clear"
+        title="Clear saved results?"
+        body={`This removes all ${plural(history.length, "saved result")} for this tool. This can't be undone.`}
+        confirmLabel="Clear all"
+        icon="delete-sweep-outline"
+        onCancel={() => setClearOpen(false)}
+        onConfirm={() => {
+          setClearOpen(false);
+          update((d) => ({ ...d, toolHistory: d.toolHistory.filter((h) => h.tool !== tool) }));
+          toast("Saved results cleared", "delete-sweep-outline");
+        }}
+      />
     </View>
   );
 }

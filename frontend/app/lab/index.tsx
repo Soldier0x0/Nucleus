@@ -1,8 +1,12 @@
 import React, { memo, useEffect, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Vibration, View } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Vibration, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import * as Device from "expo-device";
 import * as Battery from "expo-battery";
+import * as Clipboard from "expo-clipboard";
+import * as Sharing from "expo-sharing";
+import { File, Paths } from "expo-file-system";
 import { Accelerometer, Barometer, Gyroscope, LightSensor, Magnetometer } from "expo-sensors";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
@@ -13,6 +17,7 @@ import { readPhoneBattery } from "@/src/native/android";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, Eyebrow, Press, T } from "@/src/components/ui";
 import { LineChart } from "@/src/components/charts";
+import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
@@ -79,7 +84,52 @@ export default function Lab() {
   const [baroOk, setBaroOk] = useState<boolean | null>(null);
   const [battery, setBattery] = useState<ReturnType<typeof batterySummary> | null>(null);
   const [fill, setFill] = useState<string | null>(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const started = useRef(false);
+  const router = useRouter();
+
+  // Stopping hands the samples over the same way the Record button does.
+  const finishRecording = () => {
+    if (!recording) return;
+    const rows = [["time_ms", "x", "y", "z"], ...recording.map((r) => [r.t, r.x, r.y, r.z])];
+    const text = rows.map((r) => r.join(",")).join("\n");
+    setRecording(null);
+    if (Platform.OS === "web") {
+      const url = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
+      const a = (globalThis as any).document.createElement("a");
+      a.href = url;
+      a.download = `nucleus-${sensor}-${todayISO()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`${rows.length - 1} samples exported`, "download-outline");
+    } else {
+      const file = new File(Paths.cache, `nucleus-${sensor}-${todayISO()}.csv`);
+      if (file.exists) file.delete();
+      file.create();
+      file.write(text);
+      void Sharing.isAvailableAsync()
+        .then((ok) => (ok ? Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Sensor samples" }) : Clipboard.setStringAsync(text).then(() => toast("CSV copied", "content-copy"))))
+        .catch(() => toast("Could not share the samples", "alert-circle-outline"));
+    }
+  };
+
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/"));
+
+  // Leaving used to throw the whole capture away without a word.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (leaveOpen) {
+        setLeaveOpen(false);
+        return true;
+      }
+      if (recording?.length) {
+        setLeaveOpen(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [leaveOpen, recording]);
 
   // Sensors run only while this screen is mounted — nothing samples in the background.
   useEffect(() => {
@@ -190,7 +240,7 @@ export default function Lab() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <Header title="Phone Lab" testID="lab-header" />
+      <Header title="Phone Lab" testID="lab-header" onBack={() => (recording?.length ? setLeaveOpen(true) : leave())} />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 24, gap: sp.md, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <Card testID="lab-device-card">
           <Eyebrow>This device</Eyebrow>
@@ -251,7 +301,13 @@ export default function Lab() {
           <View style={{ marginHorizontal: -16, marginTop: 4 }}>
             <ChipRow testID="lab-sensor-row">
               {SENSORS.map((s) => (
-                <Chip key={s.id} label={s.label} icon={s.icon} selected={sensor === s.id} testID={`lab-sensor-${s.id}`} onPress={() => setSensor(s.id)} />
+                <Chip key={s.id} label={s.label} icon={s.icon} selected={sensor === s.id} testID={`lab-sensor-${s.id}`} onPress={() => {
+                  if (recording && s.id !== sensor) {
+                    toast("Stop recording first", "record-circle-outline");
+                    return;
+                  }
+                  setSensor(s.id);
+                }} />
               ))}
             </ChipRow>
           </View>
@@ -286,20 +342,8 @@ export default function Lab() {
                   icon={recording ? "stop-circle-outline" : "record-circle-outline"}
                   testID="lab-record-button"
                   onPress={() => {
-                    if (recording) {
-                      const rows = [["time_ms", "x", "y", "z"], ...recording.map((r) => [r.t, r.x, r.y, r.z])];
-                      const text = rows.map((r) => r.join(",")).join("\n");
-                      setRecording(null);
-                      if (Platform.OS === "web") {
-                        const url = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
-                        const a = (globalThis as any).document.createElement("a");
-                        a.href = url;
-                        a.download = `nucleus-${sensor}-${todayISO()}.csv`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }
-                      toast(`${rows.length - 1} samples exported`, "download-outline");
-                    } else setRecording([]);
+                    if (recording) finishRecording();
+                    else setRecording([]);
                   }}
                 />
                 <Button small kind="secondary" label="Reset graph" icon="refresh" testID="lab-reset-button" onPress={() => setHistory([])} />
@@ -329,6 +373,33 @@ export default function Lab() {
         </Press>
       ) : null}
       <ModuleGate id="lab" name="Phone Lab" icon="chip" />
+      <Sheet visible={leaveOpen} onClose={() => setLeaveOpen(false)} title="Stop and keep samples?" testID="lab-leave-sheet">
+        <T muted style={{ marginBottom: 12 }}>You have {recording?.length ?? 0} samples. Keep them, or throw the whole capture away?</T>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Button
+            style={{ flex: 1 }}
+            kind="danger"
+            label="Discard"
+            testID="lab-leave-discard"
+            onPress={() => {
+              setRecording(null);
+              setLeaveOpen(false);
+              leave();
+            }}
+          />
+          <Button
+            style={{ flex: 1 }}
+            label="Keep"
+            icon="content-save-outline"
+            testID="lab-leave-keep"
+            onPress={() => {
+              setLeaveOpen(false);
+              finishRecording();
+              leave();
+            }}
+          />
+        </View>
+      </Sheet>
       {db.settings.onboarded ? null : null}
     </View>
   );

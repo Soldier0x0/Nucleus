@@ -10,6 +10,7 @@ import { uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { useToast } from "@/src/components/Toast";
@@ -110,6 +111,8 @@ function NoteSheet({ note, onClose, onSaved }: { note: Note; onClose: () => void
   const [checklist, setChecklist] = useState<ChecklistItem[]>(note.checklist);
   const [item, setItem] = useState("");
   const [pinned, setPinned] = useState(!!note.pinned);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const toast = useToast();
   const exists = db.notes.some((n) => n.id === note.id);
 
   const save = () => {
@@ -120,6 +123,7 @@ function NoteSheet({ note, onClose, onSaved }: { note: Note; onClose: () => void
   };
 
   return (
+    <>
     <Sheet visible onClose={onClose} title={exists ? "Edit note" : "New note"} testID="note-sheet" footer={<Button label="Save note" icon="check" testID="note-save-button" onPress={save} />}>
       <Field label="Title" testID="note-title-input" value={title} onChangeText={setTitle} placeholder="Wi-Fi password, packing ideas…" />
       <Field label="Note" testID="note-body-input" value={body} onChangeText={(value) => {
@@ -157,14 +161,26 @@ function NoteSheet({ note, onClose, onSaved }: { note: Note; onClose: () => void
             label="Delete note"
             testID="note-delete-button"
             style={{ marginTop: 16 }}
-            onPress={() => {
-              update((d) => deleteEntity(d, { kind: "note", id: note.id }));
-              onClose();
-            }}
+            onPress={() => setConfirmDel(true)}
           />
         </>
       ) : null}
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDel}
+      id="note-delete"
+      title="Delete this note?"
+      body={`“${title.trim() || note.title || "Untitled"}” and its checklist will be removed. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={() => {
+        update((d) => deleteEntity(d, { kind: "note", id: note.id }));
+        setConfirmDel(false);
+        toast("Note deleted", "delete-outline");
+        onClose();
+      }}
+    />
+    </>
   );
 }
 

@@ -7,8 +7,8 @@ import { removePaper } from "@/src/core/actions";
 import { Header } from "@/src/components/Header";
 import { DocumentContent } from "@/src/components/DocumentContent";
 import { PaperSheet } from "@/src/components/PaperSheet";
-import { Button, EmptyState, IconButton, T } from "@/src/components/ui";
-import { Sheet } from "@/src/components/Sheet";
+import { EmptyState, IconButton } from "@/src/components/ui";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
 
 export default function PaperViewScreen() {
@@ -41,22 +41,21 @@ export default function PaperViewScreen() {
         }
       />
       <DocumentContent paper={paper} />
-      {edit ? <PaperSheet paper={paper} onClose={() => setEdit(false)} /> : null}
-      <Sheet visible={confirmDel} onClose={() => setConfirmDel(false)} title="Delete this paper?" testID="paper-view-delete-sheet">
-        <T style={{ marginBottom: 16 }}>The file and expiry reminders for this document will be removed from Nucleus.</T>
-        <Button
-          kind="danger"
-          label="Delete paper"
-          icon="delete-outline"
-          testID="paper-view-delete-confirm"
-          onPress={() => {
-            update((d) => removePaper(d, paper.id));
-            setConfirmDel(false);
-            toast("Paper deleted", "delete-outline");
-            router.back();
-          }}
-        />
-      </Sheet>
+      {edit ? <PaperSheet paper={paper} onClose={() => setEdit(false)} onDeleted={() => router.back()} /> : null}
+      <ConfirmSheet
+        visible={confirmDel}
+        id="paper-view-delete"
+        title="Delete this paper?"
+        body="The file and expiry reminders for this document will be removed from Nucleus. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDel(false)}
+        onConfirm={() => {
+          update((d) => removePaper(d, paper.id));
+          setConfirmDel(false);
+          toast("Paper deleted", "delete-outline");
+          router.back();
+        }}
+      />
     </View>
   );
 }

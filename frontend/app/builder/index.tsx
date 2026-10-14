@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -8,10 +8,12 @@ import { useStore } from "@/src/core/store";
 import type { CustomTool, CustomToolInput } from "@/src/core/types";
 import { evaluateFormula, FUNCTION_NAMES, formulaNames } from "@/src/core/formula";
 import { num, parseNum, uid } from "@/src/core/format";
+import { duplicateKeys, nextInputKey } from "@/src/core/builderKeys";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
@@ -32,6 +34,8 @@ export default function Builder() {
   const router = useRouter();
   const toast = useToast();
   const [edit, setEdit] = useState<CustomTool | null>(null);
+  const [pendingDel, setPendingDel] = useState<string | null>(null);
+  const pendingTool = db.customTools.find((t) => t.id === pendingDel);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -71,10 +75,7 @@ export default function Builder() {
                 label="Delete"
                 icon="delete-outline"
                 testID={`custom-tool-delete-${t.id}`}
-                onPress={() => {
-                  update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== t.id) }));
-                  toast("Tool deleted", "delete-outline");
-                }}
+                onPress={() => setPendingDel(t.id)}
               />
             </View>
           </Card>
@@ -104,6 +105,19 @@ export default function Builder() {
         </View>
       </KeyboardAwareScrollView>
       {edit ? <ToolSheet tool={edit} onClose={() => setEdit(null)} /> : null}
+      <ConfirmSheet
+        visible={!!pendingTool}
+        id="builder-delete"
+        title="Delete this tool?"
+        body={`“${pendingTool?.name ?? ""}” and its saved results will be removed. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setPendingDel(null)}
+        onConfirm={() => {
+          if (pendingTool) update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== pendingTool.id) }));
+          setPendingDel(null);
+          toast("Tool deleted", "delete-outline");
+        }}
+      />
       <ModuleGate id="builder" name="Tool Builder" icon="puzzle-outline" />
     </View>
   );
@@ -120,7 +134,30 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const [outputLabel, setOutputLabel] = useState(tool.outputLabel);
   const [unit, setUnit] = useState(tool.unit ?? "");
   const [sendToMoney, setSendToMoney] = useState(tool.sendToMoney);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [discard, setDiscard] = useState(false);
+  const keyCursor = useRef(inputs.length);
+  const dupKeys = duplicateKeys(inputs.map((i) => i.key));
+  const nextKey = () => {
+    const next = nextInputKey(inputs.map((i) => i.key), keyCursor.current);
+    keyCursor.current = next.cursor;
+    return next.key;
+  };
   const exists = db.customTools.some((t) => t.id === tool.id);
+
+  const dirty =
+    name.trim() !== tool.name ||
+    icon !== tool.icon ||
+    formula !== tool.formula ||
+    outputLabel.trim() !== tool.outputLabel ||
+    unit.trim() !== (tool.unit ?? "") ||
+    sendToMoney !== tool.sendToMoney ||
+    inputs.length !== tool.inputs.length ||
+    inputs.some((i, idx) => {
+      const base = tool.inputs[idx];
+      return !base || i.label !== base.label || i.key !== base.key || i.unit !== base.unit;
+    });
+  const tryClose = () => (dirty ? setDiscard(true) : onClose());
 
   const vars = Object.fromEntries(inputs.map((i) => [i.key, parseNum(i.value) || 1]));
   let preview = "";
@@ -133,6 +170,10 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const unknown = formulaNames(formula).filter((n) => !(n in vars));
 
   const save = () => {
+    if (dupKeys.length) {
+      toast("Two inputs share a short name — rename one before saving", "alert-circle-outline");
+      return;
+    }
     const next: CustomTool = { ...tool, name: name.trim() || "My tool", icon, inputs, formula, outputLabel: outputLabel.trim() || "Result", unit: unit.trim() || undefined, sendToMoney };
     update((d) => ({ ...d, customTools: exists ? d.customTools.map((t) => (t.id === next.id ? next : t)) : [...d.customTools, next] }));
     toast(exists ? "Tool updated" : "Tool added to Tools", "puzzle-outline");
@@ -140,7 +181,8 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   };
 
   return (
-    <Sheet visible onClose={onClose} title={exists ? "Edit tool" : "New tool"} testID="builder-sheet" footer={<Button label={exists ? "Save tool" : "Create tool"} icon="check" testID="builder-save-button" disabled={!!error || !!unknown.length} onPress={save} />}>
+    <>
+    <Sheet visible onClose={tryClose} title={exists ? "Edit tool" : "New tool"} testID="builder-sheet" footer={<Button label={exists ? "Save tool" : "Create tool"} icon="check" testID="builder-save-button" disabled={!!error || !!unknown.length} onPress={save} />}>
       <Field label="Tool name" testID="builder-name-input" value={name} onChangeText={setName} placeholder="Paint needed" />
       <Eyebrow style={{ marginBottom: 8 }}>Icon</Eyebrow>
       <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
@@ -158,7 +200,12 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
           {inputs.length > 1 ? <IconButton icon="close" label="Remove input" testID={`builder-input-remove-${idx}`} onPress={() => setInputs(inputs.filter((x) => x.id !== i.id))} /> : null}
         </View>
       ))}
-      <Button small kind="ghost" icon="plus" label="Add input" testID="builder-add-input" style={{ alignSelf: "flex-start", marginBottom: 16 }} onPress={() => setInputs([...inputs, { id: uid(), label: `Value ${inputs.length + 1}`, key: String.fromCharCode(97 + inputs.length), unit: "", value: "" }])} />
+      <Button small kind="ghost" icon="plus" label="Add input" testID="builder-add-input" style={{ alignSelf: "flex-start", marginBottom: 16 }} onPress={() => setInputs([...inputs, { id: uid(), label: `Value ${inputs.length + 1}`, key: nextKey(), unit: "", value: "" }])} />
+      {dupKeys.length ? (
+        <T style={{ color: colors.error, marginTop: -8, marginBottom: 16 }} testID="builder-duplicate-keys">
+          Duplicate input name{dupKeys.length > 1 ? "s" : ""}: {[...new Set(dupKeys)].join(", ")} — each input needs its own short name.
+        </T>
+      ) : null}
 
       <Field label="Formula" testID="builder-formula-input" value={formula} onChangeText={setFormula} autoCapitalize="none" hint={`Allowed: + - * / % ^ ( ) and ${FUNCTION_NAMES.join(", ")}`} />
       <View style={{ flexDirection: "row", gap: 10 }}>
@@ -204,12 +251,37 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
           label="Delete tool"
           testID="builder-delete-button"
           style={{ marginTop: 16 }}
-          onPress={() => {
-            update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
-            onClose();
-          }}
+          onPress={() => setConfirmDel(true)}
         />
       ) : null}
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDel}
+      id="builder-tool-delete"
+      title="Delete this tool?"
+      body="This tool and its saved results will be removed. This can't be undone."
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={() => {
+        update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
+        setConfirmDel(false);
+        toast("Tool deleted", "delete-outline");
+        onClose();
+      }}
+    />
+    <ConfirmSheet
+      visible={discard}
+      id="builder-discard"
+      title="Discard changes?"
+      body="Your edits to this tool haven't been saved."
+      confirmLabel="Discard"
+      cancelLabel="Keep editing"
+      onCancel={() => setDiscard(false)}
+      onConfirm={() => {
+        setDiscard(false);
+        onClose();
+      }}
+    />
+    </>
   );
 }

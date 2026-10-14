@@ -157,6 +157,12 @@ export function recomputeFuelEstimates(entries: FuelEntry[], vehicleId: string):
   return [...rest, ...next];
 }
 
+/** Edit-sheet values -> setFuelFacts patch. A cleared date or blank/invalid odometer is left out. */
+export function fuelFactsPatch(date: string, station: string, odoText: string): { date?: string; odometer?: number; station: string } {
+  const odometer = Number(odoText);
+  return { ...(date ? { date } : {}), station, ...(odoText.trim() && Number.isFinite(odometer) ? { odometer } : {}) };
+}
+
 export function setFuelFacts(db: DB, id: string, patch: { date?: string; odometer?: number; station?: string }): DB {
   let vehicleId = "";
   const fuel = db.fuel.map((row) => {

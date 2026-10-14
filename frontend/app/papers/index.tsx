@@ -12,6 +12,7 @@ import { paperAttachmentUri } from "@/src/core/paperFiles";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, EmptyState, Eyebrow, IconButton, StatusBadge, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
 import { paperBadgeForRow } from "@/src/components/PaperAttach";
 import { DocViewer } from "@/src/components/DocViewer";
@@ -102,29 +103,29 @@ export default function Papers() {
           }}
         />
       ) : null}
-      <Sheet visible={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete this paper?" testID="paper-list-delete-sheet">
-        <T style={{ marginBottom: 16 }}>The file and expiry reminders for this document will be removed from Nucleus.</T>
-        <Button
-          kind="danger"
-          label="Delete paper"
-          icon="delete-outline"
-          testID="paper-list-delete-confirm"
-          onPress={() => {
-            if (!deleteTarget) return;
-            update((d) => removePaper(d, deleteTarget.id));
-            setDeleteTarget(null);
-            toast("Paper deleted", "delete-outline");
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={!!deleteTarget}
+        id="paper-list-delete"
+        title="Delete this paper?"
+        body="The file and expiry reminders for this document will be removed from Nucleus. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          update((d) => removePaper(d, deleteTarget.id));
+          setDeleteTarget(null);
+          toast("Paper deleted", "delete-outline");
+        }}
+      />
       <ModuleGate id="papers" name="Documents" icon="file-document-outline" />
     </View>
   );
 }
 
 function PersonSheet({ person, onClose }: { person?: Person; onClose: () => void }) {
-  const { db, update } = useStore();
+  const { update } = useStore();
   const toast = useToast();
+  const [confirmDel, setConfirmDel] = useState(false);
   const [name, setName] = useState(person?.name ?? "");
   const [note, setNote] = useState(person?.note ?? "");
   const save = () => {
@@ -135,12 +136,29 @@ function PersonSheet({ person, onClose }: { person?: Person; onClose: () => void
     onClose();
   };
   return (
-    <Sheet visible onClose={onClose} title={person ? "Person" : "Add a person"} testID="person-sheet" footer={<Button label="Save" icon="check" testID="person-save" onPress={save} />}>
-      <Field label="Name" testID="person-name" value={name} onChangeText={setName} placeholder="A name in the house" />
-      <Field label="Note" testID="person-note" value={note} onChangeText={setNote} placeholder="Optional" />
-      {person ? (
-        <Button kind="danger" label="Remove" testID="person-delete" onPress={() => { update((d) => ({ ...d, people: d.people.filter((p) => p.id !== person.id) })); onClose(); }} />
-      ) : null}
-    </Sheet>
+    <>
+      <Sheet visible onClose={onClose} title={person ? "Person" : "Add a person"} testID="person-sheet" footer={<Button label="Save" icon="check" testID="person-save" onPress={save} />}>
+        <Field label="Name" testID="person-name" value={name} onChangeText={setName} placeholder="A name in the house" />
+        <Field label="Note" testID="person-note" value={note} onChangeText={setNote} placeholder="Optional" />
+        {person ? (
+          <Button kind="danger" label="Remove" testID="person-delete" onPress={() => setConfirmDel(true)} />
+        ) : null}
+      </Sheet>
+      <ConfirmSheet
+        visible={confirmDel}
+        id="person-delete"
+        title={`Remove ${name.trim() || person?.name || "this person"}?`}
+        body="Papers assigned to this person are kept, but they no longer show a name. This can't be undone."
+        confirmLabel="Remove"
+        onCancel={() => setConfirmDel(false)}
+        onConfirm={() => {
+          if (!person) return;
+          setConfirmDel(false);
+          update((d) => ({ ...d, people: d.people.filter((p) => p.id !== person.id) }));
+          toast("Person removed", "account-remove-outline");
+          onClose();
+        }}
+      />
+    </>
   );
 }

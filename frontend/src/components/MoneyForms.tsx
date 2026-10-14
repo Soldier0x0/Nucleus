@@ -6,8 +6,10 @@ import { addTxn, nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/src/core/defaults";
 import { categoryFromOther, classifyMoney, moneySuggestions } from "@/src/core/moneyWords";
 import type { Subscription } from "@/src/core/types";
+import { budgetCleared } from "@/src/core/budgetSave";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
+import { ConfirmSheet } from "./ConfirmSheet";
 import { DateField, Field } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented } from "./ui";
 import { useToast } from "./Toast";
@@ -124,6 +126,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
   const [category, setCategory] = useState(customCategory ? "Other" : initialCategory);
   const [otherName, setOtherName] = useState(customCategory ? initialCategory : "");
   const [err, setErr] = useState<Record<string, string>>({});
+  const [del, setDel] = useState(false);
   const save = () => {
     const a = parseNum(amount);
     const e: Record<string, string> = {};
@@ -139,6 +142,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
   const a = parseNum(amount);
   const yearly = a > 0 ? (cycle === "weekly" ? a * 52 : cycle === "monthly" ? a * 12 : cycle === "quarterly" ? a * 4 : a) : 0;
   return (
+    <>
     <Sheet visible={visible} onClose={onClose} title={sub ? "Edit subscription" : "Add subscription"} testID="subscription-sheet" footer={<Button label="Save subscription" icon="check" onPress={save} testID="subscription-save-button" />}>
       <Field label="Name" testID="subscription-name-input" value={name} onChangeText={setName} placeholder="Netflix, Gym, Insurance…" error={err.name} />
       <Field numeric label="Amount" unit={db.settings.currency} testID="subscription-amount-input" value={amount} onChangeText={setAmount} error={err.amount} hint={yearly ? `${money(yearly, db.settings.currency)} per year` : undefined} />
@@ -156,6 +160,7 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
       </View>
       {category === "Other" ? <Field label="Name this category (optional)" testID="subscription-other-name" value={otherName} onChangeText={setOtherName} placeholder="School fees" hint="Leave blank and it stays Other." /> : null}
       {sub ? (
+        <>
         <Button
           kind="ghost"
           small
@@ -167,8 +172,32 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
             onClose();
           }}
         />
+        <Button
+          kind="ghost"
+          small
+          label="Delete subscription"
+          icon="delete-outline"
+          testID="subscription-delete"
+          onPress={() => setDel(true)}
+        />
+        </>
       ) : null}
     </Sheet>
+      <ConfirmSheet
+        visible={del}
+        id="subscription-delete"
+        title="Delete this subscription?"
+        body={`“${sub?.name ?? ""}” will be removed. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
+          if (sub) update((d) => ({ ...d, subscriptions: d.subscriptions.filter((x) => x.id !== sub.id) }));
+          setDel(false);
+          toast("Subscription deleted", "delete-outline");
+          onClose();
+        }}
+      />
+    </>
   );
 }
 
@@ -182,7 +211,8 @@ export function BudgetSheet({ visible, onClose }: { visible: boolean; onClose: (
     const m = parseNum(monthly);
     const categories = Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, parseNum(v)]).filter(([, v]) => (v as number) > 0)) as Record<string, number>;
     update((d) => ({ ...d, budget: { monthly: m > 0 ? m : 0, categories } }));
-    toast("Budget saved", "chart-donut");
+    const cleared = budgetCleared(db.budget, { monthly: m, categories });
+    toast(cleared ? "Budget cleared" : "Budget saved", "chart-donut");
     onClose();
   };
   return (

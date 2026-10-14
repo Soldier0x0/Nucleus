@@ -41,7 +41,12 @@ export function MoneyExport({ visible, onClose }: { visible: boolean; onClose: (
     if (file.exists) file.delete();
     file.create();
     file.write(csv);
-    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Spending spreadsheet" });
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Spending spreadsheet" });
+    } else {
+      await Clipboard.setStringAsync(csv);
+      toast("CSV copied", "content-copy");
+    }
     onClose();
   };
 

@@ -12,6 +12,7 @@ import { Header } from "@/src/components/Header";
 import { Button, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
 import { Ring } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -126,6 +127,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
   const [review, setReview] = useState(item.review ?? "");
   const [tags, setTags] = useState(item.tags.join(", "));
   const [cover, setCover] = useState(item.cover);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const exists = db.media.some((m) => m.id === item.id);
   const pickCover = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [2, 3], quality: 0.35, base64: true });
@@ -138,6 +140,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
   };
 
   return (
+    <>
     <Sheet
       visible
       onClose={onClose}
@@ -148,6 +151,7 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
           label="Save"
           icon="check"
           testID="media-save-button"
+          disabled={!title.trim()}
           onPress={() => {
             const next: MediaItem = { ...item, kind, title: title.trim() || "Untitled", status, progress: status === "done" ? 100 : progress, rating, review: review.trim() || undefined, tags: tags.split(",").map((t) => t.trim()).filter(Boolean), cover, updatedAt: new Date().toISOString() };
             update((d) => ({ ...d, media: exists ? d.media.map((m) => (m.id === next.id ? next : m)) : [next, ...d.media] }));
@@ -200,13 +204,25 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
           label="Remove from shelf"
           testID="media-delete-button"
           style={{ marginTop: 8 }}
-          onPress={() => {
-            update((d) => deleteEntity(d, { kind: "media", id: item.id }));
-            onClose();
-          }}
+          onPress={() => setConfirmDelete(true)}
         />
       ) : null}
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDelete}
+      id="media-delete"
+      title="Remove from shelf?"
+      body={`“${title.trim() || item.title}” and its review will be removed. This can't be undone.`}
+      confirmLabel="Remove"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={() => {
+        update((d) => deleteEntity(d, { kind: "media", id: item.id }));
+        setConfirmDelete(false);
+        toast("Removed from shelf", "delete-outline");
+        onClose();
+      }}
+    />
+    </>
   );
 }
 

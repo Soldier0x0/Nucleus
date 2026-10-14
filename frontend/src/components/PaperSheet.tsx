@@ -8,8 +8,9 @@ import { uid } from "@/src/core/format";
 import { extractFromPdfDataUri, mergeExtract } from "@/src/core/paperExtract";
 import { storePaperFile } from "@/src/core/paperFiles";
 import { applyMotorXor, syncVehicleExpiryFields } from "@/src/core/vehicleDocs";
-import { Button, Chip, ChipRow, Eyebrow, T } from "@/src/components/ui";
+import { Button, Chip, ChipRow, Eyebrow } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { PaperAttach } from "@/src/components/PaperAttach";
 import { useToast } from "@/src/components/Toast";
@@ -117,23 +118,22 @@ export function PaperSheet({ paper, onClose, onDeleted }: { paper?: Paper; onClo
         <PaperAttach paperId={paperId} uri={f.file} mime={f.mime} testID="paper-photo" onChange={({ uri, mime }) => set({ file: uri, mime })} />
         {paper ? <Button kind="danger" label="Delete paper" testID="paper-delete" onPress={() => setConfirmDel(true)} /> : null}
       </Sheet>
-      <Sheet visible={confirmDel} onClose={() => setConfirmDel(false)} title="Delete this paper?" testID="paper-delete-sheet">
-        <T style={{ marginBottom: 16 }}>The file and expiry reminders for this document will be removed from Nucleus.</T>
-        <Button
-          kind="danger"
-          label="Delete paper"
-          icon="delete-outline"
-          testID="paper-delete-confirm"
-          onPress={() => {
-            if (!paper) return;
-            update((d) => removePaper(d, paper.id));
-            setConfirmDel(false);
-            onClose();
-            onDeleted?.();
-            toast("Paper deleted", "delete-outline");
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={confirmDel}
+        id="paper-delete"
+        title="Delete this paper?"
+        body="The file and expiry reminders for this document will be removed from Nucleus. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDel(false)}
+        onConfirm={() => {
+          if (!paper) return;
+          update((d) => removePaper(d, paper.id));
+          setConfirmDel(false);
+          onClose();
+          onDeleted?.();
+          toast("Paper deleted", "delete-outline");
+        }}
+      />
     </>
   );
 }

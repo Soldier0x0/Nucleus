@@ -15,6 +15,7 @@ import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
 import { Bar, Ring } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { WeatherCard } from "@/src/components/WeatherCard";
 import { WhySheet } from "@/src/components/WhySheet";
@@ -243,10 +244,15 @@ export default function TripDetail() {
       {sheet === "stop" ? <StopSheet trip={t} days={days} onClose={() => setSheet(null)} /> : null}
       {sheet === "expense" ? <TripExpenseSheet trip={t} onClose={() => setSheet(null)} /> : null}
       <WhySheet visible={sheet === "why"} onClose={() => setSheet(null)} title={`${t.name} readiness`} why={{ summary: `Readiness ${num(r.score * 100, 0)}%: ${r.missing.join(", ") || "all set"}.`, facts: [{ label: "Packing (50%)", value: `${num(r.packPct * 100, 0)}%` }, { label: "Documents (30%)", value: `${num(r.docPct * 100, 0)}%` }, { label: "Budget set (20%)", value: r.budgetOk ? "Yes" : "No" }], rule: "Readiness = 0.5 × packing done + 0.3 × documents present + 0.2 × budget set.", ranking: "Appears in Attention within 14 days of departure; urgent within 3." }} />
-      <Sheet visible={sheet === "delete"} onClose={() => setSheet(null)} title={`Delete ${t.name}?`} testID="trip-delete-sheet">
-        <T style={{ marginBottom: 16 }}>The trip, its packing list, itinerary and documents are removed. Expenses stay in Money.</T>
-        <Button kind="danger" icon="delete-outline" label="Delete trip" testID="trip-delete-confirm" onPress={() => (update((d) => deleteEntity(d, { kind: "trip", id: t.id })), setSheet(null), toast("Trip deleted", "delete-outline"), router.back())} />
-      </Sheet>
+      <ConfirmSheet
+        visible={sheet === "delete"}
+        id="trip-delete"
+        title={`Delete ${t.name}?`}
+        body="The trip, its packing list, itinerary and documents are removed. Expenses stay in Money. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setSheet(null)}
+        onConfirm={() => (update((d) => deleteEntity(d, { kind: "trip", id: t.id })), setSheet(null), toast("Trip deleted", "delete-outline"), router.back())}
+      />
     </View>
   );
 }

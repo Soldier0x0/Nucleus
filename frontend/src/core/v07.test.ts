@@ -217,8 +217,8 @@ test("a personal vehicle shows cost per kilometer, fuel against the tank, and di
   assert.equal(costPerKmLine(1.5, "km"), "1.5 per km");
   assert.equal(costPerKmLine(Number.NaN, "km"), null);
   assert.deepEqual(fuelAgainstTank(5.6, 6), { litres: 5.6, tank: 6, line: "5.6 L of a 6 L tank" });
-  assert.equal(serviceLeftLine(120), "120 km left before service");
-  assert.equal(serviceLeftLine(-40), "40 km past this vehicle's service interval");
+  assert.equal(serviceLeftLine(120), "120 km to service");
+  assert.equal(serviceLeftLine(-40), "40 km past service");
   assert.doesNotMatch(serviceLeftLine(-40), /overdue|late|fail/i);
   const sources = ["intelligence.ts", "rules.ts", "search.ts"].map((name) => readFileSync(new URL(`./${name}`, import.meta.url), "utf8"));
   const vehicles = readFileSync(new URL("../../app/vehicles/index.tsx", import.meta.url), "utf8");

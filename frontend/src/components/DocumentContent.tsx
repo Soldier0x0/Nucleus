@@ -114,7 +114,7 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
           trustAllCerts={Platform.OS === "android"}
           enableAnnotationRendering={false}
           onError={(error) => {
-            console.warn("pdf viewer failed", error?.message ?? String(error));
+            console.warn("pdf viewer failed", (error as { message?: string } | undefined)?.message ?? String(error));
             if (!pdfVaultFallback && vaultDataUri) {
               setPdfVaultFallback(true);
               return;
