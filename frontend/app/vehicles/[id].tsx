@@ -18,6 +18,7 @@ import { useToast } from "@/src/components/Toast";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { VehicleArt } from "@/src/components/VehicleArt";
 import { VehicleCare } from "@/src/components/VehicleCare";
+import { VehicleSchedule } from "@/src/components/VehicleSchedule";
 import { VehicleJourneySection } from "@/src/components/VehicleJourneySection";
 import { Image } from "expo-image";
 import { fuelLabel, vehicleBody } from "@/src/core/life";
@@ -133,6 +134,7 @@ export default function VehicleDetail() {
             {expiry("PUC", v.pucExpiry, "vehicle-puc")}
           </View>
         </Card>
+        <VehicleSchedule vehicle={v} />
         <VehicleCare vehicle={v} />
         <VehicleJourneySection vehicle={v} />
 

@@ -105,6 +105,12 @@ export type Vehicle = {
   cover?: string;
   insuranceExpiry?: string; // YYYY-MM-DD
   pucExpiry?: string;
+  /** Coolant only shows for liquid-cooled engines. Default: car liquid, others air. */
+  cooling?: "air" | "liquid";
+  /** Used for month-based service due dates when a part was never serviced. */
+  purchaseDate?: string;
+  /** Per-part service intervals. Missing means defaults by type (serviceCatalog.ts). */
+  parts?: import("./serviceCatalog").PartSetting[];
   createdAt: string;
 };
 
@@ -155,6 +161,8 @@ export type ServiceEntry = {
   date: string;
   odometer: number;
   kind: ServiceKind;
+  /** Parts done in this visit. Older logs map from `kind`. */
+  parts?: import("./serviceCatalog").PartId[];
   cost: number;
   details: Record<string, string>;
   note?: string;

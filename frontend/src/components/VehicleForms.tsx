@@ -6,6 +6,7 @@ import type { FuelFillKind, ServiceKind, Vehicle } from "@/src/core/types";
 import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import { money, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { currentOdometer } from "@/src/core/intelligence";
+import { PART_LABEL, preTicked, vehicleParts, type PartId } from "@/src/core/serviceCatalog";
 import { Sheet } from "./Sheet";
 import { DateField, Field, TimeField } from "./inputs";
 import { Button, Chip, ChipRow, Eyebrow, Icon, T } from "./ui";
@@ -136,6 +137,8 @@ export function ServiceSheet({ visible, onClose, vehicle }: { visible: boolean; 
   const [err, setErr] = useState<string>();
   const [billFile, setBillFile] = useState<string | undefined>();
   const [billMime, setBillMime] = useState<string | undefined>();
+  const partList = vehicleParts(vehicle).filter((p) => p.on);
+  const [parts, setParts] = useState<PartId[]>(() => preTicked(db, vehicle, todayISO()));
 
   const save = () => {
     const O = parseNum(odo);
@@ -149,6 +152,7 @@ export function ServiceSheet({ visible, onClose, vehicle }: { visible: boolean; 
         date,
         odometer: O,
         kind,
+        ...(parts.length ? { parts } : {}),
         cost: isNaN(C) ? 0 : C,
         details: clean,
         ...(billFile ? { billFile, billMime } : {}),
@@ -165,6 +169,14 @@ export function ServiceSheet({ visible, onClose, vehicle }: { visible: boolean; 
         <ChipRow testID="service-kind-row">
           {(Object.keys(KIND_FIELDS) as ServiceKind[]).map((k) => (
             <Chip key={k} label={SERVICE_LABEL[k]} icon={KIND_ICON[k]} selected={kind === k} onPress={() => setKind(k)} testID={`service-kind-${k}`} />
+          ))}
+        </ChipRow>
+      </View>
+      <Eyebrow style={{ marginBottom: 4, marginTop: 8 }}>Parts done (due ones are ticked)</Eyebrow>
+      <View style={{ marginHorizontal: -16 }}>
+        <ChipRow testID="service-parts-row">
+          {partList.map((p) => (
+            <Chip key={p.id} label={PART_LABEL[p.id]} selected={parts.includes(p.id)} onPress={() => setParts((cur) => (cur.includes(p.id) ? cur.filter((x) => x !== p.id) : [...cur, p.id]))} testID={`service-part-${p.id}`} />
           ))}
         </ChipRow>
       </View>
