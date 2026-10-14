@@ -561,7 +561,6 @@ export default function Settings() {
             }}
             right={<Icon name="chevron-right" size={18} color={colors.muted} />}
           />
-          <Row icon="stethoscope" label="Run self-check" sub="Checks storage, lock, notifications and data, with fixes" testID="settings-self-check" onPress={() => router.push("/selfcheck")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
           <Row icon="flask-outline" label="Add sample data" sub="Explore insights with a demo workspace" testID="settings-sample-button" onPress={() => (update(withSampleData), toast("Sample data added", "flask-outline"))} right={<Icon name="plus" size={18} color={colors.muted} />} />
           <Row icon="flask-empty-outline" label="Remove sample data" sub="Takes out the demo rows. Entries you added stay." testID="settings-sample-remove-button" onPress={() => setConfirmSampleRemove(true)} right={<Icon name="minus" size={18} color={colors.muted} />} />
           <Row icon="delete-outline" label="Erase all data" sub="Cannot be undone" testID="settings-reset-button" onPress={() => setConfirmReset(true)} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />

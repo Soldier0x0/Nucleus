@@ -6,7 +6,6 @@ import { DB_KEY, emptyDB, LEGACY_DB_KEY, normalizeDB } from "./defaults";
 import { planOpen, resolveOpen } from "./openDb";
 import { clearFailures, clearPin } from "./security";
 import { uid } from "./format";
-import { stampChanges } from "./syncStamp";
 import {
   buildDecoyDB,
   DECOY_DB_KEY,
@@ -197,7 +196,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const update = useCallback((fn: (db: DB) => DB) => {
     if (!writable.current) return;
-    setDb((d) => (d.settings.readOnly ? d : stampChanges(d, fn(d), new Date().toISOString())));
+    setDb((d) => (d.settings.readOnly ? d : fn(d)));
   }, []);
   const setSettings = useCallback((patch: Partial<Settings>) => {
     if (!writable.current) return;

@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
 import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
-import { addDays, addMonths, fmtDate, parseISO, todayISO } from "@/src/core/format";
-import { daysInMonth, MONTH_CHIPS, MONTHS, wheelISO, wheelYears } from "@/src/core/dateWheel";
-import { Button, Icon, Press } from "./ui";
-import { Wheel } from "./Wheel";
+import { addDays, addMonths, fmtDate, parseISO, toISODate, todayISO } from "@/src/core/format";
+import { Icon, Press, T } from "./ui";
 import { Sheet } from "./Sheet";
 
 /** Labelled input with the unit attached to the field (tap the unit to change it). */
@@ -51,45 +49,77 @@ export function Field({ label, unit, onUnitPress, testID, hint, error, style, nu
   );
 }
 
-/** Date field: day, month and year wheels plus quick chips — no typing required. */
+const WD = ["M", "T", "W", "T", "F", "S", "S"];
+
+/** Date field with quick chips and a calendar sheet — no typing required. */
 export function DateField({ label, value, onChange, testID, optional }: { label: string; value?: string; onChange: (v?: string) => void; testID?: string; optional?: boolean }) {
   const { colors } = useTheme();
-  const today = todayISO();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(value ?? today);
-  const d = parseISO(draft);
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  const years = wheelYears(parseISO(today).getFullYear(), y);
-  const days = Array.from({ length: daysInMonth(y, m) }, (_, i) => String(i + 1));
-  const pick = (iso: string) => (onChange(iso), setOpen(false));
-  const id = (s: string) => (testID ? `${testID}-${s}` : s);
+  const [cursor, setCursor] = useState((value ?? todayISO()).slice(0, 7) + "-01");
+  const first = parseISO(cursor);
+  const startPad = (first.getDay() + 6) % 7;
+  const daysIn = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const cells = [...Array(startPad).fill(null), ...Array.from({ length: daysIn }, (_, i) => i + 1)];
+  const today = todayISO();
   return (
     <View style={{ marginBottom: 12 }}>
       <Text style={[styles.label, { color: colors.muted }]}>{label}</Text>
-      <Press testID={testID} onPress={() => (setDraft(value ?? today), setOpen(true))} style={[styles.box, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong, paddingHorizontal: 14 }]}>
+      <Press testID={testID} onPress={() => setOpen(true)} style={[styles.box, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong, paddingHorizontal: 14 }]}>
         <Icon name="calendar-blank-outline" size={18} color={colors.muted} />
         <Text style={{ flex: 1, marginLeft: 10, fontFamily: fonts.monoMedium, fontSize: 15, color: value ? colors.onSurface : colors.muted }}>{value ? fmtDate(value) : "Not set"}</Text>
         <Icon name="chevron-down" size={18} color={colors.muted} />
       </Press>
-      <Sheet visible={open} onClose={() => setOpen(false)} title={label} testID={testID ? `${testID}-sheet` : undefined} footer={<Button label={`Set ${fmtDate(draft)}`} icon="check" testID={id("done")} onPress={() => pick(draft)} />}>
-        <View style={{ flexDirection: "row", justifyContent: "center", gap: 8 }}>
-          <Wheel testID={id("wheel-day")} width={64} items={days} index={d.getDate() - 1} onChange={(i) => setDraft(wheelISO(y, m, i + 1))} />
-          <Wheel testID={id("wheel-month")} width={80} items={MONTHS} index={m} onChange={(i) => setDraft(wheelISO(y, i, d.getDate()))} />
-          <Wheel testID={id("wheel-year")} width={88} items={years.map(String)} index={years.indexOf(y)} onChange={(i) => setDraft(wheelISO(years[i], m, d.getDate()))} />
+      <Sheet visible={open} onClose={() => setOpen(false)} title={label} testID={testID ? `${testID}-sheet` : undefined}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          <Press testID={testID ? `${testID}-prev` : undefined} onPress={() => setCursor(addMonths(cursor, -1))} style={styles.navBtn}>
+            <Icon name="chevron-left" size={24} />
+          </Press>
+          <T v="h2" style={{ flex: 1, textAlign: "center" }}>
+            {first.toLocaleString("en-US", { month: "long" })} {first.getFullYear()}
+          </T>
+          <Press testID={testID ? `${testID}-next` : undefined} onPress={() => setCursor(addMonths(cursor, 1))} style={styles.navBtn}>
+            <Icon name="chevron-right" size={24} />
+          </Press>
+        </View>
+        <View style={styles.grid}>
+          {WD.map((d, i) => (
+            <Text key={i} style={[styles.cell, { color: colors.muted, fontFamily: fonts.monoMedium, fontSize: 11, height: 24 }]}>
+              {d}
+            </Text>
+          ))}
+          {cells.map((d, i) => {
+            if (!d) return <View key={i} style={styles.cell} />;
+            const iso = toISODate(new Date(first.getFullYear(), first.getMonth(), d));
+            const sel = iso === value;
+            const isToday = iso === today;
+            return (
+              <Pressable
+                key={i}
+                testID={testID ? `${testID}-day-${d}` : undefined}
+                onPress={() => {
+                  onChange(iso);
+                  setOpen(false);
+                }}
+                style={[styles.cell, styles.day, sel && { backgroundColor: colors.surfaceInverse }, !sel && isToday && { borderWidth: 1, borderColor: colors.onSurface }]}
+              >
+                <Text style={{ fontFamily: fonts.monoMedium, fontSize: 14, color: sel ? colors.onSurfaceInverse : colors.onSurface }}>{d}</Text>
+              </Pressable>
+            );
+          })}
         </View>
         <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           {[
             { l: "Today", v: today },
             { l: "Yesterday", v: addDays(today, -1) },
-            ...MONTH_CHIPS.map((n) => ({ l: `+${n} mo`, v: addMonths(today, n) })),
+            { l: "+1 month", v: addMonths(today, 1) },
+            { l: "+1 year", v: addMonths(today, 12) },
           ].map((q) => (
-            <Press key={q.l} testID={id(`chip-${q.l.replace(/\W+/g, "")}`)} onPress={() => pick(q.v)} style={[styles.quick, { borderColor: colors.borderStrong }]}>
+            <Press key={q.l} onPress={() => (onChange(q.v), setOpen(false))} style={[styles.quick, { borderColor: colors.borderStrong }]}>
               <Text style={{ fontFamily: fonts.textMedium, fontSize: 13, color: colors.onSurface }}>{q.l}</Text>
             </Press>
           ))}
           {optional && value ? (
-            <Press testID={id("clear")} onPress={() => (onChange(undefined), setOpen(false))} style={[styles.quick, { borderColor: colors.error }]}>
+            <Press onPress={() => (onChange(undefined), setOpen(false))} style={[styles.quick, { borderColor: colors.error }]}>
               <Text style={{ fontFamily: fonts.textMedium, fontSize: 13, color: colors.error }}>Clear</Text>
             </Press>
           ) : null}
@@ -153,6 +183,10 @@ const styles = bindLookStyles(() => StyleSheet.create({
   box: { flexDirection: "row", alignItems: "center", minHeight: 50, borderWidth: 1, borderRadius: radius.md },
   input: { flex: 1, paddingHorizontal: 14, fontSize: 16, minHeight: 48 },
   unit: { flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 12, alignSelf: "stretch", borderLeftWidth: 1, minWidth: 56, justifyContent: "center" },
+  navBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
+  cell: { width: `${100 / 7}%`, height: 44, alignItems: "center", justifyContent: "center", textAlign: "center" },
+  day: { borderRadius: radius.md },
   quick: { height: 36, paddingHorizontal: 14, borderRadius: radius.pill, borderWidth: 1, justifyContent: "center" },
   opt: { flexDirection: "row", alignItems: "center", minHeight: 50, borderBottomWidth: 1 },
 }));

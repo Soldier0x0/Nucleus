@@ -40,13 +40,3 @@ NOT yet built from v2 plan (carry over): Boards (custom dashboards), Notes & Lis
 ## Backlog
 - P1: SQLite/SQLCipher migration, encrypted backups, Travel module, Home module, Rules builder + local notifications, CSV/ICS export, per-module lock, capture bar, timeline
 - P2: Boards & profiles, Dev Tools, custom tool builder, declarative packs, widgets (native build), Phone Lab, Media, diagnostics, tablet layouts
-- Session 3 (14 Oct 2026):
-  - PR #36 merged (97baa32), so v0.9.7 publishes from main.
-  - Draft PR #37 (feat/v098):
-    - 9519f90: sync-safe records
-    - 0669b3d: Run self-check
-    - 310550b: plan renumbered to v0.9.8 with Q1–Q12 locked
-    - 130f015: desktop/ Tauri groundwork + Desktop workflow (artifacts only)
-    - 92a69f6: blocks storage permissions to remove the Expo max-SDK warning
-  - Tests 252/252, testing agent passed (iteration_5).
-  - No ## v0.9.8 heading yet.

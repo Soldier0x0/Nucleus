@@ -153,7 +153,6 @@ export function emptyDB(): DB {
     recents: {},
     cycle: emptyCycle(),
     water: emptyWater(),
-    tombstones: [],
   };
 }
 
@@ -250,7 +249,6 @@ export function normalizeDB(raw: any): DB {
     txns: Array.isArray(raw?.txns) ? raw.txns.map(normalizeTxn) : [],
     cycle: normalizeCycle(raw?.cycle),
     water: normalizeWater(raw?.water),
-    tombstones: Array.isArray(raw?.tombstones) ? raw.tombstones.filter((t: any) => t && typeof t.id === "string" && typeof t.kind === "string" && typeof t.deletedAt === "string") : [],
   };
 }
 

@@ -55,26 +55,6 @@ internal object BankNotices {
   }
 }
 
-/** Only money-looking notices are queued, so chats and codes never fill the 40-slot queue. */
-private val OTP_WORDS = Regex("""\b(otp|one[ -]?time(?: password)?|verification code|do not share)\b""", RegexOption.IGNORE_CASE)
-private val MONEY = Regex("""(?:inr|rs\.?|₹)\s*[0-9]""", RegexOption.IGNORE_CASE)
-private val MONEY_WORDS = Regex("""\b(debited|debit|paid|sent|spent|withdrawn|purchase|credited|credit|received|added|balance|bal)\b""", RegexOption.IGNORE_CASE)
-
-/** SMS apps whose notifications carry bank texts (Harsha's Q10 list). Bank and UPI apps pass the same money filter. */
-internal val SMS_APPS = setOf(
-  "com.google.android.apps.messaging",
-  "com.samsung.android.messaging",
-  "com.android.mms",
-  "com.miui.mms",
-  "com.coloros.mms",
-  "com.oneplus.mms",
-  "com.vivo.message",
-  "com.truecaller",
-  "com.jio.messages",
-)
-
-internal fun looksLikeMoney(body: String): Boolean = !OTP_WORDS.containsMatchIn(body) && MONEY.containsMatchIn(body) && MONEY_WORDS.containsMatchIn(body)
-
 /** Bank app notifications stay on this phone. Codes are filtered later, before anything is saved. */
 class BankNoticeService : NotificationListenerService() {
   override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -85,7 +65,7 @@ class BankNoticeService : NotificationListenerService() {
     val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
     val big = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
     val body = listOf(title, text, big).map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(" ")
-    if (body.isBlank() || !looksLikeMoney(body)) return
+    if (body.isBlank()) return
     BankNotices.add(this, title.ifBlank { notice.packageName }, body, notice.postTime, notice.packageName)
     sendBroadcast(Intent(BANK_ACTION).setPackage(packageName))
   }

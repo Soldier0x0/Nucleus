@@ -48,26 +48,7 @@ export function filterInbox(lines: InboxLine[]): { kept: KeptLine[]; dropped: nu
     }
     kept.push(parsed);
   }
-  const merged = collapseUpiTwins(kept);
-  return { kept: merged, dropped: dropped + (kept.length - merged.length) };
-}
-
-const atMs = (at: string) => (/^\d+$/.test(at) ? Number(at) : Date.parse(at));
-/** A UPI app notice and the bank SMS for the same payment arrive within minutes of each other. */
-export const UPI_TWIN_WINDOW_MS = 10 * 60 * 1000;
-
-/**
- * Merges a UPI-app notice and the matching bank SMS into one line: same kind, same amount,
- * different sender, within 10 minutes. Two same-amount notices from one sender stay separate.
- */
-export function collapseUpiTwins(lines: KeptLine[]): KeptLine[] {
-  const out: KeptLine[] = [];
-  for (const line of lines) {
-    const t = atMs(line.at);
-    const twin = out.find((o) => o.kind === line.kind && o.kind !== "balance" && o.amount === line.amount && o.sender !== line.sender && Math.abs(atMs(o.at) - t) <= UPI_TWIN_WINDOW_MS);
-    if (!twin) out.push(line);
-  }
-  return out;
+  return { kept, dropped };
 }
 
 export type SmsMemory = { key: string; choice: "category" | "transfer" | "ignore"; category?: string };

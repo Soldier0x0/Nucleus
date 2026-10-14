@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { Platform, View } from "react-native";
+import { View } from "react-native";
 import { radius, useTheme } from "@/src/theme";
 import { Button, T } from "./ui";
 import { useToast } from "./Toast";
@@ -10,8 +10,7 @@ const MAX = 180_000;
 
 /** A photo from the library, small enough to live inside the encrypted document. No camera, no text scanning. */
 export async function pickSmallPhoto(): Promise<string | null | "too-big" | "denied"> {
-  // Android's system photo picker needs no storage permission (both are blocked in app.json).
-  const perm = Platform.OS === "android" ? { granted: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return "denied";
   const res = await withExternalActivity(() =>
     ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.25, base64: true, allowsEditing: true }),
