@@ -143,7 +143,7 @@ export function MoneyDesk({ month }: { month: string }) {
           {db.settings.ownAccounts.map((own, index) => (
             <View key={own} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
               <T muted>Account ending {own}</T>
-              <IconButton icon="close" label={`Forget account ending ${own}`} testID={`bank-account-remove-${index}`} onPress={() => setSettings({ ownAccounts: db.settings.ownAccounts.filter((item) => item !== own) })} />
+              <IconButton icon="close" label={`Forget account ending ${own}`} testID={`bank-account-remove-${index}`} onPress={() => { setSettings({ ownAccounts: db.settings.ownAccounts.filter((item) => item !== own) }); toast(`Forgot account ending ${own}`, "bank-outline"); }} />
             </View>
           ))}
           <Button small label="Check bank texts" testID="money-read-sms" onPress={readBank} style={{ marginTop: 8 }} />

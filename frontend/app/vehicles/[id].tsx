@@ -13,7 +13,8 @@ import { Countdown, Gauge, LineChart } from "@/src/components/charts";
 import { VehicleSheet } from "@/src/components/VehicleSheet";
 import { FuelSheet, KIND_ICON, ServiceSheet } from "@/src/components/VehicleForms";
 import { WhySheet } from "@/src/components/WhySheet";
-import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
+import { useToast } from "@/src/components/Toast";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { VehicleArt } from "@/src/components/VehicleArt";
 import { VehicleCare } from "@/src/components/VehicleCare";
@@ -27,6 +28,7 @@ export default function VehicleDetail() {
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
   const { width } = useWindowDimensions();
   const [sheet, setSheet] = useState<null | "fuel" | "service" | "edit" | "why" | "delete">(null);
   const [tab, setTab] = useState<"fuel" | "service" | "linked">("fuel");
@@ -229,20 +231,20 @@ export default function VehicleDetail() {
         title={`${v.name} service estimate`}
         why={{ summary: st.service.explanation, facts: st.service.facts, rule: "Interval = average of the gaps between your general/oil services (needs 3+ services). Otherwise your configured interval is used.", ranking: "Becomes Upcoming within 10% of the interval (min 300 km), Urgent when exceeded." }}
       />
-      <Sheet visible={sheet === "delete"} onClose={() => setSheet(null)} title={`Delete ${v.name}?`} testID="vehicle-delete-sheet">
-        <T style={{ marginBottom: 16 }}>Removes the vehicle, its fuel and service logs, and the expenses that were auto-created from them.</T>
-        <Button
-          kind="danger"
-          label="Delete vehicle"
-          icon="delete-outline"
-          testID="vehicle-delete-confirm"
-          onPress={() => {
-            update((d) => deleteVehicle(d, v.id));
-            setSheet(null);
-            router.back();
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={sheet === "delete"}
+        id="vehicle-delete"
+        title={`Delete ${v.name}?`}
+        body="Removes the vehicle, its fuel and service logs, and the expenses that were auto-created from them. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setSheet(null)}
+        onConfirm={() => {
+          update((d) => deleteVehicle(d, v.id));
+          setSheet(null);
+          toast("Vehicle deleted", "delete-outline");
+          router.back();
+        }}
+      />
     </View>
   );
 }

@@ -12,6 +12,7 @@ import { Header } from "@/src/components/Header";
 import { Button, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
 import { Ring } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -207,21 +208,20 @@ function MediaSheet({ item, onClose }: { item: MediaItem; onClose: () => void })
         />
       ) : null}
     </Sheet>
-    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Remove from shelf?" testID="media-delete-sheet">
-      <T style={{ marginBottom: 16 }}>"{title.trim() || item.title}" and its review will be removed.</T>
-      <Button
-        kind="danger"
-        label="Remove from shelf"
-        icon="delete-outline"
-        testID="media-delete-confirm"
-        onPress={() => {
-          update((d) => deleteEntity(d, { kind: "media", id: item.id }));
-          setConfirmDelete(false);
-          toast("Removed", "delete-outline");
-          onClose();
-        }}
-      />
-    </Sheet>
+    <ConfirmSheet
+      visible={confirmDelete}
+      id="media-delete"
+      title="Remove from shelf?"
+      body={`“${title.trim() || item.title}” and its review will be removed. This can't be undone.`}
+      confirmLabel="Remove"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={() => {
+        update((d) => deleteEntity(d, { kind: "media", id: item.id }));
+        setConfirmDelete(false);
+        toast("Removed from shelf", "delete-outline");
+        onClose();
+      }}
+    />
     </>
   );
 }

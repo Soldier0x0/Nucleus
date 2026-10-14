@@ -6,8 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { Header } from "@/src/components/Header";
-import { Sheet } from "@/src/components/Sheet";
-import { Button, Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
+import { useToast } from "@/src/components/Toast";
+import { plural } from "@/src/core/format";
+import { Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
 import { DatesTool, EmiTool, PercentTool, SplitTool, UnitsTool } from "@/src/components/tools";
 import { CookingTool, CustomToolRunner, GrowthTool, RandomTool, RoadTripTool, TimeTool } from "@/src/components/tools2";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -45,6 +47,7 @@ export default function Tools() {
   const insets = useSafeAreaInsets();
   const [tool, setTool] = useState<string>(params.tool && (TOOLS.some((t) => t.id === params.tool) || db.customTools.some((t) => `custom:${t.id}` === params.tool)) ? params.tool : "units");
   const [clearOpen, setClearOpen] = useState(false);
+  const toast = useToast();
   const active = TOOLS.find((t) => t.id === tool);
   const customId = tool.startsWith("custom:") ? tool.slice(7) : null;
   const history = db.toolHistory.filter((h) => h.tool === tool).slice(0, 8);
@@ -112,22 +115,20 @@ export default function Tools() {
         ) : null}
       </KeyboardAwareScrollView>
       <ModuleGate id="tools" name="Tools" icon="calculator-variant-outline" />
-      <Sheet visible={clearOpen} onClose={() => setClearOpen(false)} title="Clear saved results?" testID="tools-history-clear-sheet">
-        <T muted style={{ marginBottom: 12 }}>This removes all {history.length} saved results for this tool. It cannot be undone.</T>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Button style={{ flex: 1 }} kind="secondary" label="Cancel" testID="tools-history-clear-cancel" onPress={() => setClearOpen(false)} />
-          <Button
-            style={{ flex: 1 }}
-            kind="danger"
-            label="Clear all"
-            testID="tools-history-clear-confirm"
-            onPress={() => {
-              setClearOpen(false);
-              update((d) => ({ ...d, toolHistory: d.toolHistory.filter((h) => h.tool !== tool) }));
-            }}
-          />
-        </View>
-      </Sheet>
+      <ConfirmSheet
+        visible={clearOpen}
+        id="tools-history-clear"
+        title="Clear saved results?"
+        body={`This removes all ${plural(history.length, "saved result")} for this tool. This can't be undone.`}
+        confirmLabel="Clear all"
+        icon="delete-sweep-outline"
+        onCancel={() => setClearOpen(false)}
+        onConfirm={() => {
+          setClearOpen(false);
+          update((d) => ({ ...d, toolHistory: d.toolHistory.filter((h) => h.tool !== tool) }));
+          toast("Saved results cleared", "delete-sweep-outline");
+        }}
+      />
     </View>
   );
 }

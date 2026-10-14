@@ -9,6 +9,7 @@ import { backlinks, linkedTitles, pageByTitle } from "@/src/core/wiki";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -96,20 +97,19 @@ function PageSheet({ page, pages, onClose, onSave, onDelete, onOpen }: { page: W
       ) : null}
       {pages.some((p) => p.id === page.id) ? <Button kind="danger" label="Delete page" testID="wiki-delete" onPress={() => setConfirmDelete(true)} style={{ marginTop: 16 }} /> : null}
     </Sheet>
-    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this page?" testID="wiki-delete-sheet">
-      <T style={{ marginBottom: 16 }}>"{title.trim() || page.title || "Untitled"}" will be removed, along with any backlinks to it.</T>
-      <Button
-        kind="danger"
-        label="Delete page"
-        icon="delete-outline"
-        testID="wiki-delete-confirm"
-        onPress={() => {
-          setConfirmDelete(false);
-          onDelete();
-          toast("Page deleted", "delete-outline");
-        }}
-      />
-    </Sheet>
+    <ConfirmSheet
+      visible={confirmDelete}
+      id="wiki-delete"
+      title="Delete this page?"
+      body={`“${title.trim() || page.title || "Untitled"}” will be removed, along with any backlinks to it. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={() => {
+        setConfirmDelete(false);
+        onDelete();
+        toast("Page deleted", "delete-outline");
+      }}
+    />
     </>
   );
 }

@@ -6,11 +6,12 @@ import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import type { Debt, Fund, NetWorthSnapshot } from "@/src/core/types";
 import { addSnapshot, debtPayoff, fundProgress, monthEndProjection, netWorthOf, netWorthSeries, upsertDebt, upsertFund } from "@/src/core/plan";
-import { fmtDate, money, num, parseNum, todayISO, uid } from "@/src/core/format";
+import { fmtDate, money, num, parseNum, plural, todayISO, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
 import { Bar, LineChart, Ring } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { WhySheet } from "@/src/components/WhySheet";
 import { useToast } from "@/src/components/Toast";
@@ -242,15 +243,20 @@ function FundSheet({ fund, onClose }: { fund: Fund; onClose: () => void }) {
       <DateField label="Need it by (optional)" value={date} onChange={setDate} testID="fund-date" optional />
       {exists ? <Button kind="danger" small icon="delete-outline" label="Delete jar" testID="fund-delete-button" onPress={() => setDel(true)} /> : null}
     </Sheet>
-      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this jar?" testID="fund-delete-sheet">
-        <T style={{ marginBottom: 16 }}>The {fund.contributions.length} contribution(s) you have saved to it and its progress history are removed. This cannot be undone.</T>
-        <Button kind="danger" label="Delete" icon="delete-outline" testID="fund-delete-confirm" onPress={() => {
+      <ConfirmSheet
+        visible={del}
+        id="fund-delete"
+        title="Delete this jar?"
+        body={`The jar, its ${plural(fund.contributions.length, "contribution")} and its progress history are removed. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
           update((d) => ({ ...d, funds: d.funds.filter((f) => f.id !== fund.id) }));
           setDel(false);
           toast("Jar deleted", "delete-outline");
           onClose();
-        }} />
-      </Sheet>
+        }}
+      />
     </>
   );
 }
@@ -279,15 +285,20 @@ function DebtSheet({ debt, onClose }: { debt: Debt; onClose: () => void }) {
       <Field numeric label="Monthly payment" unit={db.settings.currency} testID="debt-emi-input" value={emi} onChangeText={setEmi} hint="Used to work out the payoff date" />
       {exists ? <Button kind="danger" small icon="delete-outline" label="Delete debt" testID="debt-delete-button" onPress={() => setDel(true)} /> : null}
     </Sheet>
-      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this debt?" testID="debt-delete-sheet">
-        <T style={{ marginBottom: 16 }}>The balance and payoff date are removed, and it will no longer count against your net worth. This cannot be undone.</T>
-        <Button kind="danger" label="Delete" icon="delete-outline" testID="debt-delete-confirm" onPress={() => {
+      <ConfirmSheet
+        visible={del}
+        id="debt-delete"
+        title="Delete this debt?"
+        body="The balance and payoff date are removed, and it no longer counts against your net worth. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
           update((d) => ({ ...d, debts: d.debts.filter((x) => x.id !== debt.id) }));
           setDel(false);
           toast("Debt deleted", "delete-outline");
           onClose();
-        }} />
-      </Sheet>
+        }}
+      />
     </>
   );
 }
@@ -314,15 +325,20 @@ function SnapshotSheet({ snap, onClose }: { snap: NetWorthSnapshot; onClose: () 
       <Field label="Note (optional)" testID="snapshot-note-input" value={note} onChangeText={setNote} />
       {exists ? <Button kind="danger" small icon="delete-outline" label="Delete snapshot" testID="snapshot-delete-button" onPress={() => setDel(true)} /> : null}
     </Sheet>
-      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this snapshot?" testID="snapshot-delete-sheet">
-        <T style={{ marginBottom: 16 }}>This point in your net-worth history is removed and the trend line will skip it. This cannot be undone.</T>
-        <Button kind="danger" label="Delete" icon="delete-outline" testID="snapshot-delete-confirm" onPress={() => {
+      <ConfirmSheet
+        visible={del}
+        id="snapshot-delete"
+        title="Delete this snapshot?"
+        body="This point in your net-worth history is removed and the trend line skips it. This can't be undone."
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
           update((d) => ({ ...d, netWorth: d.netWorth.filter((s) => s.id !== snap.id) }));
           setDel(false);
           toast("Snapshot deleted", "delete-outline");
           onClose();
-        }} />
-      </Sheet>
+        }}
+      />
     </>
   );
 }

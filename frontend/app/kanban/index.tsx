@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { ScrollView, TextInput, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { uid } from "@/src/core/format";
+import { plural, uid } from "@/src/core/format";
 import type { KanbanBoard, KanbanCard } from "@/src/core/types";
 import { Header } from "@/src/components/Header";
 import { Button, Card, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
@@ -88,20 +89,20 @@ export default function Kanban() {
       <Sheet visible={!!renaming} onClose={() => setRenaming(null)} title="Rename board" testID="kanban-rename-sheet" footer={<Button label="Save" testID="kanban-rename-save" disabled={!renameName.trim()} onPress={() => { if (renaming) save({ ...renaming, name: renameName.trim() }); setRenaming(null); }} />}>
         <Field label="Name" value={renameName} onChangeText={setRenameName} testID="kanban-rename-input" />
       </Sheet>
-      <Sheet visible={!!delBoard} onClose={() => setDelBoard(null)} title="Delete this board?" testID="kanban-delete-sheet">
-        <T style={{ marginBottom: 16 }}>"{delBoard?.name ?? ""}" will be removed, along with its {delBoard?.columns.length ?? 0} columns and {delBoard?.cards.length ?? 0} cards.</T>
-        <Button
-          kind="danger"
-          label="Delete board"
-          icon="delete-outline"
-          testID="kanban-delete-confirm"
-          onPress={() => {
-            if (delBoard) update((d) => ({ ...d, kanban: d.kanban.filter((b) => b.id !== delBoard.id) }));
-            if (boardId === delBoard?.id) setBoardId(null);
-            setDelBoard(null);
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={!!delBoard}
+        id="kanban-delete"
+        title="Delete this board?"
+        body={`“${delBoard?.name ?? ""}” will be removed, along with its ${plural(delBoard?.columns.length ?? 0, "column")} and ${plural(delBoard?.cards.length ?? 0, "card")}. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setDelBoard(null)}
+        onConfirm={() => {
+          if (delBoard) update((d) => ({ ...d, kanban: d.kanban.filter((b) => b.id !== delBoard.id) }));
+          if (boardId === delBoard?.id) setBoardId(null);
+          setDelBoard(null);
+          toast("Board deleted", "delete-outline");
+        }}
+      />
       <Sheet
         visible={!!card && !!board}
         onClose={() => setCard(null)}
@@ -124,26 +125,21 @@ export default function Kanban() {
         <Button kind="secondary" label={nextColumn ? `Move to ${nextColumn.name}` : "Already in the last column"} testID="kanban-card-move" disabled={!nextColumn} onPress={() => { if (board && card) { const next = moveCard(board, card); save(next); setCard(next.cards.find((c) => c.id === card.id) ?? null); } }} />
         <Button kind="danger" label="Delete card" testID="kanban-card-delete" onPress={() => { if (board && card) setConfirmCardDel(true); }} />
       </Sheet>
-      <Sheet visible={confirmCardDel} onClose={() => setConfirmCardDel(false)} title="Delete this card?" testID="kanban-card-delete-sheet">
-        <T style={{ marginBottom: 16 }}>"{card?.title ?? "This card"}" will be removed from this board. This cannot be undone.</T>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Button kind="ghost" label="Cancel" testID="kanban-card-delete-cancel" onPress={() => setConfirmCardDel(false)} style={{ flex: 1 }} />
-          <Button
-            kind="danger"
-            label="Delete card"
-            icon="delete-outline"
-            testID="kanban-card-delete-confirm"
-            onPress={() => {
-              if (!board || !card) return;
-              setConfirmCardDel(false);
-              save({ ...board, cards: board.cards.filter((c) => c.id !== card.id) });
-              setCard(null);
-              toast("Card deleted", "delete-outline");
-            }}
-            style={{ flex: 1 }}
-          />
-        </View>
-      </Sheet>
+      <ConfirmSheet
+        visible={confirmCardDel}
+        id="kanban-card-delete"
+        title="Delete this card?"
+        body={`“${card?.title ?? "This card"}” will be removed from this board. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setConfirmCardDel(false)}
+        onConfirm={() => {
+          if (!board || !card) return;
+          setConfirmCardDel(false);
+          save({ ...board, cards: board.cards.filter((c) => c.id !== card.id) });
+          setCard(null);
+          toast("Card deleted", "delete-outline");
+        }}
+      />
       <ModuleGate id="kanban" name="Kanban" icon="view-column-outline" />
     </View>
   );

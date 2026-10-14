@@ -9,8 +9,9 @@ import type { Subscription } from "@/src/core/types";
 import { budgetCleared } from "@/src/core/budgetSave";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
+import { ConfirmSheet } from "./ConfirmSheet";
 import { DateField, Field } from "./inputs";
-import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "./ui";
+import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented } from "./ui";
 import { useToast } from "./Toast";
 import { PhotoNote } from "./PhotoPick";
 
@@ -182,21 +183,20 @@ export function SubscriptionSheet({ visible, onClose, sub }: { visible: boolean;
         </>
       ) : null}
     </Sheet>
-      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this subscription?" testID="subscription-delete-sheet">
-        <T style={{ marginBottom: 16 }}>{sub ? `“${sub.name}” will be removed. This can't be undone.` : ""}</T>
-        <Button
-          kind="danger"
-          label="Delete subscription"
-          icon="delete-outline"
-          testID="subscription-delete-confirm"
-          onPress={() => {
-            if (sub) update((d) => ({ ...d, subscriptions: d.subscriptions.filter((x) => x.id !== sub.id) }));
-            setDel(false);
-            toast("Subscription deleted", "delete-outline");
-            onClose();
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={del}
+        id="subscription-delete"
+        title="Delete this subscription?"
+        body={`“${sub?.name ?? ""}” will be removed. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
+          if (sub) update((d) => ({ ...d, subscriptions: d.subscriptions.filter((x) => x.id !== sub.id) }));
+          setDel(false);
+          toast("Subscription deleted", "delete-outline");
+          onClose();
+        }}
+      />
     </>
   );
 }

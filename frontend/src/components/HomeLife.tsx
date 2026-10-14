@@ -9,6 +9,7 @@ import { fmtDate, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Segmented, StatusBadge, T } from "@/src/components/ui";
 import { LineChart } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { DateField, Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
 import { PhotoNote } from "@/src/components/PhotoPick";
@@ -216,21 +217,20 @@ function BillSheet({ bill, onClose }: { bill: UtilityBill; onClose: () => void }
         <Button kind="danger" small icon="delete-outline" label="Delete bill" testID="utility-delete" style={{ marginTop: 12 }} onPress={() => setConfirmDelete(true)} />
       ) : null}
     </Sheet>
-    <Sheet visible={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this bill?" testID="utility-delete-sheet">
-      <T style={{ marginBottom: 16 }}>The bill will be removed and the usual amount for {meta.label} will adjust.</T>
-      <Button
-        kind="danger"
-        label="Delete bill"
-        icon="delete-outline"
-        testID="utility-delete-confirm"
-        onPress={() => {
-          update((d) => ({ ...d, utilities: d.utilities.filter((u) => u.id !== bill.id) }));
-          setConfirmDelete(false);
-          toast("Deleted", "delete-outline");
-          onClose();
-        }}
-      />
-    </Sheet>
+    <ConfirmSheet
+      visible={confirmDelete}
+      id="utility-delete"
+      title="Delete this bill?"
+      body={`The bill will be removed and the usual amount for ${meta.label} will adjust. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={() => {
+        update((d) => ({ ...d, utilities: d.utilities.filter((u) => u.id !== bill.id) }));
+        setConfirmDelete(false);
+        toast("Bill deleted", "delete-outline");
+        onClose();
+      }}
+    />
     </>
   );
 }
@@ -242,6 +242,7 @@ function ChoreSheet({ chore, onClose }: { chore?: Chore; onClose: () => void }) 
   const [every, setEvery] = useState(String(chore?.everyDays ?? 7));
   const [room, setRoom] = useState(chore?.room ?? "");
   const [assignee, setAssignee] = useState(chore?.assignee ?? "");
+  const [confirmDel, setConfirmDel] = useState(false);
   const save = () => {
     if (!name.trim()) return toast("Name the chore", "alert-circle-outline");
     const next: Chore = { id: chore?.id ?? uid(), name: name.trim(), everyDays: Number(every), lastDone: chore?.lastDone ?? todayISO(), room: room || undefined, assignee: assignee.trim() || undefined };
@@ -250,6 +251,7 @@ function ChoreSheet({ chore, onClose }: { chore?: Chore; onClose: () => void }) 
     onClose();
   };
   return (
+    <>
     <Sheet
       visible
       onClose={onClose}
@@ -284,10 +286,25 @@ function ChoreSheet({ chore, onClose }: { chore?: Chore; onClose: () => void }) 
           label="Delete chore"
           testID="chore-delete"
           style={{ marginTop: 8 }}
-          onPress={() => (update((d) => ({ ...d, chores: d.chores.filter((c) => c.id !== chore.id) })), onClose())}
+          onPress={() => setConfirmDel(true)}
         />
       ) : null}
       <T muted style={{ fontSize: 12, marginTop: 8 }}>A new chore starts as done today, so the first reminder is one interval away.</T>
     </Sheet>
+    <ConfirmSheet
+      visible={confirmDel}
+      id="chore-delete"
+      title="Delete this chore?"
+      body={`“${chore?.name ?? ""}” and its reminders will be removed. This can't be undone.`}
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={() => {
+        if (chore) update((d) => ({ ...d, chores: d.chores.filter((c) => c.id !== chore.id) }));
+        setConfirmDel(false);
+        toast("Chore deleted", "delete-outline");
+        onClose();
+      }}
+    />
+    </>
   );
 }

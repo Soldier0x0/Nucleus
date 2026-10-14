@@ -16,6 +16,7 @@ import { Button, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui"
 import { DateField, Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
 
 const TITLES: Record<EntityKind, string> = { vehicle: "Vehicle", fuel: "Fuel entry", service: "Service record", txn: "Transaction", subscription: "Subscription", trip: "Trip", appliance: "Appliance", note: "Note", media: "Shelf item", paper: "Paper" };
@@ -170,36 +171,34 @@ export default function RecordDetail() {
         <Field label="Odometer" numeric testID="fuel-edit-odometer" value={fuelOdo} onChangeText={setFuelOdo} />
         <Field label="Station" testID="fuel-edit-station" value={fuelStation} onChangeText={setFuelStation} />
       </Sheet>
-      <Sheet visible={del} onClose={() => setDel(false)} title="Delete this record?" testID="record-delete-sheet">
-        <T style={{ marginBottom: 16 }}>{kind === "fuel" || kind === "service" ? "The expense that was auto-created from it will be removed too." : "Its links to other records will be removed."}</T>
-        <Button
-          kind="danger"
-          label="Delete"
-          icon="delete-outline"
-          testID="record-delete-confirm"
-          onPress={() => {
-            update((d) => deleteEntity(d, { kind, id }));
-            setDel(false);
-            toast("Deleted", "delete-outline");
-            router.back();
-          }}
-        />
-      </Sheet>
-      <Sheet visible={!!detach} onClose={() => setDetach(null)} title={detach === "bill" ? "Remove the bill file?" : "Remove the photo?"} testID="record-detach-sheet">
-        <T style={{ marginBottom: 16 }}>{detach === "bill" ? "The attached bill file will be detached from this record. The record itself stays." : "The attached photo will be detached from this record. The record itself stays."}</T>
-        <Button
-          kind="danger"
-          label="Remove"
-          icon="delete-outline"
-          testID="record-detach-confirm"
-          onPress={() => {
-            if (detach === "photo") update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }));
-            else if (detach === "bill") update((d) => ({ ...d, services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)) }));
-            setDetach(null);
-            toast("Removed", "delete-outline");
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={del}
+        id="record-delete"
+        title="Delete this record?"
+        body={`${kind === "fuel" || kind === "service" ? "The expense that was auto-created from it will be removed too." : "Its links to other records will be removed."} This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setDel(false)}
+        onConfirm={() => {
+          update((d) => deleteEntity(d, { kind, id }));
+          setDel(false);
+          toast("Deleted", "delete-outline");
+          router.back();
+        }}
+      />
+      <ConfirmSheet
+        visible={!!detach}
+        id="record-detach"
+        title={detach === "bill" ? "Remove the bill file?" : "Remove the photo?"}
+        body={detach === "bill" ? "The attached bill file will be detached from this record. The record itself stays." : "The attached photo will be detached from this record. The record itself stays."}
+        confirmLabel="Remove"
+        onCancel={() => setDetach(null)}
+        onConfirm={() => {
+          if (detach === "photo") update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }));
+          else if (detach === "bill") update((d) => ({ ...d, services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)) }));
+          setDetach(null);
+          toast(detach === "bill" ? "Bill file removed" : "Photo removed", "delete-outline");
+        }}
+      />
     </View>
   );
 }

@@ -55,7 +55,7 @@ import { copyTemporary } from "@/src/core/clipboard";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, Eyebrow, IconButton, Press, T } from "@/src/components/ui";
 import { ModuleGate } from "@/src/components/ModuleGate";
-import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
 import { useRealSession } from "@/src/components/useRealSession";
 
@@ -378,25 +378,23 @@ export default function CycleDetails() {
       </ScrollView>
       <ModuleGate id="cycle" name="Cycle" icon="calendar-blank-outline" />
     </View>
-      <Sheet visible={confirmClear} onClose={() => setConfirmClear(false)} title="Clear this day?" testID="cycle-clear-sheet">
-        <T muted style={{ marginBottom: 12 }}>Flow, symptoms and changes logged for {fmtDate(date)} are removed from this phone.</T>
-        <Button label="Cancel" kind="secondary" testID="cycle-clear-cancel" onPress={() => setConfirmClear(false)} />
-        <Button
-          kind="danger"
-          label="Clear"
-          testID="cycle-clear-confirm"
-          style={{ marginTop: 8 }}
-          onPress={() => {
-            const parts: string[] = [];
-            if (log?.bleeding) parts.push(log.bleeding === "flow" ? "flow" : "spotting");
-            if (log?.bleeding === "flow" && log.flow) parts.push(log.flow);
-            parts.push(...(log ? listedSymptoms(log).map(symptomLabel) : []));
-            setCycle({ ...db.cycle, days: clearDay(db.cycle.days, date) });
-            setConfirmClear(false);
-            toast(parts.length ? `Cleared ${parts.join(", ")}` : "Nothing to clear");
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={confirmClear}
+        id="cycle-clear"
+        title="Clear this day?"
+        body={`Flow, symptoms and changes logged for ${fmtDate(date)} are removed from this phone. This can't be undone.`}
+        confirmLabel="Clear"
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => {
+          const parts: string[] = [];
+          if (log?.bleeding) parts.push(log.bleeding === "flow" ? "flow" : "spotting");
+          if (log?.bleeding === "flow" && log.flow) parts.push(log.flow);
+          parts.push(...(log ? listedSymptoms(log).map(symptomLabel) : []));
+          setCycle({ ...db.cycle, days: clearDay(db.cycle.days, date) });
+          setConfirmClear(false);
+          toast(parts.length ? `Cleared ${parts.join(", ")}` : "Nothing to clear");
+        }}
+      />
     </>
   );
 }

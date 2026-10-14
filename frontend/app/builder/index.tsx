@@ -13,6 +13,7 @@ import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
 import { Sheet } from "@/src/components/Sheet";
+import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
 
@@ -104,20 +105,19 @@ export default function Builder() {
         </View>
       </KeyboardAwareScrollView>
       {edit ? <ToolSheet tool={edit} onClose={() => setEdit(null)} /> : null}
-      <Sheet visible={!!pendingTool} onClose={() => setPendingDel(null)} title="Delete this tool?" testID="builder-delete-sheet">
-        <T style={{ marginBottom: 16 }}>{pendingTool ? `“${pendingTool.name}” and its saved results will be removed. This can't be undone.` : ""}</T>
-        <Button
-          kind="danger"
-          label="Delete"
-          icon="delete-outline"
-          testID="builder-delete-confirm"
-          onPress={() => {
-            if (pendingTool) update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== pendingTool.id) }));
-            setPendingDel(null);
-            toast("Tool deleted", "delete-outline");
-          }}
-        />
-      </Sheet>
+      <ConfirmSheet
+        visible={!!pendingTool}
+        id="builder-delete"
+        title="Delete this tool?"
+        body={`“${pendingTool?.name ?? ""}” and its saved results will be removed. This can't be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setPendingDel(null)}
+        onConfirm={() => {
+          if (pendingTool) update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== pendingTool.id) }));
+          setPendingDel(null);
+          toast("Tool deleted", "delete-outline");
+        }}
+      />
       <ModuleGate id="builder" name="Tool Builder" icon="puzzle-outline" />
     </View>
   );
@@ -255,25 +255,33 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
         />
       ) : null}
     </Sheet>
-    <Sheet visible={confirmDel} onClose={() => setConfirmDel(false)} title="Delete this tool?" testID="builder-delete-sheet">
-      <T style={{ marginBottom: 16 }}>This tool and its saved results will be removed. This can't be undone.</T>
-      <Button
-        kind="danger"
-        label="Delete tool"
-        icon="delete-outline"
-        testID="builder-delete-confirm"
-        onPress={() => {
-          update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
-          setConfirmDel(false);
-          onClose();
-        }}
-      />
-    </Sheet>
-    <Sheet visible={discard} onClose={() => setDiscard(false)} title="Discard changes?" testID="builder-discard-sheet">
-      <T style={{ marginBottom: 16 }}>Your edits to this tool haven't been saved. Keep editing or discard them?</T>
-      <Button kind="secondary" label="Keep editing" testID="builder-discard-keep" onPress={() => setDiscard(false)} />
-      <Button kind="danger" label="Discard changes" icon="delete-outline" style={{ marginTop: 8 }} testID="builder-discard-confirm" onPress={() => { setDiscard(false); onClose(); }} />
-    </Sheet>
+    <ConfirmSheet
+      visible={confirmDel}
+      id="builder-tool-delete"
+      title="Delete this tool?"
+      body="This tool and its saved results will be removed. This can't be undone."
+      confirmLabel="Delete"
+      onCancel={() => setConfirmDel(false)}
+      onConfirm={() => {
+        update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
+        setConfirmDel(false);
+        toast("Tool deleted", "delete-outline");
+        onClose();
+      }}
+    />
+    <ConfirmSheet
+      visible={discard}
+      id="builder-discard"
+      title="Discard changes?"
+      body="Your edits to this tool haven't been saved."
+      confirmLabel="Discard"
+      cancelLabel="Keep editing"
+      onCancel={() => setDiscard(false)}
+      onConfirm={() => {
+        setDiscard(false);
+        onClose();
+      }}
+    />
     </>
   );
 }
