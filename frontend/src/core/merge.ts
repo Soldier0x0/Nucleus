@@ -1,4 +1,5 @@
 import type { DB } from "./types";
+import { mergeRows, mergeTombstones, SYNC_COLLECTIONS, type SyncCollection } from "./syncStamp";
 
 const byId = <T extends { id: string }>(mine: T[], theirs: T[]): T[] => {
   const map = new Map(mine.map((x) => [x.id, x]));
@@ -23,34 +24,20 @@ export const countsOf = (db: DB) => ({
   templates: db.templates?.length ?? 0,
 });
 
-/** Merge a backup into the current device data instead of replacing it. Settings stay on this phone. */
+/**
+ * Merge a backup (or another device) into the current data instead of replacing it.
+ * Rows: newer `updatedAt` wins, a tie goes to the incoming copy, deletes stick
+ * unless the row was edited after the delete. Settings stay on this device.
+ */
 export function mergeDB(mine: DB, theirs: DB): DB {
+  const tombstones = mergeTombstones(mine.tombstones ?? [], theirs.tombstones ?? []);
+  const lists = Object.fromEntries(
+    SYNC_COLLECTIONS.map((key) => [key, mergeRows((mine[key] as { id: string }[] | undefined) ?? [], (theirs[key] as { id: string }[] | undefined) ?? [], key, tombstones)]),
+  ) as Pick<DB, SyncCollection>;
   return {
     ...mine,
-    vehicles: byId(mine.vehicles, theirs.vehicles),
-    fuel: byId(mine.fuel, theirs.fuel),
-    services: byId(mine.services, theirs.services),
-    txns: byId(mine.txns, theirs.txns),
-    subscriptions: byId(mine.subscriptions, theirs.subscriptions),
-    links: byId(mine.links, theirs.links),
-    trips: byId(mine.trips, theirs.trips),
-    appliances: byId(mine.appliances, theirs.appliances),
-    notes: byId(mine.notes ?? [], theirs.notes ?? []),
-    people: byId(mine.people ?? [], theirs.people ?? []),
-    papers: byId(mine.papers ?? [], theirs.papers ?? []),
-    parts: byId(mine.parts ?? [], theirs.parts ?? []),
-    specs: byId(mine.specs ?? [], theirs.specs ?? []),
-    rules: byId(mine.rules ?? [], theirs.rules ?? []),
-    customTools: byId(mine.customTools ?? [], theirs.customTools ?? []),
-    media: byId(mine.media ?? [], theirs.media ?? []),
-    funds: byId(mine.funds ?? [], theirs.funds ?? []),
-    debts: byId(mine.debts ?? [], theirs.debts ?? []),
-    netWorth: byId(mine.netWorth ?? [], theirs.netWorth ?? []),
-    utilities: byId(mine.utilities ?? [], theirs.utilities ?? []),
-    chores: byId(mine.chores ?? [], theirs.chores ?? []),
-    kanban: byId(mine.kanban ?? [], theirs.kanban ?? []),
-    wiki: byId(mine.wiki ?? [], theirs.wiki ?? []),
-    templates: byId(mine.templates ?? [], theirs.templates ?? []),
+    ...lists,
+    tombstones,
     toolHistory: byId(mine.toolHistory, theirs.toolHistory).slice(0, 200),
     ruleFires: { ...mine.ruleFires, ...theirs.ruleFires },
     budget: { monthly: theirs.budget.monthly || mine.budget.monthly, categories: { ...mine.budget.categories, ...theirs.budget.categories } },

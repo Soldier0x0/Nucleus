@@ -105,6 +105,12 @@ export type Vehicle = {
   cover?: string;
   insuranceExpiry?: string; // YYYY-MM-DD
   pucExpiry?: string;
+  /** Coolant only shows for liquid-cooled engines. Default: car liquid, others air. */
+  cooling?: "air" | "liquid";
+  /** Used for month-based service due dates when a part was never serviced. */
+  purchaseDate?: string;
+  /** Per-part service intervals. Missing means defaults by type (serviceCatalog.ts). */
+  parts?: import("./serviceCatalog").PartSetting[];
   createdAt: string;
 };
 
@@ -155,6 +161,8 @@ export type ServiceEntry = {
   date: string;
   odometer: number;
   kind: ServiceKind;
+  /** Parts done in this visit. Older logs map from `kind`. */
+  parts?: import("./serviceCatalog").PartId[];
   cost: number;
   details: Record<string, string>;
   note?: string;
@@ -195,6 +203,9 @@ export type Subscription = {
 export type Link = { id: string; from: Ref; to: Ref; rel: string; createdAt: string };
 
 export type Budget = { monthly: number; categories: Record<string, number> };
+
+/** A deleted row, kept so a merge or sync does not bring it back. `kind` is the DB list it lived in. */
+export type Tombstone = { kind: string; id: string; deletedAt: string };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
@@ -301,6 +312,8 @@ export type Settings = {
   quietHours: { enabled: boolean; from: number; to: number };
   /** ISO time of the last backup file this device wrote. */
   lastBackupAt?: string;
+  /** Last completed sync with a paired desktop. Set by the sync flow (desktop plan D2). */
+  lastSyncAt?: string;
   /** The one-time backup reminder has been dismissed or satisfied. */
   backupNudged?: boolean;
   /** Lock-screen card. Empty fields stay hidden. The plate comes from the default vehicle. */
@@ -449,4 +462,5 @@ export type DB = {
   recents: Record<string, string>;
   cycle: CycleState;
   water: WaterState;
+  tombstones: Tombstone[];
 };
