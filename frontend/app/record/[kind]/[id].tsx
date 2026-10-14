@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity, getEntity, SERVICE_LABEL } from "@/src/core/actions";
-import { setFuelFacts } from "@/src/core/fuelCapture";
+import { fuelFactsPatch, setFuelFacts } from "@/src/core/fuelCapture";
 import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import type { EntityKind, Paper } from "@/src/core/types";
 import { fmtDate, money, num } from "@/src/core/format";
@@ -162,8 +162,7 @@ export default function RecordDetail() {
         <LinkedSection refTo={{ kind, id }} />
       </ScrollView>
       <Sheet visible={fuelEdit && kind === "fuel"} onClose={() => setFuelEdit(false)} title="Fill details" testID="fuel-edit-sheet" footer={<Button label="Save" testID="fuel-edit-save" onPress={() => {
-        const odometer = Number(fuelOdo);
-        update((d) => setFuelFacts(d, id, { ...(fuelDate ? { date: fuelDate } : {}), station: fuelStation, ...(fuelOdo.trim() && Number.isFinite(odometer) ? { odometer } : {}) }));
+        update((d) => setFuelFacts(d, id, fuelFactsPatch(fuelDate, fuelStation, fuelOdo)));
         setFuelEdit(false);
         toast("Saved");
       }} />}>
