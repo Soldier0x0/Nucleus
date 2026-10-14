@@ -8,6 +8,7 @@ import { useStore } from "@/src/core/store";
 import type { CustomTool, CustomToolInput } from "@/src/core/types";
 import { evaluateFormula, FUNCTION_NAMES, formulaNames } from "@/src/core/formula";
 import { num, parseNum, uid } from "@/src/core/format";
+import { duplicateKeys, nextInputKey } from "@/src/core/builderKeys";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
@@ -136,16 +137,11 @@ function ToolSheet({ tool, onClose }: { tool: CustomTool; onClose: () => void })
   const [confirmDel, setConfirmDel] = useState(false);
   const [discard, setDiscard] = useState(false);
   const keyCursor = useRef(inputs.length);
-  const usedKeys = new Set(inputs.map((i) => i.key));
-  const dupKeys = inputs.filter((i, idx) => inputs.findIndex((x) => x.key === i.key) !== idx).map((i) => i.key);
+  const dupKeys = duplicateKeys(inputs.map((i) => i.key));
   const nextKey = () => {
-    for (let n = keyCursor.current; ; n++) {
-      const k = n < 26 ? String.fromCharCode(97 + n) : `k${n}`;
-      if (!usedKeys.has(k)) {
-        keyCursor.current = n + 1;
-        return k;
-      }
-    }
+    const next = nextInputKey(inputs.map((i) => i.key), keyCursor.current);
+    keyCursor.current = next.cursor;
+    return next.key;
   };
   const exists = db.customTools.some((t) => t.id === tool.id);
 
