@@ -9,7 +9,7 @@ import type { Subscription } from "@/src/core/types";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
 import { DateField, Field } from "./inputs";
-import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented } from "./ui";
+import { Button, Chip, ChipRow, Eyebrow, Icon, Press, Segmented, T } from "./ui";
 import { useToast } from "./Toast";
 import { PhotoNote } from "./PhotoPick";
 
