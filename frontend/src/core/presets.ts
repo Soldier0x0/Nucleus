@@ -1,4 +1,4 @@
-import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, ModuleId, TileId } from "./types";
+import type { AdhdKind, AdhdSettings, AdhdTask, DB, HeadsUpState, HomePresetId, ModuleId, TileId, TripMode } from "./types";
 import { billBoardItems } from "./bills";
 import { documentBoardItems } from "./documents";
 import { vehicleDocBoardItems } from "./vehicleDocs";
@@ -132,7 +132,7 @@ export function migrateHomePresetOnLoad(raw: unknown, preset: HomePresetId): Hom
   if (preset !== "travel") return preset;
   const bag = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const trips = Array.isArray(bag.trips) ? bag.trips : [];
-  const hasPublic = trips.some((trip) => trip && typeof trip === "object" && !isPersonalTrip(trip as { mode?: string }));
+  const hasPublic = trips.some((trip) => trip && typeof trip === "object" && !isPersonalTrip(trip as { mode?: TripMode }));
   const fuel = Array.isArray(bag.fuel) ? bag.fuel : [];
   const vehicles = Array.isArray(bag.vehicles) ? bag.vehicles : [];
   if ((fuel.length > 0 || vehicles.length > 0) && !hasPublic) return "vehicle";
