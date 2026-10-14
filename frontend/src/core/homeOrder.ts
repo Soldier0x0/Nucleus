@@ -5,7 +5,7 @@ import type { DB, HomePresetId, TileId } from "./types";
 
 export type TileBox = { x: number; y: number; w: number; h: number };
 
-const PRESETS: HomePresetId[] = ["custom", "money", "vehicle", "travel", "home", "health", "documents", "bills", "desk", "workshop", "adhd"];
+const PRESETS: HomePresetId[] = ["custom", "money", "vehicle", "travel", "home", "health", "documents", "bills", "desk", "workshop"];
 
 /** A long press can move tiles on the boards the person arranges. Money, Travel, and Home stay fixed. */
 export function homeBoardCanMove(preset: HomePresetId): boolean {
@@ -21,7 +21,6 @@ export function homeBoardCanMove(preset: HomePresetId): boolean {
     case "health":
     case "documents":
     case "bills":
-    case "adhd":
       return false;
     default: {
       const unreachable: never = preset;
@@ -118,7 +117,6 @@ export function reorderHomeTiles(db: DB, preset: HomePresetId, id: string, to: n
     case "health":
     case "documents":
     case "bills":
-    case "adhd":
       return db;
     default: {
       const unreachable: never = preset;

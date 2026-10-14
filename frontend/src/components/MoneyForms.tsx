@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { fonts, radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { addTxn, nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/src/core/defaults";
-import { categoryFromOther, classifyMoney, moneySuggestions } from "@/src/core/moneyWords";
+import { categoryFromOther, classifyMoney, heldSuggestions, moneySuggestions } from "@/src/core/moneyWords";
 import type { Subscription } from "@/src/core/types";
 import { budgetCleared } from "@/src/core/budgetSave";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
@@ -45,7 +45,9 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
     setAmt((a) => (a === "0" && k !== "." ? k : a + k));
   };
   const value = parseNum(amt);
-  const suggestions = moneySuggestions(note, type);
+  const held = useRef<ReturnType<typeof moneySuggestions>>([]);
+  const suggestions = heldSuggestions(held.current, moneySuggestions(note, type), note);
+  held.current = suggestions;
   const save = () => {
     if (!(value > 0)) return;
     const category = cat === "Other" ? categoryFromOther(otherName) : cat;

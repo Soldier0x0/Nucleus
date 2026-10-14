@@ -66,7 +66,6 @@ function plain(id: string, line: string, actions: string[] = []): HeadsUp {
 
 /** One heads-up. A second candidate waits until this one is dismissed. */
 export function nextHeadsUp(db: DB, today: string): HeadsUp | null {
-  if (db.settings.homePreset === "adhd") return null;
   const tomorrow = addDays(today, 1);
   const bill = repeatingBills(db.txns).find((row) => row.next === tomorrow);
   if (bill) {

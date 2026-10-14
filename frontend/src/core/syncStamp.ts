@@ -28,6 +28,8 @@ export const SYNC_COLLECTIONS = [
   "kanban",
   "wiki",
   "templates",
+  "reminders",
+  "medicines",
 ] as const satisfies readonly (keyof DB)[];
 
 export type SyncCollection = (typeof SYNC_COLLECTIONS)[number];

@@ -22,7 +22,6 @@ import { WhySheet } from "@/src/components/WhySheet";
 import { useToast } from "@/src/components/Toast";
 import { TripSheet } from "./index";
 import { TripDesk } from "@/src/components/TripDesk";
-import { adhdOpen, typeAdhdDraft } from "@/src/core/presets";
 
 type Tab = "packing" | "plan" | "spend" | "docs";
 
@@ -41,8 +40,7 @@ export default function TripDetail() {
   const [hols, setHols] = useState<{ date: string; name: string }[]>([]);
   const t = db.trips.find((x) => x.id === id);
   const placeSeed = typeof seed === "string" ? seed : "";
-  const openStep = adhdOpen(db);
-  const [placeDraft, setPlaceDraft] = useState(openStep?.recordId === id && openStep.draft ? openStep.draft : t?.place?.name || placeSeed);
+  const [placeDraft, setPlaceDraft] = useState(t?.place?.name || placeSeed);
   const cc = t?.place?.countryCode;
   useEffect(() => {
     if (!cc || !t) return;
@@ -77,11 +75,6 @@ export default function TripDetail() {
               autoFocus
               onChangeText={(value) => {
                 setPlaceDraft(value);
-                update((current) => {
-                  const open = adhdOpen(current);
-                  if (!open || open.recordId !== t.id) return current;
-                  return typeAdhdDraft(current, value);
-                });
               }}
             />
             <Button

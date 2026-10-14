@@ -21,7 +21,6 @@ import { MoneyDesk } from "@/src/components/MoneyDesk";
 import { monthFlow } from "@/src/core/moneyDesk";
 import { useRealSession } from "@/src/components/useRealSession";
 import { Field } from "@/src/components/inputs";
-import { adhdOpen, typeAdhdDraft } from "@/src/core/presets";
 
 type Tab = "overview" | "transactions" | "subscriptions";
 
@@ -275,8 +274,7 @@ function MonthSwipe({ month, width, onMonth }: { month: string; width: number; o
 function FocusNote({ focus, field, seed }: { focus: string; field: string; seed: string }) {
   const { db, update } = useStore();
   const txn = db.txns.find((row) => row.id === focus);
-  const step = adhdOpen(db);
-  const [text, setText] = useState(step?.recordId === focus && step.draft ? step.draft : txn?.note || seed);
+  const [text, setText] = useState(txn?.note || seed);
   if (!txn || field !== "note") return null;
   return (
     <Card testID="money-focus-note-card">
@@ -287,11 +285,6 @@ function FocusNote({ focus, field, seed }: { focus: string; field: string; seed:
         autoFocus
         onChangeText={(value) => {
           setText(value);
-          update((current) => {
-            const open = adhdOpen(current);
-            if (!open || open.recordId !== txn.id) return current;
-            return typeAdhdDraft(current, value);
-          });
         }}
       />
       <Button

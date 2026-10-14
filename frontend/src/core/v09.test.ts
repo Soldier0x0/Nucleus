@@ -138,7 +138,7 @@ test("a disabled module hides its home pill, and a long label takes the row", ()
   const db = emptyDB();
   db.settings.modules = db.settings.modules.map((item) => (item.id === "money" ? { ...item, enabled: false } : item));
   assert.equal(openBoards(db).includes("money"), false);
-  assert.equal(openBoards(db).includes("adhd"), true);
+  assert.equal(openBoards(db).includes("vehicle"), true);
   assert.equal(labelNeedsFullRow("Subscriptions"), true);
   assert.equal(labelNeedsFullRow("Attention"), true);
   assert.equal(labelNeedsFullRow("Fuel"), false);

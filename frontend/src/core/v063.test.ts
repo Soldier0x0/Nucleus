@@ -121,13 +121,14 @@ test("the screen, the listener, and the upload say what this version does", () =
   assert.match(bank, /readBankNotices/);
   assert.doesNotMatch(bank, /readSmsInbox/);
   assert.match(manifest, /NotificationListenerService/);
-  assert.match(app, /android\.permission\.READ_SMS/);
+  // v0.9.8: READ_SMS is gone; bank texts come from notification access only.
+  assert.equal(JSON.parse(app).expo.android.permissions.includes("android.permission.READ_SMS"), false);
   assert.match(card, /IMPORTANCE_HIGH/);
   assert.doesNotMatch(card, /IMPORTANCE_DEFAULT/);
   assert.match(card, /VISIBILITY_PUBLIC/);
   assert.match(kt, /storeLockedFile/);
   assert.match(kt, /getAuthToken/);
-  assert.match(kt, /Function\("readSms"\)/);
+  assert.doesNotMatch(kt, /Function\("readSms"\)/);
   assert.match(kt, /Function\("clearIconRestart"\)/);
   const apply = android.slice(android.indexOf("export function applyLauncherIcon"));
   const setAt = apply.indexOf("setLauncherIcon");

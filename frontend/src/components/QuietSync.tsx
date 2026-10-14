@@ -1,12 +1,11 @@
 import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import { useStore } from "@/src/core/store";
-import { adhdReminder, snoozeAdhdReminder } from "@/src/core/presets";
 import { dismissNoticeAction, noticeKindFromId, noticePresentation } from "@/src/core/notices";
 import { nextHeadsUp, dismissHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
-import { addDays, todayISO } from "@/src/core/format";
+import { todayISO } from "@/src/core/format";
 
-/** One ADHD reminder line, and one quiet heads-up. No second notice, no sound. */
+/** One quiet heads-up. No second notice, no sound. */
 export function QuietSync() {
   const { db, ready, session, update } = useStore();
   const dbRef = useRef(db);
@@ -18,10 +17,6 @@ export function QuietSync() {
       if (!data || typeof data !== "object") return;
       const kind = (data as { kind?: unknown }).kind;
       const action = response.actionIdentifier;
-      if (kind === "adhd" && action === "snooze") {
-        update((current) => snoozeAdhdReminder(current, addDays(todayISO(), 1)));
-        return;
-      }
       if (kind !== "heads-up") return;
       const id = String((data as { id?: unknown }).id ?? "");
       if (!id) return;
@@ -39,26 +34,9 @@ export function QuietSync() {
   useEffect(() => {
     if (!ready || session !== "real") return;
     const current = dbRef.current;
-    const line = current.settings.adhd.reminder.line;
-    const until = current.settings.adhd.reminder.snoozedUntil;
-    const showReminder = current.settings.homePreset === "adhd" && !!line && !(until && until > todayISO());
-    if (!showReminder) {
-      Notifications.cancelScheduledNotificationAsync("adhd:next").catch(() => {});
-    } else {
-      const reminder = adhdReminder(line);
-      Notifications.setNotificationCategoryAsync("adhd-remind", [{ identifier: "snooze", buttonTitle: "Snooze", options: { opensAppToForeground: false } }]).catch(() => {});
-      Notifications.scheduleNotificationAsync({
-        identifier: "adhd:next",
-        content: {
-          title: "Next",
-          body: reminder.body,
-          sound: false,
-          categoryIdentifier: "adhd-remind",
-          data: { kind: "adhd", key: "adhd:next", line: reminder.line },
-        },
-        trigger: null,
-      }).catch(() => {});
-    }
+    // v0.9.8: ADHD mode is gone. Clear a leftover ADHD notice once.
+    Notifications.cancelScheduledNotificationAsync("adhd:next").catch(() => {});
+    Notifications.dismissNotificationAsync("adhd:next").catch(() => {});
 
     const heads = nextHeadsUp(current, todayISO());
     if (!heads) {
@@ -85,7 +63,7 @@ export function QuietSync() {
       },
       trigger: null,
     }).catch(() => {});
-  }, [ready, session, db.settings.homePreset, db.settings.adhd.reminder.line, db.settings.adhd.reminder.snoozedUntil, db.settings.headsUp, db.settings.cloud, db.txns, db.trips, db.fuel, db.services, db.vehicles]);
+  }, [ready, session, db.settings.headsUp, db.settings.cloud, db.txns, db.trips, db.fuel, db.services, db.vehicles]);
 
   return null;
 }

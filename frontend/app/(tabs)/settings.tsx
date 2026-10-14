@@ -17,7 +17,7 @@ import { biometricAvailable, biometricUnlock, clearFailures, clearPin, hasDecoyP
 import { LOCK_TIMEOUT_OPTIONS, lockTimeoutLabel, unlockSettingsForNewLock } from "@/src/core/lockSettings";
 import { MODULES } from "@/src/core/modules";
 import { EXPORTS, exportData, timeline } from "@/src/core/exports";
-import { allowLockScreenChannel, notifyOnce, scheduledCount } from "@/src/core/notify";
+import { allowLockScreenChannel, CHANNEL_NAMES, notifyOnce, openChannelSettings, scheduledCount } from "@/src/core/notify";
 import { shownInDecoy } from "@/src/core/profiles";
 import { emergencyLockCard } from "@/src/core/featureAccess";
 import { enableFeature } from "@/src/native/enableFeature";
@@ -204,6 +204,10 @@ export default function Settings() {
             </View>
           </Section>
         ) : null}
+
+        <Section title="Modules" testID="settings-modules-section">
+          <Row first icon="view-grid-outline" label="Modules" sub={`${s.modules.filter((m) => m.enabled).length} on · turn on or off and set the menu order`} testID="settings-modules-button" onPress={() => router.push("/modules")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+        </Section>
 
         <Section title="Appearance">
           <View style={{ padding: 12, gap: 12 }}>
@@ -464,10 +468,10 @@ export default function Settings() {
           <Row icon="message-text-outline" label="Bank texts" sub="Debit, credit, and balance lines come from bank notifications on this phone. Codes are dropped. Opens notification access." right={<Switch testID="settings-sms" value={s.smsInbox} onValueChange={(v) => {
             if (!v) {
               setBankNote("");
-              return setSettings({ smsInbox: false, bankTextsAsked: false });
+              return setSettings({ smsInbox: false, bankTextsAsked: false, bankTextsOff: true });
             }
             const accessOn = requestNotificationAccess();
-            setSettings({ bankTextsAsked: true, ...(accessOn ? { smsInbox: true } : {}) });
+            setSettings({ bankTextsAsked: true, bankTextsOff: false, ...(accessOn ? { smsInbox: true } : {}) });
             if (accessOn) {
               setBankNote(prompt.line);
               return;
@@ -476,6 +480,14 @@ export default function Settings() {
             setBankNote(opened === "blocked" ? `${prompt.line} ${prompt.blockedLine}` : prompt.line);
           }} {...sw} />} />
           <T testID="settings-sms-note" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>{bankNote || prompt.line}</T>
+        </Section>
+
+        <Section title="Notifications" testID="settings-notifications-section">
+          <T muted style={{ paddingHorizontal: 16, paddingTop: 12 }}>Each kind of notice has its own Android channel, so you can give each its own sound.</T>
+          {(["reminders", "water", "smsAsk", "cycle"] as const).map((key, i) => (
+            <Row key={key} first={i === 0} icon="music-note-outline" label={`${CHANNEL_NAMES[key]} sound`} sub="Opens Android's settings for this channel" testID={`settings-channel-${key}`} onPress={() => openChannelSettings(key, Constants.expoConfig?.android?.package ?? "com.nucleus.app")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+          ))}
+          <T muted testID="settings-lockscreen-note" style={{ paddingHorizontal: 16, paddingBottom: 12 }}>Bank texts and reminder titles can show on the lock screen. To hide them, turn off Lock-screen alerts above, or set Android's lock-screen notifications to hide sensitive content.</T>
         </Section>
 
         <Section title="Home screen">

@@ -213,30 +213,7 @@ export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rul
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
-export type HomePresetId = "custom" | "money" | "vehicle" | "travel" | "home" | "health" | "documents" | "bills" | "desk" | "workshop" | "adhd";
-export type AdhdKind = "money" | "trip" | "log";
-export type AdhdTask = {
-  id: string;
-  line: string;
-  started: boolean;
-  parked: boolean;
-  kind: AdhdKind;
-  recordId: string;
-  field: string;
-  seed: string;
-  draft: string;
-  timerStartedAt: number;
-};
-export type AdhdSettings = {
-  tasks: AdhdTask[];
-  /** Finished tasks only. One plain line each. */
-  finished: { line: string }[];
-  reminder: { line: string; snoozedUntil?: string };
-  motionOn: boolean;
-  /** Off until the user turns it on. */
-  buddyOn: boolean;
-  kindMs: Record<AdhdKind, number>;
-};
+export type HomePresetId = "custom" | "money" | "vehicle" | "travel" | "home" | "health" | "documents" | "bills" | "desk" | "workshop";
 export type HeadsUpChoice = "Yes" | "No";
 export type HeadsUpState = { dismissed: string[]; answers: { id: string; choice: HeadsUpChoice }[] };
 export type ThemeKey = "system" | "midnight" | "amoled" | "graphite" | "dune" | "paper" | "blush";
@@ -332,6 +309,10 @@ export type Settings = {
   smsInbox: boolean;
   /** The person asked for bank texts. Access is checked again when they come back. */
   bankTextsAsked: boolean;
+  /** The person turned bank texts off. Root auto-on then leaves the switch alone. */
+  bankTextsOff: boolean;
+  /** POST_NOTIFICATIONS denied warning already shown once. */
+  postNotificationsWarned: boolean;
   /** Reminders and the emergency card may show on the lock screen. */
   lockAlerts: boolean;
   /** Categories you named. Unused ones can be removed. */
@@ -346,8 +327,6 @@ export type Settings = {
   readOnly: boolean;
   /** Which home arrangement is on screen. Records stay where they are. */
   homePreset: HomePresetId;
-  /** One next action, typed text, and finished lines. No scores. */
-  adhd: AdhdSettings;
   /** Last thing opened in each preset. */
   presetLast: Partial<Record<HomePresetId, string>>;
   /** Heads-ups already dismissed or answered. Dismissal is not a miss. */
@@ -413,6 +392,36 @@ export type CycleState = {
   /** Soft pink on the cycle calendar and on cycle reminders only. */
   pinkCalendar: boolean;
 };
+/** v0.9.8: a reminder you set yourself, optionally attached to a record. */
+export type ReminderAttachKind = "plain" | "paper" | "subscription" | "medicine" | "vehicle";
+export type PlainReminder = {
+  id: string;
+  title: string;
+  note?: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:MM, 24-hour */
+  time: string;
+  /** ISO datetime. While set and in the future, the reminder fires then instead. */
+  snoozeUntil?: string;
+  done?: boolean;
+  attach: { kind: ReminderAttachKind; id?: string };
+  createdAt: string;
+  updatedAt?: string;
+};
+export type MedicineLog = { at: string; time: string; status: "taken" | "skipped" };
+export type Medicine = {
+  id: string;
+  name: string;
+  /** Daily times. At least one. */
+  times: { hour: number; minute: number }[];
+  dose?: string;
+  notes?: string;
+  active: boolean;
+  log: MedicineLog[];
+  createdAt: string;
+  updatedAt?: string;
+};
 export type WaterTime = { id: string; hour: number; minute: number };
 export type WaterState = { times: WaterTime[] };
 
@@ -462,5 +471,7 @@ export type DB = {
   recents: Record<string, string>;
   cycle: CycleState;
   water: WaterState;
+  reminders: PlainReminder[];
+  medicines: Medicine[];
   tombstones: Tombstone[];
 };

@@ -90,11 +90,6 @@ test("an unsure heads-up asks once and remembers the answer", () => {
   assert.deepEqual(remembered.fuel, db.fuel);
 });
 
-test("proactive heads-ups wait while ADHD mode is on", () => {
-  const db = applyPreset(withBill(), "adhd");
-  assert.equal(nextHeadsUp(db, TODAY), null);
-});
-
 test("fuel that will not cover the planned trip is the one heads-up", () => {
   const db = emptyDB();
   db.vehicles.push({ ...vehicle(), initialOdometer: 1000, serviceIntervalKm: 20000 });

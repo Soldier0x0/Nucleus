@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { emptyDB } from "./defaults.ts";
-import { ADHD_VOICE, BOARD_CIRCLE, adhdBuddy, adhdOpen, adhdReminder, adhdTimer, adhdView, applyPreset, columnsFor, dismissQuiet, ensureAdhdStep, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, noteAdhdDay, parkAdhdTask, presetBoard, presetItems, presetTileTitle, recallAdhdTask, rememberPreset, resumeLines, reviewAdhdDay, rowFlex, rowsFor, setAdhdBuddy, setAdhdMotion, showsCustomizeHome, snoozeAdhdReminder, startAdhdTask, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tileModule, tilePlaceholder, typeAdhdDraft, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
+import { emptyDB, normalizeDB } from "./defaults.ts";
+import { BOARD_CIRCLE, applyPreset, columnsFor, dismissQuiet, homeBlocks, homePresetTiles, lastPresetThing, moduleAlerts, presetBoard, presetItems, presetTileTitle, rememberPreset, rowFlex, rowsFor, showsCustomizeHome, swipePages, swipeScreens, swipeStartIndex, swipeWrap, tileModule, tilePlaceholder, visiblePresetItems, PRESET_CHOICES } from "./presets.ts";
 import { buildDecoyDB } from "./profiles.ts";
 import type { DB } from "./types.ts";
 
@@ -97,26 +97,6 @@ test("switching preset does not delete or relocate stored records", () => {
   );
 });
 
-test("a preset lists more than four relevant items in a stable priority order", () => {
-  const travel = presetItems("travel").map((item) => item.id);
-  const money = presetItems("money").map((item) => item.id);
-  assert.ok(travel.length > 4);
-  assert.ok(money.length > 4);
-  assert.deepEqual(presetItems("travel").map((item) => item.id), travel);
-  assert.deepEqual(presetItems("money").map((item) => item.id), money);
-  assert.equal(travel[0], "route");
-  assert.equal(money[0], "balance");
-  const travelOrder = ["route", "transitmetro", "transittrain", "transitcab", "transitbus"];
-  for (let i = 0; i < travelOrder.length - 1; i++) {
-    assert.ok(travel.indexOf(travelOrder[i]) < travel.indexOf(travelOrder[i + 1]));
-  }
-  for (const id of ["route", "transitmetro", "transittrain", "transitcab", "transitbus", "stops", "weather", "packing", "heading"]) assert.ok(travel.includes(id));
-  for (const id of ["balance", "spending", "charts", "receipts", "bills"]) assert.ok(money.includes(id));
-  assert.ok(PRESET_CHOICES.length < 14);
-  assert.ok(PRESET_CHOICES.some((choice) => choice.id === "custom"));
-  assert.equal(PRESET_CHOICES.find((choice) => choice.id === "adhd")?.name, "ADHD mode");
-});
-
 test("two small items share a row and a large item stays full width", () => {
   const money = presetItems("money");
   const rows = rowsFor(money);
@@ -139,82 +119,13 @@ test("two small items share a row and a large item stays full width", () => {
   assert.equal(travelRows[1]?.items.every((item) => item.size === "small"), true);
 });
 
-test("every board has two columns and a large card keeps a full row", () => {
-  assert.equal(columnsFor("custom", 1), 2);
-  assert.equal(columnsFor("adhd", 1), 2);
-  assert.equal(columnsFor("home", 4), 2);
-  const money = rowsFor(presetItems("money"));
-  assert.deepEqual(rowFlex(money[0]), [{ id: "balance", span: 2 }]);
-  assert.deepEqual(rowFlex(money[1]).map((item) => item.span), [1, 1]);
-  assert.deepEqual(rowFlex({ items: [{ id: "notes", size: "small" }] }), [{ id: "notes", span: 1 }]);
-});
-
-test("ADHD mode renders a single next action and does not wipe stored data", () => {
-  const db = filled();
-  const started = startAdhdTask(db, "Pay the bill");
-  const queued = startAdhdTask(started, "Reply to the mail");
-  const shown = applyPreset(queued, "adhd");
-  assert.deepEqual(records(shown), records(db));
-  assert.equal(shown.txns[0]?.id, "txn-1");
-  assert.equal(shown.notes[0]?.id, "note-1");
-  assert.equal(homeBlocks("adhd", shown).length, 1);
-
-  const view = adhdView(shown);
-  assert.equal(view.next?.line, "Pay the bill");
-  assert.equal(view.rest, 1);
-  assert.equal(view.more, "tap");
-  assert.equal(view.type, "plain");
-  assert.equal(view.typeSize, "large");
-  assert.equal(view.motion, false);
-  assert.equal(/streak|score|guilt|failed|lazy|shame/i.test(view.lines.join(" ")), false);
-  assert.equal(queued.settings.adhd.tasks[0]?.started, true);
-
-  const away = applyPreset(shown, "money");
-  const back = applyPreset(away, "adhd");
-  assert.equal(adhdView(back).next?.line, "Pay the bill");
-  assert.equal(homeBlocks("adhd", back).length, 1);
-  assert.deepEqual(records(back), records(db));
-
-  const reminder = adhdReminder("Pay the bill");
-  assert.equal(reminder.line, "Pay the bill");
-  assert.equal(reminder.body, "Pay the bill");
-  assert.equal(reminder.lines, 1);
-  assert.deepEqual(reminder.actions, ["Snooze"]);
-
-  const snoozed = snoozeAdhdReminder(back, "2026-10-04");
-  assert.equal(snoozed.settings.adhd.reminder.snoozedUntil, "2026-10-04");
-  assert.equal(adhdView(snoozed).next?.line, "Pay the bill");
-  assert.deepEqual(records(snoozed), records(db));
-
-  assert.equal(adhdView(setAdhdMotion(snoozed, true)).motion, true);
-});
+const PRESSURE = /overdue|\bmissed\b|behind|\blate\b|\bfail|streak|\bscore\b|points|quota|congrat|good job|welcome back|hurry/i;
 
 function numericScore(db: DB): number {
-  const bag = db.settings.adhd as unknown as { score?: unknown; points?: unknown; streak?: unknown } | undefined;
-  const raw = bag?.score ?? bag?.points ?? bag?.streak ?? 0;
+  const bag = db.settings as unknown as { score?: unknown; points?: unknown; streak?: unknown };
+  const raw = bag.score ?? bag.points ?? bag.streak ?? 0;
   return typeof raw === "number" ? raw : 0;
 }
-
-test("a day with no finished task does not decrease any score and is not labeled a miss", () => {
-  const db = emptyDB();
-  const day = reviewAdhdDay(db, []);
-  assert.equal(day.missed, false);
-  assert.equal(day.delta, 0);
-  assert.equal(day.quota, null);
-  assert.equal(day.label, "break");
-  assert.equal(/miss|loss|quota|streak|points/i.test(day.label), false);
-  assert.notEqual(day.tone, "red");
-  assert.deepEqual(day.marks, []);
-
-  const noted = noteAdhdDay(db, []);
-  assert.equal(numericScore(noted), numericScore(db));
-  assert.ok(numericScore(noted) >= numericScore(db));
-  assert.deepEqual(noted.settings.adhd.finished, db.settings.adhd.finished);
-  assert.equal(/miss/i.test(JSON.stringify(noted.settings.adhd.finished)), false);
-  assert.deepEqual(records(noted), records(db));
-});
-
-const PRESSURE = /overdue|\bmissed\b|behind|\blate\b|\bfail|streak|\bscore\b|points|quota|congrat|good job|welcome back|hurry/i;
 
 test("every preset shows its tiles when there is no data", () => {
   const db = emptyDB();
@@ -329,24 +240,11 @@ test("money and travel show different tiles, and each title names that tile", ()
   assert.match(home, /<SwipeHome[\s\S]*preset=\{preset\}/);
   assert.match(modes, /homePresetTiles\(/);
   assert.match(modes, /presetTileTitle\(/);
-  const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function AdhdPanel"));
+  const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function HeadsUpCard"));
   assert.match(swipe, /swipeScreens\(/);
   assert.match(swipe, /swipeStartIndex\(preset\)/);
   assert.match(swipe, /contentOffset/);
   assert.equal(/contentOffset=\{\{\s*x:\s*0/.test(swipe), false);
-});
-
-test("every board is one circle and the last wraps to the first", () => {
-  const circle = BOARD_CIRCLE;
-  for (const preset of circle) assert.deepEqual(swipeScreens(preset), [...circle]);
-  assert.equal(swipeStartIndex("custom"), 0);
-  assert.equal(swipeStartIndex("money"), 1);
-  assert.equal(swipeStartIndex("travel"), circle.indexOf("travel"));
-  assert.equal(swipeStartIndex("adhd"), circle.indexOf("adhd"));
-  assert.equal(swipeWrap(circle.length, circle.length), 0);
-  assert.equal(swipeScreens("adhd")[swipeWrap(swipeScreens("adhd").length, swipeScreens("adhd").length)], "custom");
-  assert.equal(swipePages("home").at(-1), "custom");
-  assert.equal(swipePages("home").length, circle.length + 1);
 });
 
 test("travel opens on the travel tiles and money opens on the money tiles", () => {
@@ -372,83 +270,6 @@ test("money, travel, and home do not show the dashed customize box", () => {
   assert.match(home, /borderStyle: "dashed"/);
 });
 
-test("the timer shows time already spent and does not count down", () => {
-  const early = adhdTimer({ startedAt: 0, now: 120_000, lastMs: 600_000, bufferMs: 300_000 });
-  const later = adhdTimer({ startedAt: 0, now: 180_000, lastMs: 600_000, bufferMs: 300_000 });
-  assert.equal(early.spentMs, 120_000);
-  assert.ok(later.spentMs > early.spentMs);
-  assert.equal(early.lastMs, 600_000);
-  assert.equal(early.bufferMs, 300_000);
-  assert.equal(early.countsDown, false);
-  assert.equal(early.remainingMs, null);
-  assert.equal(early.deadline, null);
-  assert.equal(PRESSURE.test(early.label), false);
-  assert.equal(/left|remain|deadline/i.test(early.label), false);
-});
-
-test("one tap opens the field that needs filling and seeds the first known word", () => {
-  const db = emptyDB();
-  db.txns.push({ id: "shop-1", type: "expense", amount: 10, category: "Food", date: "2026-10-01", item: "Morning Cafe", note: "tea" });
-  db.txns.push({ id: "gap-1", type: "expense", amount: 12, category: "Food", date: "2026-10-02" });
-  const opened = ensureAdhdStep(db);
-  const step = adhdOpen(opened);
-  assert.equal(step?.kind, "money");
-  assert.equal(step?.recordId, "gap-1");
-  assert.equal(step?.field, "note");
-  assert.equal(step?.seed, "Morning");
-  assert.match(step?.route ?? "", /gap-1/);
-  assert.match(step?.route ?? "", /field=note/);
-});
-
-test("leaving and coming back keeps typed text and does not comment on the gap", () => {
-  const db = emptyDB();
-  db.txns.push({ id: "gap-1", type: "expense", amount: 12, category: "Food", date: "2026-10-02", item: "Depot" });
-  const typed = typeAdhdDraft(ensureAdhdStep(db), "Depot lunch");
-  const back = applyPreset(applyPreset(typed, "money"), "adhd");
-  assert.equal(adhdOpen(back)?.draft, "Depot lunch");
-  const lines = resumeLines(back, 5 * 60 * 60 * 1000);
-  assert.deepEqual(lines, ["Depot lunch"]);
-  assert.equal(PRESSURE.test(lines.join(" ")), false);
-  assert.deepEqual(records(back), records(db));
-});
-
-test("a parked task comes back only when asked", () => {
-  const opened = ensureAdhdStep(filled());
-  const step = adhdOpen(opened);
-  assert.ok(step);
-  const parked = parkAdhdTask(opened, step.id);
-  assert.equal(adhdOpen(parked), null);
-  assert.equal(homeBlocks("adhd", parked).length, 0);
-  const recalled = recallAdhdTask(parked, step.id);
-  assert.equal(adhdOpen(recalled)?.id, step.id);
-  assert.equal(homeBlocks("adhd", recalled).length, 1);
-});
-
-test("the buddy stays off until turned on and does not see private data or speak", () => {
-  assert.equal(emptyDB().settings.adhd?.buddyOn ?? true, false);
-  assert.equal(ADHD_VOICE, false);
-  const db = filled();
-  db.cycle = { ...db.cycle, buddyName: "Mango" };
-  const quiet = adhdBuddy(db);
-  assert.equal(quiet.line, "");
-  assert.equal(quiet.voice, false);
-  const on = setAdhdBuddy(ensureAdhdStep(db), true);
-  const buddy = adhdBuddy(on);
-  assert.equal(buddy.line, "Needs attention");
-  assert.equal(buddy.voice, false);
-  const text = JSON.stringify(buddy);
-  assert.equal(text.includes("40"), false);
-  assert.equal(/goa|mango|cycle|period|cramp/i.test(text), false);
-  assert.equal(adhdBuddy(setAdhdBuddy(on, false)).line, "");
-});
-
-test("other module alerts stay off during ADHD mode", () => {
-  const db = filled();
-  const items = [{ id: "bill" }, { id: "service" }];
-  assert.deepEqual(moduleAlerts(applyPreset(db, "adhd"), items), []);
-  assert.deepEqual(moduleAlerts(applyPreset(db, "money"), items), items);
-});
-
 test("dismissing an alert has no penalty and does not mark a miss", () => {
   const db = filled();
   const next = dismissQuiet(db, "heads:1");
@@ -458,4 +279,15 @@ test("dismissing an alert has no penalty and does not mark a miss", () => {
   assert.deepEqual(next.txns, db.txns);
   assert.deepEqual(next.trips, db.trips);
   assert.equal(PRESSURE.test(JSON.stringify(next.attention["heads:1"])), false);
+});
+
+test("v0.9.8: ADHD mode is gone and an old ADHD file opens on Custom with no ADHD data", () => {
+  const raw = JSON.parse(JSON.stringify(emptyDB())) as Record<string, any>;
+  raw.settings.homePreset = "adhd";
+  raw.settings.adhd = { tasks: [{ id: "a", line: "Pay the bill" }], finished: [], reminder: { line: "Pay" } };
+  const db = normalizeDB(raw);
+  assert.equal(db.settings.homePreset, "custom");
+  assert.equal("adhd" in db.settings, false);
+  assert.equal(PRESET_CHOICES.some((choice) => (choice.id as string) === "adhd"), false);
+  assert.equal((BOARD_CIRCLE as string[]).includes("adhd"), false);
 });

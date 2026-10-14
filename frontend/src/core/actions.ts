@@ -62,8 +62,11 @@ const reactors: Record<string, Reactor[]> = {
         ev.ref.kind === "fuel" || ev.ref.kind === "service"
           ? touching.filter((l) => same(l.from, ev.ref) && l.to.kind === "txn").map((l) => l.to.id)
           : [];
+      const attachKind = ev.ref.kind === "paper" || ev.ref.kind === "subscription" || ev.ref.kind === "vehicle" ? ev.ref.kind : null;
       return {
         ...db,
+        // A reminder attached to the deleted record goes with it (one delete, one confirm).
+        reminders: attachKind ? (db.reminders ?? []).filter((r) => !(r.attach.kind === attachKind && r.attach.id === ev.ref.id)) : db.reminders,
         txns: db.txns.filter((t) => !autoTxnIds.includes(t.id)),
         links: db.links.filter((l) => !touching.includes(l) && !(l.to.kind === "txn" && autoTxnIds.includes(l.to.id))),
       };

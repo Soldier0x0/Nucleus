@@ -15,7 +15,6 @@ import { Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { useToast } from "@/src/components/Toast";
 import { ModuleGate } from "@/src/components/ModuleGate";
-import { adhdOpen, typeAdhdDraft } from "@/src/core/presets";
 
 const emptyNote = (): Note => ({ id: uid(), title: "", body: "", checklist: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
 
@@ -128,11 +127,6 @@ function NoteSheet({ note, onClose, onSaved }: { note: Note; onClose: () => void
       <Field label="Title" testID="note-title-input" value={title} onChangeText={setTitle} placeholder="Wi-Fi password, packing ideas…" />
       <Field label="Note" testID="note-body-input" value={body} onChangeText={(value) => {
         setBody(value);
-        update((current) => {
-          const open = adhdOpen(current);
-          if (!open || open.recordId !== note.id) return current;
-          return typeAdhdDraft(current, value);
-        });
       }} placeholder="Anything you want to remember" multiline style={{ minHeight: 90 }} />
       <Eyebrow style={{ marginBottom: 8 }}>Checklist · {checklist.filter((c) => c.done).length}/{checklist.length}</Eyebrow>
       {checklist.map((c) => (
