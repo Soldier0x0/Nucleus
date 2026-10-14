@@ -196,6 +196,9 @@ export type Link = { id: string; from: Ref; to: Ref; rel: string; createdAt: str
 
 export type Budget = { monthly: number; categories: Record<string, number> };
 
+/** A deleted row, kept so a merge or sync does not bring it back. `kind` is the DB list it lived in. */
+export type Tombstone = { kind: string; id: string; deletedAt: string };
+
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
 export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net" | "cycle" | "health";
@@ -449,4 +452,5 @@ export type DB = {
   recents: Record<string, string>;
   cycle: CycleState;
   water: WaterState;
+  tombstones: Tombstone[];
 };
