@@ -93,7 +93,7 @@ test("health board carries cycle; health off hides the tile", () => {
 test("paper expiry days and service left lines stay calm", () => {
   const paper = { id: "p", kind: "puc" as const, title: "PUC", expiry: "2026-04-10", createdAt: "2026-01-01" };
   assert.equal(paperExpiryDays(paper, "2026-04-01"), 9);
-  assert.equal(serviceLeftLine(80), "80 km left before service");
+  assert.equal(serviceLeftLine(80), "80 km to service");
   const fields = extractPaperFields("Policy number ABC-12345 expiry 2026-05-01");
   assert.equal(fields.number, "ABC-12345");
   assert.equal(fields.expiry, "2026-05-01");

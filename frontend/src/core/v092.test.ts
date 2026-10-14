@@ -161,5 +161,5 @@ test("vehicle journeys stay separate from travel trips", () => {
   db.trips.push({ id: "t1", name: "Goa", destination: "Goa", start: "2026-04-01", end: "2026-04-05", travellers: 1, budget: 0, packing: [], itinerary: [], docs: [], createdAt: "2026-01-01" });
   assert.equal(db.trips.length, 1);
   assert.equal(db.vehicleJourneys.length, 1);
-  assert.equal(serviceLeftLine(3000).includes("left before service"), true);
+  assert.equal(serviceLeftLine(3000).includes("to service"), true);
 });
