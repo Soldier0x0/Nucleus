@@ -96,7 +96,7 @@ export function TripDesk({ trip }: { trip: Trip }) {
           ))}
         </View>
       ) : null}
-      {links.length ? <T style={{ marginTop: 10 }}>Linked to a fuel record on this trip's dates.</T> : null}
+      {links.length ? <T style={{ marginTop: 10 }}>Linked to a fuel record on this trip&apos;s dates.</T> : null}
     </Card>
   );
 }
