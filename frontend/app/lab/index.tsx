@@ -4,6 +4,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Device from "expo-device";
 import * as Battery from "expo-battery";
+import * as Clipboard from "expo-clipboard";
+import * as Sharing from "expo-sharing";
+import { File, Paths } from "expo-file-system";
 import { Accelerometer, Barometer, Gyroscope, LightSensor, Magnetometer } from "expo-sensors";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
@@ -100,7 +103,13 @@ export default function Lab() {
       URL.revokeObjectURL(url);
       toast(`${rows.length - 1} samples exported`, "download-outline");
     } else {
-      toast(`Recording stopped · ${rows.length - 1} samples — export is available on web`, "content-save-outline");
+      const file = new File(Paths.cache, `nucleus-${sensor}-${todayISO()}.csv`);
+      if (file.exists) file.delete();
+      file.create();
+      file.write(text);
+      void Sharing.isAvailableAsync()
+        .then((ok) => (ok ? Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Sensor samples" }) : Clipboard.setStringAsync(text).then(() => toast("CSV copied", "content-copy"))))
+        .catch(() => toast("Could not share the samples", "alert-circle-outline"));
     }
   };
 
