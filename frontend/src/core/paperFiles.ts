@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { Directory, File, Paths } from "expo-file-system";
@@ -71,7 +72,8 @@ export async function storePaperFile(paperId: string, uri: string, mime: string)
 
 /** Gallery only — no document picker fallback. */
 export async function pickPaperPhoto(): Promise<PaperPick | null | "too-big" | "denied"> {
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  // Android's system photo picker needs no storage permission (both are blocked in app.json).
+  const perm = Platform.OS === "android" ? { granted: true } : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return "denied";
   const image = await withExternalActivity(() =>
     ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.6, base64: true, allowsEditing: true }),
