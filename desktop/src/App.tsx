@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { countsOf } from "@core/merge";
+import { syncStatusLine } from "@core/syncStatus";
 import type { DB } from "@core/types";
 
 const SECTIONS = ["Today", "Money", "Vehicles", "Papers", "Notes", "Settings"] as const;
@@ -36,6 +37,7 @@ export function App() {
             {s}
           </button>
         ))}
+        <div className="sync" data-testid="sidebar-sync-status">{syncStatusLine(db?.settings?.lastSyncAt, new Date().toISOString())}</div>
       </nav>
       <main className="main">
         <h1>{section}</h1>

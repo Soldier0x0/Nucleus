@@ -312,6 +312,8 @@ export type Settings = {
   quietHours: { enabled: boolean; from: number; to: number };
   /** ISO time of the last backup file this device wrote. */
   lastBackupAt?: string;
+  /** Last completed sync with a paired desktop. Set by the sync flow (desktop plan D2). */
+  lastSyncAt?: string;
   /** The one-time backup reminder has been dismissed or satisfied. */
   backupNudged?: boolean;
   /** Lock-screen card. Empty fields stay hidden. The plate comes from the default vehicle. */

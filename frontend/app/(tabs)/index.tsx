@@ -20,6 +20,7 @@ import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
 import type { Board, HomePresetId } from "@/src/core/types";
 import { homeLine, oneDueToday } from "@/src/core/dueGreeting";
+import { syncStatusLine } from "@/src/core/syncStatus";
 import { repeatingBills } from "@/src/core/moneyDesk";
 import { choreDueDate } from "@/src/core/domains";
 
@@ -72,6 +73,7 @@ export default function Today() {
                 <T muted style={{ fontSize: 13, marginTop: 2 }} numberOfLines={2}>{dated}</T>
               </Press>
             ) : null}
+            <T muted testID="today-sync-status" style={{ fontSize: 12, marginTop: 2 }}>{syncStatusLine(db.settings.lastSyncAt, new Date().toISOString())}</T>
           </View>
           <Press testID="today-online-toggle" accessibilityState={{ checked: db.settings.online }} onPress={() => setSettings({ online: !db.settings.online })} style={[styles.lockChip, { borderColor: db.settings.online ? colors.success : colors.border }]}>
             <Icon name={db.settings.online ? "web" : "wifi-off"} size={14} color={db.settings.online ? colors.success : colors.muted} />
