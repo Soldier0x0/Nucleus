@@ -13,32 +13,7 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "src/core/openDb.test.ts",
-    "src/core/personal.test.ts",
-    "src/core/life.test.ts",
-    "src/core/roadmap.test.ts",
-    "src/core/moneyWords.test.ts",
-    "src/core/greeting.test.ts",
-    "src/core/launcher.test.ts",
-    "src/core/cycle.test.ts",
-    "src/core/looks.test.ts",
-    "src/core/release06.test.ts",
-    "src/core/vehicleMarks.test.ts",
-    "src/core/reorder.test.ts",
-    "src/core/presets.test.ts",
-    "src/core/proactive.test.ts",
-    "src/core/layouts.test.ts",
-    "src/core/v063.test.ts",
-    "src/core/v07.test.ts",
-    "src/core/v071.test.ts",
-    "src/core/v072.test.ts",
-    "src/core/v073.test.ts",
-    "src/core/v074.test.ts",
-    "src/core/v08.test.ts",
-    "src/core/v081.test.ts",
-    "src/core/v082.test.ts",
-    "src/core/v083.test.ts",
-    "src/core/v09.test.ts",
+    "src/core/*.test.ts",
     "src/core/__stubs__"
   ]
 }
