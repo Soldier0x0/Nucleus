@@ -6,6 +6,7 @@ import { addTxn, nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/src/core/defaults";
 import { categoryFromOther, classifyMoney, moneySuggestions } from "@/src/core/moneyWords";
 import type { Subscription } from "@/src/core/types";
+import { budgetCleared } from "@/src/core/budgetSave";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
 import { DateField, Field } from "./inputs";
@@ -210,7 +211,7 @@ export function BudgetSheet({ visible, onClose }: { visible: boolean; onClose: (
     const m = parseNum(monthly);
     const categories = Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, parseNum(v)]).filter(([, v]) => (v as number) > 0)) as Record<string, number>;
     update((d) => ({ ...d, budget: { monthly: m > 0 ? m : 0, categories } }));
-    const cleared = (m <= 0 && db.budget.monthly > 0) || Object.entries(db.budget.categories).some(([k, v]) => v > 0 && !categories[k]);
+    const cleared = budgetCleared(db.budget, { monthly: m, categories });
     toast(cleared ? "Budget cleared" : "Budget saved", "chart-donut");
     onClose();
   };
