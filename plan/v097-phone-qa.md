@@ -24,12 +24,19 @@ Install the APK artifact from the latest PR #36 Actions run. Mark each item pass
 - [ ] H12: Home appliance.   - [ ] H13: Media item.   - [ ] H15: Money, remove a bank-account ending
 - [ ] M19: Record, remove a photo or bill file (the record itself stays).
 - [ ] Subscription, Delete subscription (this crashed before fix 1b50aa7)
+- [ ] New confirms: Notes delete, Home chore delete, Today board delete
+- [ ] Every confirm has Cancel on the left and the red action on the right, and shows a toast after it runs
+- [ ] Switching profile and Add sample data happen straight away, with no confirm
 - [ ] No confirm opens inside another sheet: the parent sheet stays behind it and nothing freezes (Android Modal bug).
+
+## Phone Lab
+- [ ] Record samples, Stop. The Android share sheet opens with a CSV. Same for back, then Keep.
 
 ## Logic fixes (also covered by unit tests)
 - [ ] H7: Builder, add inputs a, b, c, delete b, add one more. The new input gets a new short name. Typing a duplicate name blocks Save.
 - [ ] Builder, edit a tool, then back out. "Discard changes?" appears.
 - [ ] M10: Tools, Time, clear the end time. It shows "Enter both times as HH:MM" and no duration.
+- [ ] Vehicle card reads "120 km to service" / "40 km past service".
 - [ ] M20: Fuel record, clear the date and save. The date is unchanged, not "—".
 - [ ] L7: Budget, set a category to 0 and save. The toast says "Budget cleared".
 - [ ] H14: Cycle, saving without changes shows no toast.
