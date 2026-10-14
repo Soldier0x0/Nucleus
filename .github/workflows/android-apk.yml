@@ -163,6 +163,11 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
+      - name: Type-check
+        if: steps.plan.outputs.build == 'true'
+        working-directory: frontend
+        run: npx tsc --noEmit
+
       - name: Run the core unit tests
         if: steps.plan.outputs.build == 'true'
         working-directory: frontend
