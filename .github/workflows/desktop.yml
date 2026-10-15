@@ -62,8 +62,12 @@ jobs:
         run: npx tauri build --bundles ${{ matrix.bundles }}
 
       - uses: actions/upload-artifact@v4
+        # The release job (phase D3) will need these files, but until then the
+        # upload must never turn a green build red when storage is full.
+        continue-on-error: true
         with:
           name: nucleus-desktop-${{ runner.os }}
+          retention-days: 7
           if-no-files-found: error
           path: |
             desktop/src-tauri/target/release/bundle/msi/*.msi
