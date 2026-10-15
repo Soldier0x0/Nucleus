@@ -148,7 +148,7 @@ export function DisplaySettings() {
       </Section>
 
       <Section title="Home screen" anchor="home">
-        <Row first icon="widgets-outline" label="Widgets and shortcuts" sub="Countdown, budget, trip, maintenance, battery, the next cycle window, and a long-press on the icon" testID="settings-shortcuts" onPress={() => router.push("/shortcuts")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
+        <Row first icon="widgets-outline" label="Widgets and shortcuts" sub="Countdown, budget, trip, maintenance, battery, the next cycle window, log fuel and add expense, and a long-press on the icon" testID="settings-shortcuts" onPress={() => router.push("/shortcuts")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
         <Row icon="package-variant-closed" label="Packs" sub="Share templates, tools, checklists and rules by file" testID="settings-packs" onPress={() => router.push("/packs")} right={<Icon name="chevron-right" size={18} color={colors.muted} />} />
       </Section>
 

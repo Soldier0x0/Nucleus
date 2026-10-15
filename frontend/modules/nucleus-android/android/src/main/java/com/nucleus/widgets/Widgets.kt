@@ -31,7 +31,8 @@ internal object WidgetRender {
     views.setTextViewText(R.id.kicker, card.kicker)
     views.setTextViewText(R.id.value, card.value)
     views.setTextViewText(R.id.subtitle, card.subtitle)
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("nucleus://open?path=${card.path}")).setPackage(context.packageName)
+    val action = if (card.action == null) "" else "&action=${card.action}"
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("nucleus://open?path=${card.path}$action")).setPackage(context.packageName)
     val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     views.setOnClickPendingIntent(R.id.root, PendingIntent.getActivity(context, kind.hashCode(), intent, flags))
     return views
@@ -46,17 +47,23 @@ internal object WidgetRender {
       MaintenanceWidget::class.java to "maintenance",
       BatteryWidget::class.java to "battery",
       CycleWidget::class.java to "cycle",
+      FuelWidget::class.java to "fuel",
+      ExpenseWidget::class.java to "expense",
+      ServiceWidget::class.java to "service",
     ).forEach { (cls, kind) ->
       val ids = manager.getAppWidgetIds(ComponentName(context, cls))
       for (id in ids) manager.updateAppWidget(id, bind(context, kind))
     }
   }
 
-  private data class Card(val kicker: String, val value: String, val subtitle: String, val path: String)
+  private data class Card(val kicker: String, val value: String, val subtitle: String, val path: String, val action: String? = null)
 
   private fun cardFor(context: Context, kind: String, snap: JSONObject?): Card {
     if (kind == "battery") return battery(context)
     if (kind == "cycle") return cycle(context)
+    if (kind == "fuel") return Card("Log fuel", "Tap to log", "Opens the fuel form", "/vehicles", "fuel")
+    if (kind == "expense") return Card("Add expense", "Tap to add", "Opens the money form", "/money", "expense")
+    if (kind == "service") return Card("Log service", "Tap to log", "Opens the service form", "/vehicles", "service")
     if (snap == null) return Card(label(kind), "Open Nucleus", "Open the app once to fill this", path(kind))
     return when (kind) {
       "budget" -> {
@@ -150,4 +157,16 @@ class BatteryWidget : NucleusWidget() {
 
 class CycleWidget : NucleusWidget() {
   override val kind = "cycle"
+}
+
+class FuelWidget : NucleusWidget() {
+  override val kind = "fuel"
+}
+
+class ExpenseWidget : NucleusWidget() {
+  override val kind = "expense"
+}
+
+class ServiceWidget : NucleusWidget() {
+  override val kind = "service"
 }

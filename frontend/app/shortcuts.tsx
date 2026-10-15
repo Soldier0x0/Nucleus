@@ -38,7 +38,7 @@ export default function Shortcuts() {
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 24, gap: 12, maxWidth: 720, width: "100%", alignSelf: "center" }}>
         <Card testID="widget-note">
           <Eyebrow>Widgets</Eyebrow>
-          <T style={{ marginTop: 6 }}>On the phone's home screen, add a Nucleus widget: countdown, budget, trip, maintenance, or battery. Resize it. Amounts follow privacy mode. The widget fills when you open Nucleus.</T>
+          <T style={{ marginTop: 6 }}>On the phone&apos;s home screen, add a Nucleus widget: countdown, budget, trip, maintenance, battery, cycle, log fuel, or add an expense. Log widgets open the form after unlock. Resize it. Amounts follow privacy mode. The widget fills when you open Nucleus.</T>
         </Card>
         <Eyebrow>Shortcuts · {chosen.length}/4</Eyebrow>
         <T muted style={{ fontSize: 12 }}>Long-press the Nucleus icon. These four open a tool or a board. They are part of the installed app.</T>

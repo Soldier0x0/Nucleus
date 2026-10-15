@@ -54,7 +54,9 @@ test("widgets hide an amount in privacy mode and count a future date", () => {
   assert.equal(open.trip?.when, "Starts in 10 days");
   assert.match(open.budget.value, /2/);
   db.settings.privacyMode = true;
-  assert.equal(widgetSnapshot(db, "2026-10-02").budget.value, "Hidden");
+  const hidden = widgetSnapshot(db, "2026-10-02");
+  assert.equal(hidden.budget.value, "Hidden");
+  assert.equal(hidden.privacy, true);
 });
 
 test("a file from another phone keeps both wiki pages", () => {
