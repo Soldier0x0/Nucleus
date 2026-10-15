@@ -11,6 +11,7 @@ import { parseLayout } from "./layouts";
 import { parseTileOrder } from "./homeOrder";
 import { emptyHeadsUp, migrateHomePresetOnLoad, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { normalizePaper } from "./paperNormalize";
+import { isContentRoute, normalizeReopenHours, REOPEN_DEFAULT_HOURS } from "./reopen";
 import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
@@ -97,6 +98,9 @@ export const defaultSettings: Settings = {
   travelFolded: true,
   installId: "",
   readOnly: false,
+  reopenHours: REOPEN_DEFAULT_HOURS,
+  lastRoute: null,
+  lastRouteAt: null,
   homePreset: "custom",
   presetLast: {},
   headsUp: emptyHeadsUp(),
@@ -190,6 +194,14 @@ export function normalizeDB(raw: any): DB {
   s.postNotificationsWarned = raw?.settings?.postNotificationsWarned === true;
   s.lockAlerts = raw?.settings?.lockAlerts === true;
   s.readOnly = raw?.settings?.readOnly === true;
+  s.reopenHours = normalizeReopenHours(raw?.settings?.reopenHours);
+  const savedRoute = raw?.settings?.lastRoute;
+  s.lastRoute = typeof savedRoute === "string" && isContentRoute(savedRoute) ? savedRoute.slice(0, 120) : null;
+  const savedRouteAt = raw?.settings?.lastRouteAt;
+  s.lastRouteAt = typeof savedRouteAt === "string" && !Number.isNaN(Date.parse(savedRouteAt)) ? savedRouteAt.slice(0, 40) : null;
+  const shell = raw?.settings?.nativeModuleShell;
+  if (shell === false) s.nativeModuleShell = false;
+  else delete s.nativeModuleShell;
   s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();
   s.homePreset = migrateHomePresetOnLoad(raw, parseHomePreset(raw?.settings?.homePreset));
   // v0.9.8: ADHD mode removed. An "adhd" home preset parses to custom; its saved data is dropped.

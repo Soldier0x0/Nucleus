@@ -336,6 +336,14 @@ export type Settings = {
   installId: string;
   /** A file from another phone. Looking is allowed. Editing is not. */
   readOnly: boolean;
+  /** v0.9.8: hours a cold start may reopen the last screen. 0 or null turns reopen off. */
+  reopenHours: number | null;
+  /** v0.9.8: last content route that was on screen. */
+  lastRoute: string | null;
+  /** v0.9.8: ISO time lastRoute was recorded. */
+  lastRouteAt: string | null;
+  /** v0.9.8: single-module shell. Unset keeps it on; false turns it off. */
+  nativeModuleShell?: boolean;
   /** Which home arrangement is on screen. Records stay where they are. */
   homePreset: HomePresetId;
   /** Last thing opened in each preset. */

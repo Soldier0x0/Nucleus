@@ -3,6 +3,8 @@
  * which Today tiles it provides and what capabilities it needs. The core reads manifests;
  * modules never import each other.
  */
+import type { ModuleId, ModuleState, Settings } from "./types";
+
 export type ModuleManifest = {
   id: string;
   name: string;
@@ -71,6 +73,43 @@ export const MODULES: ModuleManifest[] = [
 ];
 
 export const moduleById = (id: string) => MODULES.find((m) => m.id === id)!;
+
+/** The one module left on, or null when none or more than one is on. A hidden module does not count. */
+export function singleModuleId(modules: ModuleState[]): ModuleId | null {
+  const on = modules.filter((m) => m.enabled && !m.hidden);
+  return on.length === 1 ? on[0].id : null;
+}
+
+/** The module whose home the Today tab becomes. `nativeModuleShell: false` turns the shell off. */
+export function nativeModuleShellId(settings: Pick<Settings, "modules" | "nativeModuleShell">): ModuleId | null {
+  if (settings.nativeModuleShell === false) return null;
+  return singleModuleId(settings.modules);
+}
+
+const TAB_LABELS: Record<ModuleId, string> = {
+  vehicles: "Vehicle",
+  money: "Money",
+  travel: "Travel",
+  home: "Home",
+  tools: "Tools",
+  rules: "Rules",
+  notes: "Notes",
+  dev: "Dev",
+  builder: "Builder",
+  media: "Media",
+  lab: "Lab",
+  papers: "Documents",
+  kanban: "Kanban",
+  wiki: "Wiki",
+  net: "Network",
+  cycle: "Cycle",
+  health: "Health",
+};
+
+/** Short name for the module's bottom-bar tab. */
+export function moduleTabLabel(id: ModuleId): string {
+  return TAB_LABELS[id] ?? moduleById(id).name;
+}
 
 export const TILE_META: Record<string, { name: string; module?: string; icon: string }> = {
   attention: { name: "Attention summary", icon: "bell-outline" },

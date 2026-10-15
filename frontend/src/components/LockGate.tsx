@@ -3,6 +3,7 @@ import { AppState, Platform, StyleSheet, useColorScheme, View, type AppStateStat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ScreenCapture from "expo-screen-capture";
 import { useTheme } from "@/src/theme";
+import { publishLockState } from "@/src/core/lockSignal";
 import { useStore } from "@/src/core/store";
 import { biometricUnlock, clearFailures, readBackoff, registerFailure, verifyPin } from "@/src/core/security";
 import { PinPad } from "./PinPad";
@@ -37,6 +38,11 @@ export function LockGate() {
   const shot = useRef(false);
   const backgroundAt = useRef<number | null>(null);
   const bioAllowed = s.unlockMethod !== "pin" && s.biometricEnabled && Platform.OS !== "web";
+
+  // Boot screens and the route recorder wait for this before doing anything.
+  useEffect(() => {
+    publishLockState(locked);
+  }, [locked]);
 
   useEffect(() => {
     const plate = (db.vehicles.find((v) => v.id === s.defaultVehicleId) ?? db.vehicles[0])?.plate ?? "";

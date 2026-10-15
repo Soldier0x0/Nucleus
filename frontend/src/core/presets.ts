@@ -78,16 +78,17 @@ const WORKSHOP: PresetItem[] = [
   { id: "history", size: "small" },
 ];
 
+/**
+ * v0.9.8: the chip row shows arrangement boards only. Money, Vehicle and Desk
+ * left it; Favourites is the landing that replaces them.
+ */
 export const PRESET_CHOICES: { id: HomePresetId; name: string; icon: string }[] = [
   { id: "custom", name: "Custom", icon: "view-dashboard-outline" },
-  { id: "money", name: "Money", icon: "wallet-outline" },
-  { id: "vehicle", name: "Vehicle", icon: "motorbike" },
   { id: "travel", name: "Travel", icon: "train-car" },
   { id: "home", name: "Home", icon: "home-outline" },
   { id: "health", name: "Health", icon: "cup-water" },
   { id: "documents", name: "Documents", icon: "file-document-outline" },
   { id: "bills", name: "Bills", icon: "calendar-clock" },
-  { id: "desk", name: "Desk", icon: "book-open-variant" },
   { id: "workshop", name: "Workshop", icon: "hammer-wrench" },
 ];
 
