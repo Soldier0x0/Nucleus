@@ -9,7 +9,8 @@ export type ItineraryItem = { id: string; date: string; time: string; title: str
 export type TripDoc = { id: string; name: string; have: boolean; expiry?: string };
 export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string; elevation?: number };
 export type TripMode = "personal" | "public";
-export type TransitKind = "metro" | "train" | "cab" | "bus";
+export type TransitKind = "metro" | "train" | "cab" | "bus" | "flight";
+export type TripKind = "journey" | "transit";
 export type Trip = {
   id: string;
   name: string;
@@ -28,6 +29,8 @@ export type Trip = {
   weatherReminded?: boolean;
   mode?: TripMode;
   transit?: TransitKind;
+  /** Journey cards carry a checklist, plan and expenses. Daily public travel stays a Money category only. */
+  kind?: TripKind;
 };
 export type MaintPlan = { id: string; name: string; everyMonths: number; lastDone: string; cost?: number };
 export type Appliance = {
@@ -116,6 +119,8 @@ export type Vehicle = {
   purchaseDate?: string;
   /** Per-part service intervals. Missing means defaults by type (serviceCatalog.ts). */
   parts?: import("./serviceCatalog").PartSetting[];
+  /** Saved ride-checklist template. Missing means defaults by type (rideChecklists.ts). */
+  rideChecklist?: string[];
   createdAt: string;
 };
 
@@ -156,6 +161,8 @@ export type VehicleJourney = {
   startOdometer: number;
   endOdometer?: number;
   note?: string;
+  /** Copy-on-use tick-off for this ride. Never shares items with the vehicle template. */
+  checklist?: ChecklistItem[];
 };
 
 export type ServiceKind = "general" | "oil" | "tyre" | "battery" | "brakes" | "repair" | "other";
@@ -195,6 +202,8 @@ export type Txn = {
   balance?: number;
   /** How the money moved, for the online-vs-in-person chart. A suggestion or a hand-picked tag. */
   channel?: TxnChannel;
+  /** The journey card this expense belongs to. In addition to the "trip expense" link. */
+  tripId?: string;
 };
 
 export type Subscription = {

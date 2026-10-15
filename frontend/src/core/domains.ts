@@ -24,7 +24,7 @@ export const newDocs = (names = DEFAULT_DOCS): TripDoc[] => names.map((name) => 
 
 export function tripTxns(db: DB, tripId: string): Txn[] {
   const ids = new Set(db.links.filter((l) => l.from.kind === "trip" && l.from.id === tripId && l.to.kind === "txn").map((l) => l.to.id));
-  return db.txns.filter((t) => ids.has(t.id));
+  return db.txns.filter((t) => ids.has(t.id) || t.tripId === tripId);
 }
 
 /** A short gap is named in full. A longer one names the first few and does not use a count. */
@@ -93,7 +93,8 @@ export function upsertAppliance(db: DB, a: Appliance): DB {
 const link = (from: any, to: any, rel: string) => ({ id: uid(), from, to, rel, createdAt: new Date().toISOString() });
 
 export function addTripExpense(db: DB, tripId: string, txn: Txn): DB {
-  return { ...db, txns: [...db.txns, txn], links: [...db.links, link({ kind: "trip", id: tripId }, { kind: "txn", id: txn.id }, "trip expense")] };
+  const row = { ...txn, tripId };
+  return { ...db, txns: [...db.txns, row], links: [...db.links, link({ kind: "trip", id: tripId }, { kind: "txn", id: row.id }, "trip expense")] };
 }
 
 export function logMaintenance(db: DB, applianceId: string, planId: string, cost: number): DB {

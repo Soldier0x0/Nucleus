@@ -7,11 +7,11 @@ import { useStore } from "@/src/core/store";
 import { useOnline } from "@/src/core/useOnline";
 import { geocode } from "@/src/core/online";
 import { newDocs, readiness, tripStatus, upsertTrip } from "@/src/core/domains";
-import type { Place, TransitKind, Trip, TripMode } from "@/src/core/types";
-import { transitLabel } from "@/src/core/transit";
+import type { Place, TransitKind, Trip, TripKind, TripMode } from "@/src/core/types";
+import { transitLabel, tripKindOf } from "@/src/core/transit";
 import { addDays, fmtDate, num, parseNum, todayISO, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
-import { Amount, Button, Card, EmptyState, Eyebrow, IconButton, Press, T } from "@/src/components/ui";
+import { Amount, Button, Card, Chip, EmptyState, Eyebrow, IconButton, Press, T } from "@/src/components/ui";
 import { Ring } from "@/src/components/charts";
 import { Sheet } from "@/src/components/Sheet";
 import { DateField, Field } from "@/src/components/inputs";
@@ -34,10 +34,12 @@ export function TripSheet({ visible, onClose, trip }: { visible: boolean; onClos
   const [err, setErr] = useState<string>();
   const [mode, setMode] = useState<TripMode>(trip?.mode === "public" ? "public" : "personal");
   const [transit, setTransit] = useState<TransitKind>(trip?.transit ?? "metro");
+  const [kind, setKind] = useState<TripKind | undefined>(trip?.kind === "journey" || trip?.kind === "transit" ? trip.kind : undefined);
+  const effectiveKind: TripKind = mode === "personal" ? "journey" : kind ?? tripKindOf({ mode, transit, start, end });
   const save = () => {
     if (!name.trim() || !dest.trim()) return setErr("Name and destination are required");
     if (end < start) return setErr("End date must be after start");
-    const t: Trip = { id: trip?.id ?? uid(), createdAt: trip?.createdAt ?? new Date().toISOString(), packing: trip?.packing ?? [], itinerary: trip?.itinerary ?? [], docs: trip?.docs ?? newDocs(), name: name.trim(), destination: dest.trim(), place, start, end, travellers: Math.max(1, parseNum(trav) || 1), budget: parseNum(budget) || 0, mode, ...(mode === "public" ? { transit } : {}) };
+    const t: Trip = { id: trip?.id ?? uid(), createdAt: trip?.createdAt ?? new Date().toISOString(), packing: trip?.packing ?? [], itinerary: trip?.itinerary ?? [], docs: trip?.docs ?? newDocs(), name: name.trim(), destination: dest.trim(), place, start, end, travellers: Math.max(1, parseNum(trav) || 1), budget: parseNum(budget) || 0, mode, kind: effectiveKind, ...(mode === "public" ? { transit } : {}) };
     update((d) => upsertTrip(d, t));
     onClose();
     toast(trip ? "Trip updated" : `${t.name} created`, "bag-suitcase-outline");
@@ -67,6 +69,15 @@ export function TripSheet({ visible, onClose, trip }: { visible: boolean; onClos
           <Press testID="trip-transit-bus" onPress={() => setTransit("bus")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
             <T v="label">{transitLabel("bus")}</T>
           </Press>
+          <Press testID="trip-transit-flight" onPress={() => setTransit("flight")} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+            <T v="label">{transitLabel("flight")}</T>
+          </Press>
+        </View>
+      ) : null}
+      {mode === "public" ? (
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+          <Chip label="Journey" icon="bag-suitcase-outline" selected={effectiveKind === "journey"} testID="trip-kind-journey" onPress={() => setKind("journey")} />
+          <Chip label="Daily transit" icon="ticket-outline" selected={effectiveKind === "transit"} testID="trip-kind-transit" onPress={() => setKind("transit")} />
         </View>
       ) : null}
       <Field label="Trip name" testID="trip-name-input" value={name} onChangeText={(t) => (setName(t), setErr(undefined))} placeholder="Goa 2027" error={err} />

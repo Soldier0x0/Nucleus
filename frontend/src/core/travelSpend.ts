@@ -2,7 +2,7 @@ import { monthKey } from "./format";
 import { isPersonalTrip, transitLabel } from "./transit";
 import type { DB, TransitKind } from "./types";
 
-const KINDS: TransitKind[] = ["metro", "train", "cab", "bus"];
+const KINDS: TransitKind[] = ["metro", "train", "cab", "bus", "flight"];
 
 export function transitTileId(kind: TransitKind): string {
   return `transit-${kind}`;

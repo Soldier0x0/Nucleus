@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { vehicleStats } from "@/src/core/intelligence";
+import { odometerEstimate, odometerEstimateLabel } from "@/src/core/fuelCapture";
 import { deleteVehicle, SERVICE_LABEL } from "@/src/core/actions";
 import { daysBetween, fmtDate, money, num, todayISO } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
@@ -19,7 +20,7 @@ import { LinkedSection } from "@/src/components/LinkedSection";
 import { VehicleArt } from "@/src/components/VehicleArt";
 import { VehicleCare } from "@/src/components/VehicleCare";
 import { VehicleSchedule } from "@/src/components/VehicleSchedule";
-import { VehicleJourneySection } from "@/src/components/VehicleJourneySection";
+import { OdometerSheet, VehicleJourneySection } from "@/src/components/VehicleJourneySection";
 import { Image } from "expo-image";
 import { fuelLabel, vehicleBody } from "@/src/core/life";
 
@@ -31,7 +32,7 @@ export default function VehicleDetail() {
   const router = useRouter();
   const toast = useToast();
   const { width } = useWindowDimensions();
-  const [sheet, setSheet] = useState<null | "fuel" | "service" | "edit" | "why" | "delete">(null);
+  const [sheet, setSheet] = useState<null | "fuel" | "service" | "edit" | "why" | "delete" | "odo">(null);
   const [tab, setTab] = useState<"fuel" | "service" | "linked">("fuel");
   const [numbers, setNumbers] = useState(false);
   const v = db.vehicles.find((x) => x.id === id);
@@ -47,6 +48,8 @@ export default function VehicleDetail() {
   const st = vehicleStats(db, v);
   const s = db.settings;
   const today = todayISO();
+  const odo = odometerEstimate(db, v, today);
+  const odoNote = odo.estimated ? `estimated · last reading ${odo.daysAgo === 1 ? "yesterday" : `${odo.daysAgo} days ago`}` : odo.daysAgo > 0 && odo.lastDate ? `last reading ${odo.daysAgo === 1 ? "yesterday" : `${odo.daysAgo} days ago`}` : s.distanceUnit;
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
   const services = db.services.filter((x) => x.vehicleId === v.id).sort((a, b) => b.date.localeCompare(a.date));
   const sev = st.service.remaining <= 0 ? "urgent" : st.service.remaining <= Math.max(300, st.service.interval * 0.1) ? "upcoming" : "ok";
@@ -119,7 +122,6 @@ export default function VehicleDetail() {
           {[
             { l: "Avg mileage", val: isFinite(st.avgMileage) ? num(st.avgMileage, 1) : "—", u: `${s.distanceUnit}/${s.volumeUnit}`, id: "avg" },
             { l: "Cost / " + s.distanceUnit, val: isFinite(st.costPerKm) ? num(st.costPerKm, 2) : "—", u: s.currency, id: "cpk" },
-            { l: "Odometer", val: num(st.odometer, 0), u: s.distanceUnit, id: "odo" },
           ].map((m) => (
             <View key={m.id} testID={`vehicle-stat-${m.id}`} style={[styles.stat, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
               <Eyebrow style={{ fontSize: 9 }}>{m.l}</Eyebrow>
@@ -127,6 +129,12 @@ export default function VehicleDetail() {
               <T muted style={{ fontSize: 11 }}>{m.u}</T>
             </View>
           ))}
+          <Press testID="vehicle-stat-odo" onPress={() => setSheet("odo")} style={[styles.stat, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+            <Eyebrow style={{ fontSize: 9 }}>Odometer</Eyebrow>
+            <T v="monoLg" style={{ marginTop: 4 }} testID="vehicle-odometer">{odometerEstimateLabel(odo)}</T>
+            <T muted style={{ fontSize: 11 }}>{odoNote}</T>
+            {odo.lastDate && odo.daysAgo > 0 ? <T color={colors.brandPrimary} style={{ fontSize: 11, marginTop: 2 }}>Update odometer</T> : null}
+          </Press>
         </View>
 
         <Card>
@@ -250,6 +258,7 @@ export default function VehicleDetail() {
 
       {sheet === "fuel" ? <FuelSheet visible onClose={() => setSheet(null)} vehicle={v} /> : null}
       {sheet === "service" ? <ServiceSheet visible onClose={() => setSheet(null)} vehicle={v} /> : null}
+      {sheet === "odo" ? <OdometerSheet vehicle={v} onClose={() => setSheet(null)} /> : null}
       {sheet === "edit" ? <VehicleSheet visible onClose={() => setSheet(null)} vehicle={v} /> : null}
       <WhySheet
         visible={sheet === "why"}

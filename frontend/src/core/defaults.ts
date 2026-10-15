@@ -1,5 +1,6 @@
-import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Txn, Vehicle, VehicleJourney } from "./types";
+import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Trip, Txn, Vehicle, VehicleJourney } from "./types";
 import { isChannel } from "./merchantTable";
+import { isTransitKind, tripKindOf } from "./transit";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { emptyWater, normalizeWater } from "./water";
 import { normalizeReminders } from "./reminders";
@@ -280,6 +281,7 @@ export function normalizeDB(raw: any): DB {
     vehicleJourneys: Array.isArray(raw?.vehicleJourneys) ? raw.vehicleJourneys.map(normalizeVehicleJourney) : [],
     vehicles: Array.isArray(raw?.vehicles) ? raw.vehicles.map(normalizeVehicle) : [],
     services: Array.isArray(raw?.services) ? raw.services.map(normalizeService) : [],
+    trips: Array.isArray(raw?.trips) ? raw.trips.map(normalizeTrip) : [],
     parts: Array.isArray(raw?.parts) ? raw.parts : [],
     specs: Array.isArray(raw?.specs) ? raw.specs : [],
     kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],
@@ -352,6 +354,27 @@ function normalizeVehicle(raw: Vehicle): Vehicle {
   else delete next.cover;
   if (typeof raw.tankLitres === "number" && Number.isFinite(raw.tankLitres) && raw.tankLitres > 0) next.tankLitres = raw.tankLitres;
   else delete next.tankLitres;
+  const checklist = Array.isArray(raw.rideChecklist)
+    ? raw.rideChecklist.filter((text: unknown) => typeof text === "string" && text.trim()).map((text: string) => text.trim().slice(0, 60)).slice(0, 30)
+    : [];
+  if (checklist.length) next.rideChecklist = checklist;
+  else delete next.rideChecklist;
+  return next;
+}
+
+/**
+ * A trip is a journey card unless it is clearly daily public travel: a same-day
+ * metro/train/cab/bus/flight. An explicit kind (the "Journey" tap) is kept as saved.
+ */
+function normalizeTrip(raw: Trip): Trip {
+  const next = { ...raw };
+  next.start = typeof raw.start === "string" ? raw.start.slice(0, 10) : "";
+  next.end = typeof raw.end === "string" ? raw.end.slice(0, 10) : next.start;
+  if (raw.mode === "public" || raw.mode === "personal") next.mode = raw.mode;
+  else delete next.mode;
+  if (isTransitKind(raw.transit)) next.transit = raw.transit;
+  else delete next.transit;
+  next.kind = tripKindOf({ kind: raw.kind === "journey" || raw.kind === "transit" ? raw.kind : undefined, mode: next.mode, transit: next.transit, start: next.start, end: next.end });
   return next;
 }
 
@@ -375,6 +398,14 @@ function normalizeVehicleJourney(raw: VehicleJourney): VehicleJourney {
   if (typeof raw.endAt === "string" && raw.endAt.trim()) next.endAt = raw.endAt.trim().slice(0, 40);
   if (typeof raw.endOdometer === "number" && Number.isFinite(raw.endOdometer)) next.endOdometer = Math.round(raw.endOdometer);
   if (typeof raw.note === "string" && raw.note.trim()) next.note = raw.note.trim().slice(0, 200);
+  const checklist = Array.isArray(raw.checklist)
+    ? raw.checklist
+        .filter((item: any) => item && typeof item.text === "string" && item.text.trim())
+        .map((item: any) => ({ id: typeof item.id === "string" && item.id.trim() ? item.id.slice(0, 40) : uid(), text: String(item.text).trim().slice(0, 60), done: item.done === true }))
+        .slice(0, 30)
+    : [];
+  if (checklist.length) next.checklist = checklist;
+  else delete next.checklist;
   return next;
 }
 
@@ -401,5 +432,7 @@ function normalizeTxn(raw: Txn): Txn {
   else delete next.transfer;
   if (typeof raw?.balance === "number" && Number.isFinite(raw.balance)) next.balance = raw.balance;
   else delete next.balance;
+  if (typeof raw?.tripId === "string" && raw.tripId.trim()) next.tripId = raw.tripId.trim().slice(0, 40);
+  else delete next.tripId;
   return next;
 }

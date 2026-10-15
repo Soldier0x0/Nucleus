@@ -1,5 +1,5 @@
 import type { DB, FuelEntry, Vehicle } from "./types";
-import { daysBetween } from "./format";
+import { daysBetween, num, todayISO } from "./format";
 
 export type FuelNumbers = { litres: number; total: number; rate: number };
 
@@ -129,6 +129,71 @@ export function estimateOdometer(entries: FuelEntry[], vehicle: Vehicle, date?: 
   if (ahead <= 0) return base;
   return Math.round(base + perDay * ahead);
 }
+
+const isoDay = (raw: string | undefined): string | null =>
+  typeof raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw) ? raw.slice(0, 10) : null;
+
+/** Typed odometer readings from fill-ups, odometer logs and services, oldest first. */
+export function odometerReadings(db: DB, vehicle: Vehicle): { date: string; odometer: number; source: "fuel" | "log" | "service" }[] {
+  const rows: { date: string; odometer: number; source: "fuel" | "log" | "service" }[] = [];
+  for (const fill of db.fuel) {
+    const date = isoDay(fill.date);
+    if (fill.vehicleId !== vehicle.id || fill.odometerEstimated || !date || !Number.isFinite(fill.odometer)) continue;
+    rows.push({ date, odometer: fill.odometer, source: "fuel" });
+  }
+  for (const log of db.odometerLogs) {
+    const date = isoDay(log.at);
+    if (log.vehicleId !== vehicle.id || !date || !Number.isFinite(log.odometer)) continue;
+    rows.push({ date, odometer: log.odometer, source: "log" });
+  }
+  for (const service of db.services) {
+    const date = isoDay(service.date);
+    if (service.vehicleId !== vehicle.id || !date || !Number.isFinite(service.odometer)) continue;
+    rows.push({ date, odometer: service.odometer, source: "service" });
+  }
+  return rows.sort((a, b) => a.date.localeCompare(b.date) || a.odometer - b.odometer);
+}
+
+export type OdometerNow = {
+  value: number;
+  estimated: boolean;
+  stale: boolean;
+  daysAgo: number;
+  perDay: number;
+  lastDate: string | null;
+  readings: number;
+};
+
+/**
+ * Live odometer: the last typed reading plus the average daily km between all typed readings.
+ * Estimates while the last reading is at most 30 days old; after that the maths stops and the
+ * last known value is marked stale. A reading typed today clears the estimate at once.
+ */
+export function odometerEstimate(db: DB, vehicle: Vehicle, today = todayISO()): OdometerNow {
+  const rows = odometerReadings(db, vehicle);
+  const last = rows[rows.length - 1];
+  if (!last) {
+    return { value: Math.round(vehicle.initialOdometer || 0), estimated: false, stale: false, daysAgo: 0, perDay: 0, lastDate: null, readings: 0 };
+  }
+  const first = rows[0];
+  const span = daysBetween(first.date, last.date);
+  const gain = last.odometer - first.odometer;
+  const perDay = rows.length >= 2 && span > 0 && gain > 0 ? gain / span : 0;
+  const daysAgo = Math.max(0, daysBetween(last.date, today));
+  const estimated = perDay > 0 && daysAgo > 0 && daysAgo <= 30;
+  return {
+    value: estimated ? Math.round(last.odometer + perDay * daysAgo) : Math.round(last.odometer),
+    estimated,
+    stale: daysAgo > 30,
+    daysAgo,
+    perDay,
+    lastDate: last.date,
+    readings: rows.length,
+  };
+}
+
+/** "12,340", or "~12,340" while the value is projected from earlier readings. */
+export const odometerEstimateLabel = (estimate: OdometerNow): string => `${estimate.estimated ? "~" : ""}${num(estimate.value, 0)}`;
 
 /** Known readings stay. Estimated fills between them are spaced again. */
 export function recomputeFuelEstimates(entries: FuelEntry[], vehicleId: string): FuelEntry[] {

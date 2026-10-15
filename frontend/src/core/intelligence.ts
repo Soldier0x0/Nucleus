@@ -7,6 +7,7 @@ import { homeSchedule, readiness, tripStatus } from "./domains";
 import { lifeAlerts } from "./life";
 import { addDays, addMonths, daysBetween, fmtDate, mean, median, money, monthKey, monthLabel, num, todayISO } from "./format";
 import { fuelMileagePoints, serviceLeftLine } from "./vehicleMath";
+import { odometerEstimate, odometerEstimateLabel } from "./fuelCapture";
 
 export type Fact = { label: string; value: string };
 export type Why = { summary: string; facts: Fact[]; rule: string; ranking: string };
@@ -31,7 +32,12 @@ const rankText = (sev: Severity, basis: string) => `Ranked ${sev.toUpperCase()} 
 
 // ---------------- Vehicles ----------------
 export function currentOdometer(db: DB, v: Vehicle) {
-  const odos = [v.initialOdometer, ...db.fuel.filter((f) => f.vehicleId === v.id).map((f) => f.odometer), ...db.services.filter((s) => s.vehicleId === v.id).map((s) => s.odometer)];
+  const odos = [
+    v.initialOdometer,
+    ...db.fuel.filter((f) => f.vehicleId === v.id).map((f) => f.odometer),
+    ...db.services.filter((s) => s.vehicleId === v.id).map((s) => s.odometer),
+    ...db.odometerLogs.filter((o) => o.vehicleId === v.id).map((o) => o.odometer),
+  ];
   return Math.max(...odos);
 }
 
@@ -231,6 +237,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
       if (a) items.push(a);
       if (b) items.push(b);
       const s = serviceEstimate(db, v);
+      const est = odometerEstimate(db, v, today);
       const warnAt = Math.max(300, s.interval * 0.1);
       if (s.remaining <= warnAt) {
         const sev: Severity = s.remaining <= 0 ? "urgent" : "upcoming";
@@ -245,9 +252,33 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
           route: `/vehicles/${v.id}`,
           why: {
             summary: s.explanation,
-            facts: s.facts,
+            facts: est.estimated
+              ? [...s.facts, { label: "Odometer", value: `${odometerEstimateLabel(est)} km, estimated from the last reading ${est.daysAgo === 1 ? "yesterday" : `${est.daysAgo} days ago`}` }]
+              : s.facts,
             rule: `Upcoming when within ${num(warnAt, 0)} km (10% of the interval, min 300 km). Urgent once the interval is exceeded.`,
             ranking: rankText(sev, "distance remaining"),
+          },
+        });
+      }
+      if (est.stale && est.lastDate) {
+        items.push({
+          key: `odo-stale:${v.id}:${est.lastDate}`,
+          module: "vehicles",
+          severity: "info",
+          icon: "speedometer",
+          title: `${v.name} odometer is ${est.daysAgo} days old`,
+          subtitle: "Service distance is still measured from the last typed reading.",
+          score: 66,
+          route: `/vehicles/${v.id}`,
+          why: {
+            summary: `The last typed ${v.name} odometer is ${odometerEstimateLabel(est)} km, read ${est.daysAgo} days ago on ${fmtDate(est.lastDate)}. Estimates stop after 30 days, so the value has not moved since.`,
+            facts: [
+              { label: "Last reading", value: `${odometerEstimateLabel(est)} km` },
+              { label: "Read on", value: fmtDate(est.lastDate) },
+              { label: "Days since", value: `${est.daysAgo}` },
+            ],
+            rule: "Info when the last odometer reading is more than 30 days old. Estimates only move while the last reading is at most 30 days old.",
+            ranking: rankText("info", "days since the last odometer reading"),
           },
         });
       }

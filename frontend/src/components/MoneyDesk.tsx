@@ -5,6 +5,7 @@ import { useStore } from "@/src/core/store";
 import { useTheme } from "@/src/theme";
 import { addMonths, money, monthKey, todayISO } from "@/src/core/format";
 import { readiness } from "@/src/core/domains";
+import { isJourneyTrip } from "@/src/core/transit";
 import { channelSeries } from "@/src/core/intelligence";
 import { balanceOverTime, categorySplit, dayBefore, grewMost, monthFlow, priceChange, repeatingBills, unusedCategories } from "@/src/core/moneyDesk";
 import { memoryKey, type BankAsk } from "@/src/core/smsMoney";
@@ -30,7 +31,7 @@ export function MoneyDesk({ month }: { month: string }) {
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
   const chartFmt = db.settings.privacyMode ? () => "•••" : compactValue;
   const flow = monthFlow(db.txns, month);
-  const journeys = db.trips.filter((trip) => trip.end >= todayISO()).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 3);
+  const journeys = db.trips.filter(isJourneyTrip).filter((trip) => trip.end >= todayISO()).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 3);
   const channels = channelSeries(db, 6);
   const split = categorySplit(db.txns, month);
   const previousMonth = addMonths(`${month}-01`, -1).slice(0, 7);
@@ -103,14 +104,16 @@ export function MoneyDesk({ month }: { month: string }) {
         ) : (
           journeys.map((trip) => {
             const r = readiness(db, trip);
+            const packed = trip.packing.length ? `${trip.packing.filter((item) => item.done).length}/${trip.packing.length} packed · ` : "";
             return (
               <Press key={trip.id} testID={`money-journey-${trip.id}`} onPress={() => router.push(`/travel/${trip.id}`)} style={{ marginTop: 8 }}>
                 <T v="label">{trip.name}</T>
-                <T muted>{trip.start} → {trip.end} · {db.settings.privacyMode ? "•••" : money(r.spent, db.settings.currency, { decimals: false })} spent</T>
+                <T muted>{trip.start} → {trip.end} · {packed}{db.settings.privacyMode ? "•••" : money(r.spent, db.settings.currency, { decimals: false })} spent</T>
               </Press>
             );
           })
         )}
+        <Button small kind="secondary" icon="bag-suitcase-outline" label="Open journeys" testID="money-journeys-open" style={{ marginTop: 10 }} onPress={() => router.push("/travel")} />
       </Card>
       <Press testID="money-channel-toggle" onPress={() => setNumbers((v) => !v)}>
         <Card testID="money-channel-card">

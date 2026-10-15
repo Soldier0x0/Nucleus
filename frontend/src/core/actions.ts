@@ -4,7 +4,7 @@
  * apply cross-module effects (e.g. fuel.added -> Money expense + link). Modules never
  * call each other directly; they only meet through events and the links table.
  */
-import type { DB, EntityKind, FuelEntry, OdometerLog, Ref, ServiceEntry, Subscription, Txn, TxnChannel, Vehicle, VehicleJourney } from "./types";
+import type { ChecklistItem, DB, EntityKind, FuelEntry, OdometerLog, Ref, ServiceEntry, Subscription, Txn, TxnChannel, Vehicle, VehicleJourney } from "./types";
 import { addDays, addMonths, todayISO, uid } from "./format";
 import { bestEffortDeletePaperFiles } from "./paperFiles";
 import { syncVehicleExpiryFields } from "./vehicleDocs";
@@ -128,6 +128,14 @@ export function addOdometerLog(db: DB, entry: OdometerLog): DB {
 
 export function addVehicleJourney(db: DB, entry: VehicleJourney): DB {
   return { ...db, vehicleJourneys: [...db.vehicleJourneys, entry] };
+}
+
+/** Swap this ride's checklist. The vehicle template is a separate field and is never touched. */
+export function setJourneyChecklist(db: DB, id: string, checklist: ChecklistItem[]): DB {
+  return {
+    ...db,
+    vehicleJourneys: db.vehicleJourneys.map((row) => (row.id === id ? { ...row, checklist } : row)),
+  };
 }
 
 export function closeVehicleJourney(db: DB, id: string, endAt: string, endOdometer: number): DB {
