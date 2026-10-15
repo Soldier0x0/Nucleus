@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, View, useWindowDimensions } from "react-native";
-import Pdf from "react-native-pdf";
+import Pdf from "./PdfViewer";
 import { useTheme } from "@/src/theme";
 import { paperMime } from "@/src/core/paperFiles";
 import { attachmentNeedsViewerMaterialize, mistaggedJpegDataUri } from "@/src/core/paperNormalize";

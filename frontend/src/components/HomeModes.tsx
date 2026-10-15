@@ -13,30 +13,17 @@ import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { todayISO } from "@/src/core/format";
 import {
-  ADHD_BUFFER_MS,
-  adhdBuddy,
-  adhdOpen,
-  adhdTimer,
-  adhdView,
-  finishAdhdTask,
   lastPresetThing,
-  parkAdhdTask,
   homePresetTiles,
   presetThingLabel,
   presetTileTitle,
-  recallAdhdTask,
   rowFlex,
   rememberPreset,
   resizeHomeTile,
-  reviewAdhdDay,
-  setAdhdBuddy,
-  setAdhdMotion,
-  startAdhdTask,
   swipeScreens,
   swipeStartIndex,
   swipeWrap,
   openBoards,
-  typeAdhdDraft,
   withTileSizes,
 } from "@/src/core/presets";
 import { dismissHeadsUp, nextHeadsUp, rememberHeadsUp } from "@/src/core/proactive";
@@ -580,7 +567,12 @@ export function SwipeHome({
             onScroll={(event) => { pageOffset.current[index] = event.nativeEvent.contentOffset.y; }}
             onLayout={(event) => {
               const height = event.nativeEvent.layout.height;
-              event.currentTarget.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+              const target = event.currentTarget as { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void } | undefined;
+              if (typeof target?.measureInWindow !== "function") {
+                if (height > 0) pageBox.current[index] = { y: 0, h: height };
+                return;
+              }
+              target.measureInWindow((_x: number, y: number, _w: number, h: number) => {
                 if (h > 0) pageBox.current[index] = { y, h };
                 else if (height > 0) pageBox.current[index] = { y: 0, h: height };
               });
@@ -588,7 +580,7 @@ export function SwipeHome({
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: sp.lg, paddingBottom: 24, gap: sp.md, overflow: "visible" }}
           >
-            {page === "adhd" ? <AdhdPanel /> : <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} onDragging={lockScroll} onDragY={(y) => followFinger(index, y)} />}
+            <PresetGrid preset={page} layoutFor={layoutFor} emptyCopy={emptyCopy} onDragging={lockScroll} onDragY={(y) => followFinger(index, y)} />
             {below ? below(page) : null}
           </ScrollView>
         </View>
@@ -598,102 +590,9 @@ export function SwipeHome({
   );
 }
 
-export function AdhdPanel() {
-  const { db, update } = useStore();
-  const router = useRouter();
-  const { colors, sp } = useTheme();
-  const view = adhdView(db);
-  const step = adhdOpen(db);
-  const buddy = adhdBuddy(db);
-  const day = reviewAdhdDay(db, []);
-  const task = db.settings.adhd.tasks.find((row) => !row.parked);
-  const now = Date.now();
-  const clock = task
-    ? adhdTimer({
-        startedAt: task.timerStartedAt > 0 ? task.timerStartedAt : now,
-        now,
-        lastMs: db.settings.adhd.kindMs[task.kind] ?? 0,
-        bufferMs: ADHD_BUFFER_MS,
-      })
-    : null;
-  const [line, setLine] = useState("");
-  const [more, setMore] = useState(false);
-  const parked = db.settings.adhd.tasks.filter((row) => row.parked);
-  const rest = db.settings.adhd.tasks.filter((row) => !row.parked).slice(1);
-  return (
-    <View style={{ gap: sp.md }} testID="today-adhd">
-      <Card testID="today-adhd-next">
-        <T style={{ fontSize: 28, lineHeight: 34 }}>{view.next?.line ?? "Next"}</T>
-        {clock ? <T testID="today-adhd-timer" style={{ fontSize: 18, marginTop: 8 }}>{clock.label}</T> : null}
-        {step ? (
-          <TextInput
-            testID="today-adhd-draft"
-            value={step.draft || step.seed}
-            onChangeText={(text) => update((current) => typeAdhdDraft(current, text))}
-            placeholder={step.seed || "One line"}
-            placeholderTextColor={colors.muted}
-            style={{ marginTop: 12, fontSize: 20, color: colors.onSurface, minHeight: 48 }}
-          />
-        ) : null}
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-          {step ? <Button label="Open" testID="today-adhd-open" onPress={() => router.push(step.route as never)} /> : null}
-          {task ? <Button kind="secondary" label="Park" testID="today-adhd-park" onPress={() => update((current) => parkAdhdTask(current, task.id))} /> : null}
-          {task ? <Button kind="secondary" label="Done" testID="today-adhd-done" onPress={() => update((current) => finishAdhdTask(current, task.id))} /> : null}
-        </View>
-      </Card>
-      <TextInput
-        testID="today-adhd-line"
-        value={line}
-        onChangeText={setLine}
-        placeholder="One line"
-        placeholderTextColor={colors.muted}
-        style={{ fontSize: 20, color: colors.onSurface, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12 }}
-      />
-      <Button
-        label="Start"
-        testID="today-adhd-start"
-        onPress={() => {
-          const text = line.trim();
-          if (!text) return;
-          update((current) => startAdhdTask(current, text));
-          setLine("");
-        }}
-      />
-      {view.rest > 0 || parked.length ? <Button kind="secondary" label="More" testID="today-adhd-more" onPress={() => setMore(true)} /> : null}
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <T>Motion</T>
-        <Switch testID="today-adhd-motion" value={db.settings.adhd.motionOn} onValueChange={(on) => update((current) => setAdhdMotion(current, on))} />
-      </View>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <T>Buddy</T>
-        <Switch testID="today-adhd-buddy" value={db.settings.adhd.buddyOn} onValueChange={(on) => update((current) => setAdhdBuddy(current, on))} />
-      </View>
-      {buddy.line ? <T testID="today-adhd-buddy-line">{buddy.line}</T> : null}
-      {db.settings.adhd.finished.length ? (
-        <View testID="today-adhd-finished">
-          {db.settings.adhd.finished.map((mark, index) => (
-            <T key={`${mark.line}-${index}`}>{`· ${mark.line}`}</T>
-          ))}
-        </View>
-      ) : (
-        <T testID="today-adhd-break">{day.label === "break" ? "Break" : day.label}</T>
-      )}
-      <Sheet visible={more} onClose={() => setMore(false)} title="More" testID="today-adhd-sheet">
-        {rest.map((row) => (
-          <T key={row.id} style={{ fontSize: 18, marginBottom: 8 }}>{row.line}</T>
-        ))}
-        {parked.map((row) => (
-          <Button key={row.id} kind="secondary" label={row.line} testID={`today-adhd-recall-${row.id}`} onPress={() => update((current) => recallAdhdTask(current, row.id))} />
-        ))}
-      </Sheet>
-    </View>
-  );
-}
-
 export function HeadsUpCard() {
   const { db, update } = useStore();
   const { colors } = useTheme();
-  if (db.settings.homePreset === "adhd") return null;
   const one = nextHeadsUp(db, todayISO());
   if (!one) return null;
   return (

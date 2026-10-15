@@ -10,6 +10,8 @@ import { morningLine } from "@/src/core/life";
 import { todayISO } from "@/src/core/format";
 import { EmptyState, Eyebrow, Icon, Press, T, Button } from "@/src/components/ui";
 import { CaptureBar } from "@/src/components/CaptureBar";
+import { AppMenu } from "@/src/components/AppMenu";
+import { useToast } from "@/src/components/Toast";
 import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
@@ -58,13 +60,18 @@ export default function Today() {
   const [arrange, setArrange] = useState(false);
   const [finder, setFinder] = useState(false);
   const [finderText, setFinderText] = useState("");
+  const [menu, setMenu] = useState(false);
   const dated = morningLine(db, today);
-  useReminderSync();
+  const toast = useToast();
+  useReminderSync(() => toast("Notifications are off for Nucleus, so reminders will not ring. Turn them on in Android settings.", "bell-off-outline"));
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <View style={{ paddingTop: insets.top + 8, paddingHorizontal: sp.lg, paddingBottom: 10, backgroundColor: colors.surface }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Press testID="today-menu-button" accessibilityLabel="Open menu" onPress={() => setMenu(true)} style={styles.menuBtn}>
+            <Icon name="menu" size={24} color={colors.onSurface} />
+          </Press>
           <View style={{ flex: 1 }}>
             <Eyebrow>{d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short" })}</Eyebrow>
             <T v="title" testID="today-title">{greeting}</T>
@@ -130,7 +137,7 @@ export default function Today() {
       </View>
       {!anyModule ? (
         <View style={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24 }}>
-          <EmptyState testID="today-empty" icon="view-grid-plus-outline" title="Your workbench is empty" body="Turn on a module to start adding tiles here." action={<Button label="Open module library" icon="view-grid-outline" onPress={() => router.push("/(tabs)/modules")} testID="today-open-modules-button" />} />
+          <EmptyState testID="today-empty" icon="view-grid-plus-outline" title="Your workbench is empty" body="Turn on a module to start adding tiles here." action={<Button label="Open module library" icon="view-grid-outline" onPress={() => router.push("/modules")} testID="today-open-modules-button" />} />
         </View>
       ) : (
         <SwipeHome
@@ -139,10 +146,10 @@ export default function Today() {
           emptyCopy={(id) => tilePlaceholder(id)}
           below={(page) => (
             <>
-              {page === "adhd" ? null : <HeadsUpCard />}
+              <HeadsUpCard />
               {showsCustomizeHome(page) || (page === preset && showsCustomizeHome(preset)) ? (
                 <>
-                  <Press testID="today-customize-button" onPress={() => router.push("/(tabs)/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong }]}>
+                  <Press testID="today-customize-button" onPress={() => router.push("/modules")} onLongPress={() => setArrange(true)} style={[styles.customize, { borderColor: colors.borderStrong }]}>
                     <Icon name="tune-variant" size={18} color={colors.muted} />
                     <T muted v="label">Customize home</T>
                   </Press>
@@ -180,6 +187,7 @@ export default function Today() {
         </ReorderGroup>
       </Sheet>
       {boardSheet ? <BoardSheet board={boardSheet.board} onClose={() => setBoardSheet(null)} /> : null}
+      <AppMenu visible={menu} onClose={() => setMenu(false)} />
     </View>
   );
 }
@@ -189,6 +197,7 @@ const styles = bindLookStyles(() => StyleSheet.create({
   pill: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 8, height: 26 },
   daybox: { width: 44, height: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   toolBtn: { flex: 1, height: 68, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  menuBtn: { width: 44, height: 44, marginLeft: -10, marginRight: 4, alignItems: "center", justifyContent: "center", alignSelf: "flex-start" },
   lockChip: { flexDirection: "row", gap: 4, alignItems: "center", borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: 10, height: 30 },
   customize: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", height: 48, borderRadius: radius.md, borderWidth: 1, borderStyle: "dashed" },
 }));

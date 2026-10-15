@@ -1,5 +1,6 @@
 // Inert namespace stub.
 export const setNotificationChannelAsync = async () => ({});
+export const deleteNotificationChannelAsync = async () => {};
 export const getNotificationChannelsAsync = async () => [];
 export const scheduleNotificationAsync = async () => "";
 export const cancelScheduledNotificationAsync = async () => {};

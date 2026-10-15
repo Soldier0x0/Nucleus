@@ -30,7 +30,7 @@ export function useCycleNotify() {
 
   useEffect(() => {
     if (!ready) return;
-    const notices = session === "real" && enabled && db.settings.homePreset !== "adhd" ? cycleNotices(db.cycle, db.settings.quietHours, todayISO()) : [];
+    const notices = session === "real" && enabled ? cycleNotices(db.cycle, db.settings.quietHours, todayISO()) : [];
     syncCycleNotices(
       notices.map((notice) => ({ id: notice.id, title: notice.title, at: new Date(notice.at) })),
       { pink: db.cycle.pinkCalendar, hide, lockPublic },

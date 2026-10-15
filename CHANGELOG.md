@@ -10,6 +10,23 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.8
+
+- Changed the bottom bar to Today, Attention and Settings; modules now open from a menu at the top left of Today, grouped as Vehicle, Money, Health, Documents, Notes, Reminders, Life and DevLab.
+- Changed Modules into its own screen under Settings, where you turn modules on or off and set the menu order.
+- Added Reminders: a title, date, time and note, with snooze and done; a reminder tied to a document or bill goes when that record is deleted.
+- Added Medicines under Health: a name and daily times, with Taken and Skip for each dose.
+- Changed Today to drop ADHD mode; an old file that used it opens on Custom.
+- Changed notifications to new channels with sound, one each for reminders, water, bank-text questions and cycle; Settings opens each one's Android sound page.
+- Fixed reminders only scheduling once per session; they now reschedule when rules, bills, reminders or medicines change.
+- Added a one-time notice when notifications are denied, and a note that bank texts and reminder titles can show on the lock screen.
+- Changed bank texts to drop the SMS read permission; bank texts come from notification access only, and the switch turns on once that access is granted.
+- Changed bank texts so only money notices are queued, from banks, UPI apps and the chosen SMS apps, and a UPI notice plus its bank SMS become one entry.
+- Added per-part service intervals (km or months, whichever first) with due states and parts pre-ticked in the service log.
+- Changed date fields to day, month and year wheels with 1, 3, 6 and 12 month chips.
+- Added Run self-check in Settings, sync-safe records, and a sync status line on Today.
+- Fixed money note suggestions vanishing after a space while typing.
+
 ## v0.9.7
 
 - Fixed a backup from another phone offered as Merge that actually replaced everything; the action, label, and toast now tell the truth, and Merge only runs when it really merges.

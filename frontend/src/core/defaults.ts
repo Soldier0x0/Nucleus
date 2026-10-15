@@ -1,12 +1,14 @@
 import type { DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Txn, Vehicle, VehicleJourney } from "./types";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { emptyWater, normalizeWater } from "./water";
+import { normalizeReminders } from "./reminders";
+import { normalizeMedicines } from "./medicines";
 import { cleanCallName } from "./greeting";
 import { parseLauncher } from "./launcher";
 import { parseLook } from "./looks";
 import { parseLayout } from "./layouts";
 import { parseTileOrder } from "./homeOrder";
-import { emptyAdhd, emptyHeadsUp, migrateHomePresetOnLoad, parseAdhd, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
+import { emptyHeadsUp, migrateHomePresetOnLoad, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { normalizePaper } from "./paperNormalize";
 import { uid } from "./format";
 
@@ -84,6 +86,8 @@ export const defaultSettings: Settings = {
   cloud: { provider: "off", askedSinceUnlock: false },
   smsInbox: false,
   bankTextsAsked: false,
+  bankTextsOff: false,
+  postNotificationsWarned: false,
   lockAlerts: false,
   moneyNames: [],
   smsMemory: [],
@@ -91,7 +95,6 @@ export const defaultSettings: Settings = {
   installId: "",
   readOnly: false,
   homePreset: "custom",
-  adhd: emptyAdhd(),
   presetLast: {},
   headsUp: emptyHeadsUp(),
   sampleIds: [],
@@ -110,8 +113,7 @@ export function emptyDB(): DB {
     moneyNames: [...defaultSettings.moneyNames],
     smsMemory: [...defaultSettings.smsMemory],
     ownAccounts: [...defaultSettings.ownAccounts],
-    adhd: emptyAdhd(),
-    presetLast: {},
+      presetLast: {},
     headsUp: emptyHeadsUp(),
     sampleIds: [],
     modules: defaultSettings.modules.map((m) => ({ ...m })),
@@ -153,6 +155,8 @@ export function emptyDB(): DB {
     recents: {},
     cycle: emptyCycle(),
     water: emptyWater(),
+    reminders: [],
+    medicines: [],
     tombstones: [],
   };
 }
@@ -178,11 +182,14 @@ export function normalizeDB(raw: any): DB {
   s.cloud = parseCloud(raw?.settings?.cloud);
   s.smsInbox = raw?.settings?.smsInbox === true;
   s.bankTextsAsked = raw?.settings?.bankTextsAsked === true;
+  s.bankTextsOff = raw?.settings?.bankTextsOff === true;
+  s.postNotificationsWarned = raw?.settings?.postNotificationsWarned === true;
   s.lockAlerts = raw?.settings?.lockAlerts === true;
   s.readOnly = raw?.settings?.readOnly === true;
   s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();
   s.homePreset = migrateHomePresetOnLoad(raw, parseHomePreset(raw?.settings?.homePreset));
-  s.adhd = parseAdhd(raw?.settings?.adhd);
+  // v0.9.8: ADHD mode removed. An "adhd" home preset parses to custom; its saved data is dropped.
+  delete (s as { adhd?: unknown }).adhd;
   s.presetLast = parsePresetLast(raw?.settings?.presetLast);
   s.headsUp = parseHeadsUp(raw?.settings?.headsUp);
   s.sampleIds = Array.isArray(raw?.settings?.sampleIds) ? raw.settings.sampleIds.filter((id: unknown) => typeof id === "string").map((id: string) => id.slice(0, 40)).slice(0, 800) : [];
@@ -250,6 +257,8 @@ export function normalizeDB(raw: any): DB {
     txns: Array.isArray(raw?.txns) ? raw.txns.map(normalizeTxn) : [],
     cycle: normalizeCycle(raw?.cycle),
     water: normalizeWater(raw?.water),
+    reminders: normalizeReminders(raw?.reminders),
+    medicines: normalizeMedicines(raw?.medicines),
     tombstones: Array.isArray(raw?.tombstones) ? raw.tombstones.filter((t: any) => t && typeof t.id === "string" && typeof t.kind === "string" && typeof t.deletedAt === "string") : [],
   };
 }

@@ -104,6 +104,15 @@ export function classifyMoney(text: string, type: "expense" | "income"): MoneyHi
   return best(clean, type === "income" ? INCOME : EXPENSE);
 }
 
+/**
+ * v0.9.8 (plan 10.2): keep the last chips on screen while there is text, so a space or a
+ * one-letter word does not make them vanish. They go when the note is cleared or saved.
+ */
+export function heldSuggestions<T>(previous: T[], next: T[], text: string): T[] {
+  if (!text.trim()) return [];
+  return next.length ? next : previous;
+}
+
 export function moneySuggestions(text: string, type: "expense" | "income", limit = 6): MoneySuggestion[] {
   const q = norm(text);
   const token = q.split(" ").filter(Boolean).pop() ?? "";

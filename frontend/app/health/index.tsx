@@ -52,7 +52,11 @@ export default function HealthScreen() {
     <View style={{ flex: 1, backgroundColor: colors.surface }} testID="health-screen">
       <Header title="Health" testID="health-header" />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: insets.bottom + 28, gap: 14, maxWidth: 720, width: "100%", alignSelf: "center" }}>
-        <T>A reminder at the time you set. Nothing is counted.</T>
+        <Card testID="health-medicines-link" onPress={() => router.push("/health/medicines")}>
+          <T v="label">Medicines</T>
+          <T muted>{db.medicines.length ? `${db.medicines.filter((m) => m.active).length} active` : "Add a medicine and the times you take it"}</T>
+        </Card>
+        <T>A water reminder at the time you set. Nothing is counted.</T>
         <T muted>If that time is inside quiet hours, the reminder moves to when quiet hours end.</T>
         <Card testID="health-clock">
           <T v="label">Time</T>

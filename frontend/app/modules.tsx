@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { usesNativeTabs } from "@/src/navigation";
+import { Header } from "@/src/components/Header";
 import { MODULES, moduleById, TILE_META } from "@/src/core/modules";
 import { shownInDecoy } from "@/src/core/profiles";
 import type { DB, ModuleId } from "@/src/core/types";
@@ -26,7 +26,7 @@ export default function Modules() {
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const bottomChrome = usesNativeTabs ? insets.bottom : 0;
+  const bottomChrome = insets.bottom;
   const s = db.settings;
   const planned = MODULES.filter((m) => m.status === "planned");
   const visible = session === "real" ? s.modules : s.modules.filter((m) => shownInDecoy(m.id));
@@ -35,12 +35,9 @@ export default function Modules() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
-      <View style={{ paddingTop: insets.top + 8, paddingHorizontal: sp.lg, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <Eyebrow>Your toolkit</Eyebrow>
-        <T v="title" testID="modules-title">Modules</T>
-      </View>
+      <Header title="Modules" testID="modules-title" />
       <ScrollView contentContainerStyle={{ padding: sp.lg, paddingBottom: bottomChrome + 24, maxWidth: 720, width: "100%", alignSelf: "center" }}>
-        <T muted style={{ fontSize: 12, marginBottom: 10 }}>Hold a row, then drag. The other rows open a gap where it will land.</T>
+        <T muted style={{ fontSize: 12, marginBottom: 10 }}>Turn a module off to hide it from the menu. Its records stay. The order here is the order in the menu. Hold a row, then drag.</T>
         <Eyebrow style={{ marginBottom: 8 }}>Installed · {visible.length}</Eyebrow>
         <ReorderGroup rowHeight={76} orderKey={visible.map((m) => m.id).join("\n")}>
         {visible.map((ms, i) => {

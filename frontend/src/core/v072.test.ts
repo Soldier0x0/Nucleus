@@ -107,7 +107,7 @@ test("home boards and the timeline swipe in a circle", () => {
   assert.match(timeline, /nextTimelineFilter/);
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
   const modes = readFileSync(new URL("../components/HomeModes.tsx", import.meta.url), "utf8");
-  const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function AdhdPanel"));
+  const swipe = modes.slice(modes.indexOf("export function SwipeHome"), modes.indexOf("export function HeadsUpCard"));
   assert.match(swipe, /nestedScrollEnabled/);
   assert.equal(/<ScrollView[\s\S]*<SwipeHome/.test(home), false);
   const money = readFileSync(new URL("../../app/money/index.tsx", import.meta.url), "utf8");

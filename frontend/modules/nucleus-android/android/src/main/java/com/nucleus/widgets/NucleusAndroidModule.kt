@@ -224,26 +224,6 @@ class NucleusAndroidModule : Module() {
       }
     }
 
-    AsyncFunction("readSms") {
-      val ctx = appContext.reactContext ?: return@AsyncFunction "[]"
-      if (ctx.checkSelfPermission(android.Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) return@AsyncFunction "[]"
-      val cursor = ctx.contentResolver.query(Uri.parse("content://sms/inbox"), arrayOf("address", "body", "date"), null, null, "date DESC")
-        ?: return@AsyncFunction "[]"
-      val arr = org.json.JSONArray()
-      cursor.use { rows ->
-        var n = 0
-        while (rows.moveToNext() && n < 40) {
-          n += 1
-          val item = org.json.JSONObject()
-          item.put("sender", rows.getString(0) ?: "")
-          item.put("body", rows.getString(1) ?: "")
-          item.put("at", rows.getLong(2).toString())
-          arr.put(item)
-        }
-      }
-      arr.toString()
-    }
-
     Function("installedVersion") {
       val ctx = appContext.reactContext ?: return@Function ""
       try {

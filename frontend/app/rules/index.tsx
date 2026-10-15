@@ -5,7 +5,7 @@ import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import type { Rule, RuleAction, RuleTriggerKind } from "@/src/core/types";
 import { dryRun, evaluateRule, markFired, reminders, ruleSentence, TRIGGERS, triggerMeta } from "@/src/core/rules";
-import { notificationsSupported, permissionState, requestPermission, scheduledCount, syncReminders } from "@/src/core/notify";
+import { notificationsSupported, permissionState, reminderChannel, requestPermission, scheduledCount, syncReminders } from "@/src/core/notify";
 import { num, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
@@ -34,7 +34,7 @@ export default function Rules() {
 
   const applyReminders = async () => {
     const list = reminders(db);
-    const keys = await syncReminders(list, db.settings.lockAlerts ? "nucleus-lock" : "nucleus-reminders");
+    const keys = await syncReminders(list, reminderChannel(db.settings.lockAlerts));
     const once = list.filter((r) => r.once && keys.includes(r.key)).map((r) => r.key);
     if (once.length) update((d) => markFired(d, once));
     setScheduled(await scheduledCount());
@@ -184,7 +184,7 @@ export default function Rules() {
             setAskPerm(false);
             if (p.granted) {
               setSettings({ remindersEnabled: true });
-              await syncReminders(reminders(db), db.settings.lockAlerts ? "nucleus-lock" : "nucleus-reminders");
+              await syncReminders(reminders(db), reminderChannel(db.settings.lockAlerts));
               setScheduled(await scheduledCount());
               toast("Reminders are on", "bell-ring-outline");
             } else if (!p.canAskAgain && Platform.OS !== "web") {

@@ -19,7 +19,6 @@ type Native = {
   clearIconRestart(): void;
   consumePhoneLock(): boolean | { deviceLocked?: boolean; screenTurnedOff?: boolean };
   consumeIconRestart(): boolean;
-  readSms(): Promise<string>;
   readBankNotices(): string;
   readBattery(): string;
   notificationAccess(): boolean;
@@ -153,18 +152,6 @@ export function openNotificationListener(): "opened" | "blocked" {
     return bridge()?.openNotificationListener() === "opened" ? "opened" : "blocked";
   } catch {
     return "blocked";
-  }
-}
-
-export async function readSmsInbox(): Promise<InboxLine[]> {
-  const mod = bridge();
-  if (!mod) return [];
-  try {
-    const raw = await mod.readSms();
-    const parsed = JSON.parse(raw) as InboxLine[];
-    return Array.isArray(parsed) ? parsed.filter((line) => line && typeof line.body === "string") : [];
-  } catch {
-    return [];
   }
 }
 

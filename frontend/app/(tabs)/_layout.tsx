@@ -40,10 +40,6 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" />
           <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="modules">
-          <NativeTabs.Trigger.Icon sf="square.stack.3d.up.fill" />
-          <NativeTabs.Trigger.Label>Modules</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
         <NativeTabs.Trigger name="attention">
           <NativeTabs.Trigger.Icon sf="bell.fill" />
           <NativeTabs.Trigger.Label>Attention</NativeTabs.Trigger.Label>
@@ -69,7 +65,6 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />
-      <Tabs.Screen name="modules" options={{ title: "Modules", tabBarButtonTestID: "tab-modules", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "view-grid" : "view-grid-outline"} color={color as string} size={24} /> }} />
       <Tabs.Screen
         name="attention"
         options={{

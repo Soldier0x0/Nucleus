@@ -1,10 +1,14 @@
 import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { CHANNELS } from "@/src/core/notify";
 import { useStore } from "@/src/core/store";
 import { classifyMoney } from "@/src/core/moneyWords";
 import { memoryKey, saveBankNotices, type BankAsk, type BankTxn, type InboxLine } from "@/src/core/smsMoney";
 import type { DB } from "@/src/core/types";
-import { readBankNotices, subscribeBankNotices } from "@/src/native/android";
+import { readBankNotices, requestNotificationAccess, subscribeBankNotices } from "@/src/native/android";
+import { bankInboxAutoOn } from "@/src/core/bankAccess";
+import { AppState } from "react-native";
 
 const notified = new Set<string>();
 
@@ -53,7 +57,7 @@ async function postAsks(asks: BankAsk[]) {
           category: ask.category,
         },
       },
-      trigger: null,
+      trigger: Platform.OS === "android" ? { channelId: CHANNELS.smsAsk } : null,
     }).catch(() => {});
   }
 }
@@ -116,6 +120,22 @@ export function BankTextSync() {
     });
     return () => sub.remove();
   }, [update]);
+
+  // Plan 5.5: notification access granted from the system sheet turns the switch on here too.
+  useEffect(() => {
+    if (!ready || session !== "real" || Platform.OS !== "android") return;
+    const check = () => {
+      const s = dbRef.current.settings;
+      if (bankInboxAutoOn({ accessOn: requestNotificationAccess(), inboxOn: s.smsInbox, turnedOff: s.bankTextsOff })) {
+        update((d) => ({ ...d, settings: { ...d.settings, smsInbox: true, bankTextsAsked: true } }));
+      }
+    };
+    check();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") check();
+    });
+    return () => sub.remove();
+  }, [ready, session, update]);
 
   useEffect(() => {
     if (!ready || session !== "real" || !db.settings.smsInbox) return;
