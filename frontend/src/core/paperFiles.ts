@@ -18,7 +18,8 @@ export function paperTooBigToast(): string {
   return `That file is too large for on-phone storage. ${paperAttachSizeHint()}`;
 }
 
-export type PaperPick = { uri: string; mime: string };
+/** `name` is the picked file name, used for title/tag suggestions before saving. */
+export type PaperPick = { uri: string; mime: string; name?: string };
 
 export { normalizePaper, paperAttachmentUri, paperBadge, paperIsPdf, paperMime } from "./paperNormalize";
 
@@ -95,16 +96,17 @@ export async function pickPaperDocument(): Promise<PaperPick | null | "too-big" 
   if (doc.canceled || !doc.assets[0]?.uri) return null;
   const asset = doc.assets[0];
   const mime = asset.mimeType ?? (asset.name?.toLowerCase().endsWith(".pdf") ? "application/pdf" : "image/jpeg");
+  const name = typeof asset.name === "string" && asset.name.trim() ? asset.name.trim().slice(0, 120) : undefined;
   if (mime === "application/pdf") {
     const b64 = await readFileBase64(asset.uri);
     if (!b64) return null;
     if (b64.length * 0.75 > MAX_PDF_BYTES) return "too-big";
-    return { uri: `data:application/pdf;base64,${b64}`, mime: "application/pdf" };
+    return { uri: `data:application/pdf;base64,${b64}`, mime: "application/pdf", name };
   }
   const b64 = await readFileBase64(asset.uri);
   if (!b64) return null;
   if (b64.length > MAX_IMAGE_B64) return "too-big";
-  return { uri: `data:${mime};base64,${b64}`, mime };
+  return { uri: `data:${mime};base64,${b64}`, mime, name };
 }
 
 /** @deprecated Use pickPaperPhoto or pickPaperDocument. */

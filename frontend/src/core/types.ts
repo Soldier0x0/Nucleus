@@ -53,9 +53,14 @@ export type UtilityBill = { id: string; kind: UtilityKind; date: string; amount:
 export type Person = { id: string; name: string; note?: string };
 export type MotorCover = "comprehensive" | "third-party";
 export type PaperKind = "licence" | "registration" | "insurance" | "passport" | "fastag" | "warranty" | "puc" | "personal_accident" | "other";
+/** One vault, many sections: the same paper can sit under more than one tag. */
+export type PaperTag = "Vehicle" | "Health" | "Money" | "Home" | "Travel" | "Other";
 export type Paper = {
   id: string;
+  /** Kept for the motor XOR, PUC and PA helpers. Sections come from tags. */
   kind: PaperKind;
+  /** Sections this paper shows in. Absent on old records; derived from kind on load. */
+  tags?: PaperTag[];
   title: string;
   number?: string;
   expiry?: string;
