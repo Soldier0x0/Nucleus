@@ -1,4 +1,4 @@
-import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Trip, Txn, Vehicle, VehicleJourney } from "./types";
+import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, PairedDevice, ServiceEntry, Settings, Trip, Txn, Vehicle, VehicleJourney } from "./types";
 import { isChannel } from "./merchantTable";
 import { isTransitKind, tripKindOf } from "./transit";
 import { emptyCycle, normalizeCycle } from "./cycle";
@@ -98,6 +98,7 @@ export const defaultSettings: Settings = {
   merchantOverrides: [],
   travelFolded: true,
   installId: "",
+  pairedDevices: [],
   readOnly: false,
   reopenHours: REOPEN_DEFAULT_HOURS,
   lastRoute: null,
@@ -122,6 +123,7 @@ export function emptyDB(): DB {
     smsMemory: [...defaultSettings.smsMemory],
     ownAccounts: [...defaultSettings.ownAccounts],
     merchantOverrides: [...defaultSettings.merchantOverrides],
+    pairedDevices: [...defaultSettings.pairedDevices],
       presetLast: {},
     headsUp: emptyHeadsUp(),
     sampleIds: [],
@@ -230,6 +232,7 @@ export function normalizeDB(raw: any): DB {
         .slice(-80)
         .map((row: any) => ({ key: String(row.key).slice(0, 40), channel: row.channel }))
     : [];
+  s.pairedDevices = parsePairedDevices(raw?.settings?.pairedDevices);
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
   if (callName) s.givenName = callName;
@@ -323,6 +326,22 @@ function parseCloud(raw: any): Settings["cloud"] {
   if (typeof raw?.lastSyncAt === "string") cloud.lastSyncAt = raw.lastSyncAt;
   if (typeof raw?.unlockedAt === "string") cloud.unlockedAt = raw.unlockedAt;
   return cloud;
+}
+
+const KEY_B64 = /^[A-Za-z0-9+/]{43}=$/;
+
+/** Paired desktops keep only rows that still carry a usable X25519 public key. */
+function parsePairedDevices(raw: unknown): PairedDevice[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((dev: any) => dev && typeof dev.id === "string" && dev.id.trim() && typeof dev.name === "string" && typeof dev.key === "string" && KEY_B64.test(dev.key))
+    .slice(0, 16)
+    .map((dev: any) => ({
+      id: String(dev.id).trim().slice(0, 40),
+      name: dev.name.trim().slice(0, 40) || "Device",
+      key: dev.key,
+      lastSyncAt: typeof dev.lastSyncAt === "string" ? dev.lastSyncAt.slice(0, 40) : "",
+    }));
 }
 
 function parseSmsMemory(raw: unknown): Settings["smsMemory"] {
