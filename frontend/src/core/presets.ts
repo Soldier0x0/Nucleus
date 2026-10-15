@@ -78,16 +78,17 @@ const WORKSHOP: PresetItem[] = [
   { id: "history", size: "small" },
 ];
 
+/**
+ * v0.9.8: the chip row shows arrangement boards only. Money, Vehicle and Desk
+ * left it; Favourites is the landing that replaces them.
+ */
 export const PRESET_CHOICES: { id: HomePresetId; name: string; icon: string }[] = [
   { id: "custom", name: "Custom", icon: "view-dashboard-outline" },
-  { id: "money", name: "Money", icon: "wallet-outline" },
-  { id: "vehicle", name: "Vehicle", icon: "motorbike" },
   { id: "travel", name: "Travel", icon: "train-car" },
   { id: "home", name: "Home", icon: "home-outline" },
   { id: "health", name: "Health", icon: "cup-water" },
   { id: "documents", name: "Documents", icon: "file-document-outline" },
   { id: "bills", name: "Bills", icon: "calendar-clock" },
-  { id: "desk", name: "Desk", icon: "book-open-variant" },
   { id: "workshop", name: "Workshop", icon: "hammer-wrench" },
 ];
 
@@ -232,7 +233,7 @@ export function presetItemHasData(db: DB, id: string): boolean {
     case "transittrain":
     case "transitcab":
     case "transitbus":
-      return db.txns.some((row) => row.type === "expense" && row.category === "Transport");
+      return db.txns.some((row) => row.type === "expense" && row.category === "Travel");
     case "costkm":
     case "fueltank":
     case "servleft":
@@ -333,7 +334,7 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   packing: "travel",
   heading: "travel",
   stops: "travel",
-  weather: "travel",
+  weather: "home",
   transitmetro: "travel",
   transittrain: "travel",
   transitcab: "travel",

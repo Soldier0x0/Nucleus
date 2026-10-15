@@ -1,5 +1,6 @@
 import type { Paper } from "./types";
 import { uid } from "./format";
+import { normalizePaperTags, paperTagsFromKind } from "./paperTags";
 
 export function paperAttachmentUri(paper: Paper): string | undefined {
   return paper.file ?? paper.photo;
@@ -89,6 +90,7 @@ export function normalizePaper(raw: unknown): Paper {
   const next: Paper = {
     id: typeof row.id === "string" ? row.id.slice(0, 40) : uid(),
     kind: (allowed.has(kind) ? kind : "other") as Paper["kind"],
+    tags: normalizePaperTags(row.tags) ?? paperTagsFromKind(kind),
     title: typeof row.title === "string" ? row.title.slice(0, 120) : "Paper",
     createdAt: typeof row.createdAt === "string" ? row.createdAt : new Date().toISOString(),
   };

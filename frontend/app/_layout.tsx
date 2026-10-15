@@ -14,6 +14,7 @@ import { applyActiveLook, buildTheme, ThemeContext } from "@/src/theme";
 import { StoreProvider, useStore } from "@/src/core/store";
 import { ToastProvider } from "@/src/components/Toast";
 import { LockGate } from "@/src/components/LockGate";
+import { RouteRecorder } from "@/src/components/RouteRecorder";
 import { BackupNudge } from "@/src/components/BackupNudge";
 import { SyncAsk } from "@/src/components/SyncAsk";
 import { UnreadableData } from "@/src/components/UnreadableData";
@@ -104,6 +105,7 @@ export default function RootLayout() {
                 <BankTextSync />
                 <QuietSync />
                 <LockGate />
+                <RouteRecorder />
               </ToastProvider>
             </Themed>
           </StoreProvider>

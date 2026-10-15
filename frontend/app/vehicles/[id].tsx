@@ -5,11 +5,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { vehicleStats } from "@/src/core/intelligence";
+import { odometerEstimate, odometerEstimateLabel } from "@/src/core/fuelCapture";
 import { deleteVehicle, SERVICE_LABEL } from "@/src/core/actions";
-import { daysBetween, fmtDate, num, todayISO } from "@/src/core/format";
+import { daysBetween, fmtDate, money, num, todayISO } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, StatusBadge, T } from "@/src/components/ui";
-import { Countdown, Gauge, LineChart } from "@/src/components/charts";
+import { Countdown, FillChart, Gauge } from "@/src/components/charts";
 import { VehicleSheet } from "@/src/components/VehicleSheet";
 import { FuelSheet, KIND_ICON, ServiceSheet } from "@/src/components/VehicleForms";
 import { WhySheet } from "@/src/components/WhySheet";
@@ -19,7 +20,7 @@ import { LinkedSection } from "@/src/components/LinkedSection";
 import { VehicleArt } from "@/src/components/VehicleArt";
 import { VehicleCare } from "@/src/components/VehicleCare";
 import { VehicleSchedule } from "@/src/components/VehicleSchedule";
-import { VehicleJourneySection } from "@/src/components/VehicleJourneySection";
+import { OdometerSheet, VehicleJourneySection } from "@/src/components/VehicleJourneySection";
 import { Image } from "expo-image";
 import { fuelLabel, vehicleBody } from "@/src/core/life";
 
@@ -31,8 +32,9 @@ export default function VehicleDetail() {
   const router = useRouter();
   const toast = useToast();
   const { width } = useWindowDimensions();
-  const [sheet, setSheet] = useState<null | "fuel" | "service" | "edit" | "why" | "delete">(null);
+  const [sheet, setSheet] = useState<null | "fuel" | "service" | "edit" | "why" | "delete" | "odo">(null);
   const [tab, setTab] = useState<"fuel" | "service" | "linked">("fuel");
+  const [numbers, setNumbers] = useState(false);
   const v = db.vehicles.find((x) => x.id === id);
   if (!v)
     return (
@@ -46,6 +48,8 @@ export default function VehicleDetail() {
   const st = vehicleStats(db, v);
   const s = db.settings;
   const today = todayISO();
+  const odo = odometerEstimate(db, v, today);
+  const odoNote = odo.estimated ? `estimated · last reading ${odo.daysAgo === 1 ? "yesterday" : `${odo.daysAgo} days ago`}` : odo.daysAgo > 0 && odo.lastDate ? `last reading ${odo.daysAgo === 1 ? "yesterday" : `${odo.daysAgo} days ago`}` : s.distanceUnit;
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
   const services = db.services.filter((x) => x.vehicleId === v.id).sort((a, b) => b.date.localeCompare(a.date));
   const sev = st.service.remaining <= 0 ? "urgent" : st.service.remaining <= Math.max(300, st.service.interval * 0.1) ? "upcoming" : "ok";
@@ -118,7 +122,6 @@ export default function VehicleDetail() {
           {[
             { l: "Avg mileage", val: isFinite(st.avgMileage) ? num(st.avgMileage, 1) : "—", u: `${s.distanceUnit}/${s.volumeUnit}`, id: "avg" },
             { l: "Cost / " + s.distanceUnit, val: isFinite(st.costPerKm) ? num(st.costPerKm, 2) : "—", u: s.currency, id: "cpk" },
-            { l: "Odometer", val: num(st.odometer, 0), u: s.distanceUnit, id: "odo" },
           ].map((m) => (
             <View key={m.id} testID={`vehicle-stat-${m.id}`} style={[styles.stat, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
               <Eyebrow style={{ fontSize: 9 }}>{m.l}</Eyebrow>
@@ -126,6 +129,12 @@ export default function VehicleDetail() {
               <T muted style={{ fontSize: 11 }}>{m.u}</T>
             </View>
           ))}
+          <Press testID="vehicle-stat-odo" onPress={() => setSheet("odo")} style={[styles.stat, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+            <Eyebrow style={{ fontSize: 9 }}>Odometer</Eyebrow>
+            <T v="monoLg" style={{ marginTop: 4 }} testID="vehicle-odometer">{odometerEstimateLabel(odo)}</T>
+            <T muted style={{ fontSize: 11 }}>{odoNote}</T>
+            {odo.lastDate && odo.daysAgo > 0 ? <T color={colors.brandPrimary} style={{ fontSize: 11, marginTop: 2 }}>Update odometer</T> : null}
+          </Press>
         </View>
 
         <Card>
@@ -139,18 +148,27 @@ export default function VehicleDetail() {
         <VehicleJourneySection vehicle={v} />
 
         <Card testID="vehicle-mileage-chart">
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-            <Eyebrow style={{ flex: 1 }}>Mileage trend</Eyebrow>
-            {isFinite(st.lastMileage) ? <T v="mono" style={{ fontSize: 12 }}>last {num(st.lastMileage, 1)}</T> : null}
-          </View>
-          {st.mileage.length >= 2 ? (
-            <>
-              <LineChart data={st.mileage.map((m) => m.value)} width={chartW} height={120} showAvg />
-              <T muted style={{ fontSize: 11, marginTop: 6 }}>Dashed line = your average. Each point is one fill-up.</T>
-            </>
-          ) : (
-            <T muted>Log at least 3 fill-ups to see your mileage trend.</T>
-          )}
+          <Press testID="vehicle-numbers-toggle" onPress={() => setNumbers((n) => !n)}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+              <Eyebrow style={{ flex: 1 }}>Cost and mileage per fill-up</Eyebrow>
+              {isFinite(st.lastMileage) ? <T v="mono" style={{ fontSize: 12 }}>last {num(st.lastMileage, 1)}</T> : null}
+            </View>
+            {st.fuel.length >= 2 ? (
+              <>
+                <FillChart
+                  data={st.fuel.slice(-12).map((f) => ({ label: f.date.slice(5), cost: f.total, mileage: st.mileage.find((m) => m.date === f.date)?.value }))}
+                  width={chartW}
+                  height={140}
+                  showValues={numbers}
+                  format={(v, kind) => (s.privacyMode ? "•••" : kind === "cost" ? money(v, s.currency, { decimals: false }) : num(v, 1))}
+                  testID="vehicle-fill-chart"
+                />
+                <T muted style={{ fontSize: 11, marginTop: 6 }}>Bars = cost. Line = mileage.{numbers ? " Tap to hide values." : " Tap for values."}</T>
+              </>
+            ) : (
+              <T muted>Log at least 2 fill-ups to see cost and mileage together.</T>
+            )}
+          </Press>
           <View style={{ flexDirection: "row", marginTop: 12, gap: 16 }}>
             <View style={{ flex: 1 }}>
               <Eyebrow>Fuel this month</Eyebrow>
@@ -161,6 +179,20 @@ export default function VehicleDetail() {
               <Amount value={st.totalFuelCost} v="mono" />
             </View>
           </View>
+        </Card>
+        <Card testID="vehicle-service-cost-card">
+          <Eyebrow>Service cost per year</Eyebrow>
+          {st.serviceCostYears.length === 0 ? (
+            <T muted style={{ marginTop: 6 }}>No service bills yet.</T>
+          ) : (
+            st.serviceCostYears.map((row) => (
+              <View key={row.year} style={{ flexDirection: "row", alignItems: "center", marginTop: 6 }} testID={`vehicle-service-year-${row.year}`}>
+                <T style={{ flex: 1 }}>{row.year}</T>
+                <Amount value={row.total} v="mono" />
+              </View>
+            ))
+          )}
+          <T muted style={{ fontSize: 11, marginTop: 8 }}>All-time {s.privacyMode ? "•••" : money(st.serviceCostTotal, s.currency, { decimals: false })}</T>
         </Card>
 
         <Segmented testID="vehicle-log-tabs" value={tab} onChange={setTab} options={[{ value: "fuel", label: `Fuel · ${st.fuel.length}` }, { value: "service", label: `Service · ${services.length}` }, { value: "linked", label: "Linked" }]} />
@@ -226,6 +258,7 @@ export default function VehicleDetail() {
 
       {sheet === "fuel" ? <FuelSheet visible onClose={() => setSheet(null)} vehicle={v} /> : null}
       {sheet === "service" ? <ServiceSheet visible onClose={() => setSheet(null)} vehicle={v} /> : null}
+      {sheet === "odo" ? <OdometerSheet vehicle={v} onClose={() => setSheet(null)} /> : null}
       {sheet === "edit" ? <VehicleSheet visible onClose={() => setSheet(null)} vehicle={v} /> : null}
       <WhySheet
         visible={sheet === "why"}

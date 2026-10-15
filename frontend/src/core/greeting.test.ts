@@ -6,7 +6,7 @@ import { cleanCallName, greetingLine } from "./greeting.ts";
 const NAME_FIELDS = [
   new URL("../components/NameAsk.tsx", import.meta.url),
   new URL("../../app/onboarding.tsx", import.meta.url),
-  new URL("../../app/(tabs)/settings.tsx", import.meta.url),
+  new URL("../components/settings/DisplaySettings.tsx", import.meta.url),
 ];
 
 test("the greeting keeps the name on the same line", () => {

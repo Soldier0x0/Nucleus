@@ -17,7 +17,7 @@ export function PaperAttach({
   paperId: string;
   uri?: string;
   mime?: string;
-  onChange: (next: { uri?: string; mime?: string }) => void;
+  onChange: (next: { uri?: string; mime?: string; name?: string }) => void;
   testID: string;
 }) {
   const { colors } = useTheme();
@@ -28,7 +28,7 @@ export function PaperAttach({
     if (next === "too-big") return toast(paperTooBigToast(), "file-alert-outline");
     if (next === "denied") return toast("File access is off for Nucleus.", "file-alert-outline");
     if (!next) return;
-    onChange({ uri: next.uri, mime: next.mime });
+    onChange({ uri: next.uri, mime: next.mime, name: next.name });
   };
   return (
     <View style={{ marginBottom: 12 }}>

@@ -10,6 +10,24 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.9.9
+
+- Changed Travel spend into one Money category: metro, train, cab, bus and bike-taxi fares, hotel and flight all sit under Travel; rides and fuel stay under Vehicle.
+- Added a Journeys card in Money, with each trip's packed checklist, notes and spend, and trip expenses now carry their trip so nothing is counted twice.
+- Added an online or in-person tag on expenses with a merchant table for known chains and apps; a correction is remembered next time.
+- Added a money pie for categories, an online vs in-person trend, and fuel cost with mileage per fill-up; charts show the shape first and amounts on tap, and privacy mode still hides them.
+- Changed service cost to show per calendar year instead of all time.
+- Added Favourites, a landing with attention, the next reminder, the budget ring, a spend sparkline and service left; it replaces the Money, Vehicle and Desk chips.
+- Added reopening the last screen you were on when you come back within three hours, with a setting for that window.
+- Added a single-module shell: with one module on, the menu goes away and the phone becomes that module's app.
+- Changed Settings into a hub with Display, Security and privacy, Notifications, Modules, Data and backup and About, with search across all of them.
+- Added notification sounds in Settings, with a row that opens each Android channel.
+- Changed Documents into one vault: a file can carry several tags, the title and tags are suggested from its name, and delete asks once and removes it everywhere.
+- Added an estimated odometer with a ~ mark that keeps counting for 30 days after the last reading, then stops and says it is stale; Update odometer is one tap.
+- Added ride checklists under Vehicle: edit the templates once, tick off each ride.
+- Added home widgets to log fuel, add an expense or log service; they open the right form after unlock and never write from the widget.
+- Changed sample data to match: both vehicles get catalog parts and a purchase date, a few spends get a channel, and the Goa trip opens as a journey.
+
 ## v0.9.8
 
 - Changed the bottom bar to Today, Attention and Settings; modules now open from a menu at the top left of Today, grouped as Vehicle, Money, Health, Documents, Notes, Reminders, Life and DevLab.

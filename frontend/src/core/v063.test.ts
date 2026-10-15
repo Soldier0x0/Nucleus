@@ -9,11 +9,25 @@ import { askToEnable, emergencyLockCard, staysEnabled } from "./featureAccess.ts
 import { attentionItems, serviceEstimate } from "./intelligence.ts";
 import { dismissNoticeAction, noticePresentation } from "./notices.ts";
 import { hasSampleData, withoutSampleData, withSampleData } from "./sample.ts";
+import { vehicleParts } from "./serviceCatalog.ts";
+import { tripKindOf } from "./transit.ts";
 import { applyInbox, filterInbox, memoryKey } from "./smsMoney.ts";
 import type { FuelEntry, Txn, Vehicle } from "./types.ts";
 import { cloudScope, cloudSignIn, cloudStoreMessage } from "./vaultFile.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+
+// Settings moved into a hub plus child screens (v0.9.8 phase 9.5), so these
+// source checks read every piece that makes up the old single screen.
+const readSettings = () =>
+  [
+    "../../app/(tabs)/settings.tsx",
+    "../components/settings/DisplaySettings.tsx",
+    "../components/settings/SecuritySettings.tsx",
+    "../components/settings/NotificationsSettings.tsx",
+    "../components/settings/DataSettings.tsx",
+    "../components/settings/AboutSettings.tsx",
+  ].map(read).join("\n");
 
 test("the emergency card is public and high, with blood, phone, and plate, only while the switch is on", () => {
   assert.equal(emergencyLockCard({ showOnLock: false, bloodGroup: "O+", phone: "9876543210", plate: "KA 01 AB 1234" }), null);
@@ -96,7 +110,7 @@ test("bank and UPI notices accept both wordings, keep balance lines, and still d
 });
 
 test("the screen, the listener, and the upload say what this version does", () => {
-  const settings = read("../../app/(tabs)/settings.tsx");
+  const settings = readSettings();
   const enable = read("../native/enableFeature.ts");
   const cloud = read("../native/cloudFile.ts");
   const android = read("../native/android.ts");
@@ -181,9 +195,48 @@ test("sample rows can be removed and entries the user added stay", () => {
   assert.equal(fromOld.txns.some((row) => row.note === "Salary"), false);
   assert.equal(fromOld.vehicles.some((row) => row.plate === "KA 01 AB 1234"), false);
   assert.equal(fromOld.budget.monthly, 9999);
-  const settings = read("../../app/(tabs)/settings.tsx");
+  const settings = readSettings();
   assert.match(settings, /settings-sample-remove-button/);
   assert.match(settings, /withoutSampleData/);
+});
+
+test("v0.9.8: the sample workspace ships catalog parts, channels and a journey, with no ADHD keys", () => {
+  const db = withSampleData(emptyDB());
+  const activa = db.vehicles.find((row) => row.plate === "KA 01 AB 1234");
+  const swift = db.vehicles.find((row) => row.name === "Swift");
+  assert.ok(activa && swift);
+  assert.ok(activa.purchaseDate);
+  assert.ok(swift.purchaseDate);
+  assert.deepEqual(activa.parts, vehicleParts(activa));
+  assert.deepEqual(swift.parts, vehicleParts(swift));
+  assert.ok((activa.parts?.length ?? 0) > 0);
+  assert.ok(activa.parts?.some((part) => part.id === "engine_oil"));
+  assert.ok(swift.parts?.some((part) => part.id === "coolant"));
+
+  const tagged = db.txns.filter((row) => row.channel);
+  assert.ok(tagged.length >= 3);
+  assert.ok(tagged.every((row) => ["online_food", "online_grocery", "in_person"].includes(row.channel ?? "")));
+  assert.ok(db.txns.some((row) => row.note === "Weekly groceries" && row.channel === "online_grocery"));
+  assert.ok(db.txns.some((row) => row.category === "Food" && row.channel === "in_person"));
+
+  const goa = db.trips.find((row) => row.name === "Goa 2026");
+  assert.ok(goa);
+  assert.equal(goa.kind, "journey");
+  assert.equal(tripKindOf(goa), "journey");
+  assert.ok(db.txns.some((row) => row.tripId === goa.id && row.category === "Travel"));
+  assert.equal(db.txns.some((row) => row.category === "Transport"), false);
+  assert.equal(db.settings.modules.find((m) => m.id === "travel")?.enabled, false);
+
+  assert.notEqual(db.settings.homePreset, "adhd");
+  assert.equal("adhd" in db.settings, false);
+  assert.doesNotMatch(JSON.stringify(db.settings), /"adhd"/);
+  assert.equal(hasSampleData(db), true);
+
+  const cleaned = withoutSampleData(db);
+  assert.equal(hasSampleData(cleaned), false);
+  assert.equal(cleaned.vehicles.length, 0);
+  assert.equal(cleaned.trips.length, 0);
+  assert.equal(cleaned.txns.length, 0);
 });
 
 test("a reminder dismiss clears the notice and does not open the app", () => {
@@ -292,7 +345,7 @@ test("about shows the installed version and follows a later stamp", () => {
   assert.equal(aboutTitle("0.8"), "Nucleus 0.8");
   assert.equal(aboutTitle(" 0.6.4 "), "Nucleus 0.6.4");
   assert.notEqual(aboutTitle("0.6.3"), "Nucleus 2.0");
-  const settings = read("../../app/(tabs)/settings.tsx");
+  const settings = readSettings();
   assert.doesNotMatch(settings, /Nucleus 2\.0/);
   assert.match(settings, /aboutTitle\(installedVersion\(\)\)/);
   const kt = read("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt");

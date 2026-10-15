@@ -64,7 +64,7 @@ test("public transit spend stays separate from bike fuel and cost per km", () =>
   const db = emptyDB();
   db.vehicles.push({ id: "v", name: "Bike", type: "bike", fuelType: "petrol", initialOdometer: 1000, serviceIntervalKm: 3000, createdAt: "2026-01-01" });
   db.fuel.push({ id: "f1", vehicleId: "v", date: "2026-04-02", odometer: 1500, litres: 5, price: 100, total: 500 });
-  db.txns.push({ id: "cab", type: "expense", amount: 120, category: "Transport", date: "2026-04-03", note: "Cab or taxi" });
+  db.txns.push({ id: "cab", type: "expense", amount: 120, category: "Travel", date: "2026-04-03", note: "Cab or taxi" });
   const month = monthKey("2026-04-03");
   assert.equal(publicTransitSpend(db, month, "cab"), 120);
   assert.equal(vehicleFuelSpendMonth(db, month), 500);

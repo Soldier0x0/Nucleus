@@ -238,6 +238,9 @@ jobs:
 
       - name: Upload the APK
         if: steps.plan.outputs.build == 'true'
+        # Artifact storage is only the reuse shortcut. When it is unavailable,
+        # the merge run compiles this tree itself before publishing.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.plan.outputs.artifact_name }}

@@ -1,0 +1,312 @@
+import { useState } from "react";
+import { useStore } from "../store";
+import { backlinks, linkedTitles } from "@core/wiki";
+import { todayISO, uid } from "@core/format";
+import type { KanbanBoard, KanbanCard, Note, WikiPage } from "@core/types";
+
+type Tab = "notes" | "wiki" | "kanban";
+
+export function NotesWikiKanban() {
+  const [tab, setTab] = useState<Tab>("notes");
+  return (
+    <div className="stack">
+      <div className="tabs">
+        {(["notes", "wiki", "kanban"] as Tab[]).map((t) => (
+          <button key={t} className={tab === t ? "tab on" : "tab"} onClick={() => setTab(t)}>
+            {t === "notes" ? "Notes" : t === "wiki" ? "Wiki" : "Kanban"}
+          </button>
+        ))}
+      </div>
+      {tab === "notes" ? <Notes /> : null}
+      {tab === "wiki" ? <Wiki /> : null}
+      {tab === "kanban" ? <Board /> : null}
+    </div>
+  );
+}
+
+function Notes() {
+  const { db, update } = useStore();
+  const [selectedId, setSelectedId] = useState<string | null>(db.notes[0]?.id ?? null);
+  const [itemDraft, setItemDraft] = useState("");
+  const note = db.notes.find((n) => n.id === selectedId) ?? db.notes[0] ?? null;
+  const now = () => new Date().toISOString();
+
+  const sorted = [...db.notes].sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false) || b.updatedAt.localeCompare(a.updatedAt));
+  const patch = (n: Note, changes: Partial<Note>) => update((d) => ({ ...d, notes: d.notes.map((x) => (x.id === n.id ? { ...x, ...changes, updatedAt: now() } : x)) }));
+
+  const addNote = () => {
+    const row: Note = { id: uid(), title: "Untitled", body: "", checklist: [], createdAt: now(), updatedAt: now() };
+    update((d) => ({ ...d, notes: [row, ...d.notes] }));
+    setSelectedId(row.id);
+  };
+
+  const removeNote = (n: Note) => {
+    if (!window.confirm(`Delete note "${n.title}"?`)) return;
+    update((d) => ({ ...d, notes: d.notes.filter((x) => x.id !== n.id) }));
+    setSelectedId(null);
+  };
+
+  return (
+    <div className="notes-grid">
+      <aside className="card p-list">
+        <div className="row spread"><h2>Notes</h2><button className="small-btn" onClick={addNote}>New</button></div>
+        <div className="doc-list">
+          {sorted.map((n) => (
+            <button key={n.id} className={n.id === note?.id ? "doc on" : "doc"} onClick={() => setSelectedId(n.id)}>
+              <span className="doc-title">{n.title}</span>
+              <span className="muted small">{n.body.slice(0, 60) || (n.checklist.length ? `${n.checklist.filter((c) => c.done).length}/${n.checklist.length} done` : "empty")}</span>
+            </button>
+          ))}
+          {sorted.length === 0 ? <p className="muted">No notes yet.</p> : null}
+        </div>
+      </aside>
+      <div className="stack">
+        {note ? (
+          <section className="card">
+            <div className="row spread">
+              <input className="title-input" value={note.title} onChange={(e) => patch(note, { title: e.target.value })} />
+              <div className="row">
+                <button className={note.pinned ? "chip on" : "chip"} onClick={() => patch(note, { pinned: !note.pinned })}>Pin</button>
+                <button className="link danger" onClick={() => removeNote(note)}>Delete</button>
+              </div>
+            </div>
+            <textarea rows={8} value={note.body} onChange={(e) => patch(note, { body: e.target.value })} placeholder="Write anything…" />
+            <h3>Checklist</h3>
+            {note.checklist.map((item) => (
+              <div className="row" key={item.id}>
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={(e) => patch(note, { checklist: note.checklist.map((c) => (c.id === item.id ? { ...c, done: e.target.checked } : c)) })}
+                />
+                <input
+                  className="grow"
+                  value={item.text}
+                  onChange={(e) => patch(note, { checklist: note.checklist.map((c) => (c.id === item.id ? { ...c, text: e.target.value } : c)) })}
+                />
+                <button className="link danger" onClick={() => patch(note, { checklist: note.checklist.filter((c) => c.id !== item.id) })}>✕</button>
+              </div>
+            ))}
+            <div className="row">
+              <input className="grow" placeholder="New checklist item" value={itemDraft} onChange={(e) => setItemDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && itemDraft.trim()) { patch(note, { checklist: [...note.checklist, { id: uid(), text: itemDraft.trim(), done: false }] }); setItemDraft(""); } }} />
+              <button className="small-btn" disabled={!itemDraft.trim()} onClick={() => { patch(note, { checklist: [...note.checklist, { id: uid(), text: itemDraft.trim(), done: false }] }); setItemDraft(""); }}>Add</button>
+            </div>
+          </section>
+        ) : (
+          <section className="card"><p className="muted">Pick a note, or create one.</p></section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Wiki() {
+  const { db, update } = useStore();
+  const [selectedId, setSelectedId] = useState<string | null>(db.wiki[0]?.id ?? null);
+  const page = db.wiki.find((p) => p.id === selectedId) ?? db.wiki[0] ?? null;
+  const sorted = [...db.wiki].sort((a, b) => a.title.localeCompare(b.title));
+  const now = () => new Date().toISOString();
+  const patch = (p: WikiPage, changes: Partial<WikiPage>) => update((d) => ({ ...d, wiki: d.wiki.map((x) => (x.id === p.id ? { ...x, ...changes, updatedAt: now() } : x)) }));
+
+  const addPage = () => {
+    const row: WikiPage = { id: uid(), title: "New page", body: "", createdAt: now(), updatedAt: now() };
+    update((d) => ({ ...d, wiki: [row, ...d.wiki] }));
+    setSelectedId(row.id);
+  };
+
+  const removePage = (p: WikiPage) => {
+    if (!window.confirm(`Delete page "${p.title}"?`)) return;
+    update((d) => ({ ...d, wiki: d.wiki.filter((x) => x.id !== p.id) }));
+    setSelectedId(null);
+  };
+
+  const links = page ? linkedTitles(page.body) : [];
+  const backs = page ? backlinks(db.wiki, page.title) : [];
+
+  const goTo = (title: string) => {
+    const target = db.wiki.find((p) => p.title === title);
+    if (target) {
+      setSelectedId(target.id);
+      return;
+    }
+    const row: WikiPage = { id: uid(), title, body: "", createdAt: now(), updatedAt: now() };
+    update((d) => ({ ...d, wiki: [row, ...d.wiki] }));
+    setSelectedId(row.id);
+  };
+
+  return (
+    <div className="notes-grid">
+      <aside className="card p-list">
+        <div className="row spread"><h2>Wiki</h2><button className="small-btn" onClick={addPage}>New</button></div>
+        <div className="doc-list">
+          {sorted.map((p) => (
+            <button key={p.id} className={p.id === page?.id ? "doc on" : "doc"} onClick={() => setSelectedId(p.id)}>
+              <span className="doc-title">{p.title}</span>
+              <span className="muted small">{p.body.slice(0, 60) || "empty"}</span>
+            </button>
+          ))}
+          {sorted.length === 0 ? <p className="muted">No pages yet.</p> : null}
+        </div>
+      </aside>
+      <div className="stack">
+        {page ? (
+          <section className="card">
+            <div className="row spread">
+              <input className="title-input" value={page.title} onChange={(e) => patch(page, { title: e.target.value })} />
+              <button className="link danger" onClick={() => removePage(page)}>Delete</button>
+            </div>
+            <textarea rows={14} value={page.body} onChange={(e) => patch(page, { body: e.target.value })} placeholder="Write with [[Page name]] links…" />
+            {links.length ? (
+              <p className="muted small">
+                Links: {links.map((l) => (
+                  <button key={l} className="link" onClick={() => goTo(l)}>
+                    {l}
+                  </button>
+                ))}
+              </p>
+            ) : null}
+            <p className="muted small">Backlinks: {backs.length ? backs.map((b) => b.title).join(", ") : "none"}</p>
+          </section>
+        ) : (
+          <section className="card"><p className="muted">Pick a page, or create one.</p></section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Board() {
+  const { db, update } = useStore();
+  const [boardId, setBoardId] = useState<string | null>(db.kanban[0]?.id ?? null);
+  const [cardDrafts, setCardDrafts] = useState<Record<string, string>>({});
+  const board = db.kanban.find((b) => b.id === boardId) ?? db.kanban[0] ?? null;
+
+  const patchBoard = (b: KanbanBoard, change: (x: KanbanBoard) => KanbanBoard) =>
+    update((d) => ({ ...d, kanban: d.kanban.map((x) => (x.id === b.id ? change(x) : x)) }));
+
+  const addBoard = () => {
+    const row: KanbanBoard = {
+      id: uid(),
+      name: "New board",
+      columns: [
+        { id: uid(), name: "Todo", order: 0 },
+        { id: uid(), name: "Doing", order: 1 },
+        { id: uid(), name: "Done", order: 2 },
+      ],
+      cards: [],
+      createdAt: new Date().toISOString(),
+    };
+    update((d) => ({ ...d, kanban: [...d.kanban, row] }));
+    setBoardId(row.id);
+  };
+
+  const removeBoard = (b: KanbanBoard) => {
+    if (!window.confirm(`Delete board "${b.name}"?`)) return;
+    update((d) => ({ ...d, kanban: d.kanban.filter((x) => x.id !== b.id) }));
+    setBoardId(null);
+  };
+
+  const addCard = (columnId: string) => {
+    if (!board) return;
+    const title = (cardDrafts[columnId] ?? "").trim();
+    if (!title) return;
+    const card: KanbanCard = { id: uid(), columnId, title, order: board.cards.filter((c) => c.columnId === columnId).length };
+    patchBoard(board, (x) => ({ ...x, cards: [...x.cards, card] }));
+    setCardDrafts({ ...cardDrafts, [columnId]: "" });
+  };
+
+  const move = (card: KanbanCard, dir: -1 | 1) => {
+    if (!board) return;
+    const columns = [...board.columns].sort((a, b) => a.order - b.order);
+    const idx = columns.findIndex((c) => c.id === card.columnId);
+    const target = columns[idx + dir];
+    if (!target) return;
+    patchBoard(board, (x) => ({ ...x, cards: x.cards.map((c) => (c.id === card.id ? { ...c, columnId: target.id, order: x.cards.filter((o) => o.columnId === target.id).length } : c)) }));
+  };
+
+  if (!board) {
+    return (
+      <section className="card">
+        <p className="muted">No kanban boards yet.</p>
+        <button className="primary" onClick={addBoard}>New board</button>
+      </section>
+    );
+  }
+
+  const columns = [...board.columns].sort((a, b) => a.order - b.order);
+
+  return (
+    <div className="stack">
+      <div className="toolbar card">
+        <select value={board.id} onChange={(e) => setBoardId(e.target.value)}>
+          {db.kanban.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        <input
+          value={board.name}
+          onChange={(e) => patchBoard(board, (x) => ({ ...x, name: e.target.value }))}
+        />
+        <button className="small-btn" onClick={addBoard}>New board</button>
+        <button className="small-btn" onClick={() => patchBoard(board, (x) => ({ ...x, columns: [...x.columns, { id: uid(), name: `Column ${x.columns.length + 1}`, order: x.columns.length }] }))}>
+          Add column
+        </button>
+        <button className="link danger" onClick={() => removeBoard(board)}>Delete board</button>
+      </div>
+      <div className="kanban">
+        {columns.map((col) => (
+          <div className="card kanban-col" key={col.id}>
+            <div className="row spread">
+              <input
+                className="col-name"
+                value={col.name}
+                onChange={(e) => patchBoard(board, (x) => ({ ...x, columns: x.columns.map((c) => (c.id === col.id ? { ...c, name: e.target.value } : c)) }))}
+              />
+              <button
+                className="link danger"
+                title="Delete column"
+                onClick={() => {
+                  if (!window.confirm(`Delete column "${col.name}" and its cards?`)) return;
+                  patchBoard(board, (x) => ({ ...x, columns: x.columns.filter((c) => c.id !== col.id), cards: x.cards.filter((c) => c.columnId !== col.id) }));
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            {board.cards
+              .filter((c) => c.columnId === col.id)
+              .sort((a, b) => a.order - b.order)
+              .map((card) => (
+                <div className="kan-card" key={card.id}>
+                  <input
+                    value={card.title}
+                    onChange={(e) => patchBoard(board, (x) => ({ ...x, cards: x.cards.map((c) => (c.id === card.id ? { ...c, title: e.target.value } : c)) }))}
+                  />
+                  <textarea
+                    rows={2}
+                    placeholder="Note (optional)"
+                    value={card.note ?? ""}
+                    onChange={(e) => patchBoard(board, (x) => ({ ...x, cards: x.cards.map((c) => (c.id === card.id ? { ...c, note: e.target.value || undefined } : c)) }))}
+                  />
+                  <div className="row spread">
+                    <div className="row">
+                      <button className="small-btn" disabled={col.id === columns[0]?.id} onClick={() => move(card, -1)}>←</button>
+                      <button className="small-btn" disabled={col.id === columns[columns.length - 1]?.id} onClick={() => move(card, 1)}>→</button>
+                    </div>
+                    <button className="link danger" onClick={() => patchBoard(board, (x) => ({ ...x, cards: x.cards.filter((c) => c.id !== card.id) }))}>✕</button>
+                  </div>
+                </div>
+              ))}
+            <div className="row">
+              <input
+                placeholder="Add card"
+                value={cardDrafts[col.id] ?? ""}
+                onChange={(e) => setCardDrafts({ ...cardDrafts, [col.id]: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && addCard(col.id)}
+              />
+              <button className="small-btn" onClick={() => addCard(col.id)}>+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

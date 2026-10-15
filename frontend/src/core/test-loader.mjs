@@ -32,10 +32,27 @@ export async function resolve(specifier, context, nextResolve) {
     return { url: STUBS[specifier], shortCircuit: true };
   }
   if (specifier.startsWith("@/")) {
-    return nextResolve(frontendRoot + specifier.slice(2), context);
+    const base = frontendRoot + specifier.slice(2);
+    try {
+      return await nextResolve(base, context);
+    } catch (err) {
+      // Metro resolves a bare directory to its index file; plain ESM needs the hint.
+      if (err?.code === "ERR_UNSUPPORTED_DIR_IMPORT") return nextResolve(base + "/index.ts", context);
+      throw err;
+    }
   }
   if ((specifier.startsWith("./") || specifier.startsWith("../")) && !specifier.endsWith(".ts") && !specifier.endsWith(".js") && !specifier.endsWith(".mjs")) {
     return nextResolve(specifier + ".ts", context);
+  }
+  // desktop/src files import @noble/* directly. CI's phone job installs only
+  // frontend packages, so desktop imports resolve against the frontend copy.
+  if (context.parentURL?.includes("/desktop/") && !specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.startsWith("@/")) {
+    try {
+      return await nextResolve(specifier, context);
+    } catch (err) {
+      if (err?.code !== "ERR_MODULE_NOT_FOUND") throw err;
+      return nextResolve(specifier, { ...context, parentURL: frontendRoot + "src/core/probe.ts" });
+    }
   }
   return nextResolve(specifier, context);
 }

@@ -1,4 +1,5 @@
 import type { DB, ServiceEntry, Vehicle } from "./types";
+import { odometerEstimate } from "./fuelCapture";
 
 /** Every part that can have its own service interval (Phase 6, spec A). */
 export const PART_IDS = ["engine_oil", "oil_filter", "air_filter", "chain_sprocket", "chain_lube", "brake_pads", "disc_care", "brake_fluid", "clutch", "coolant", "spark_plug", "tyres", "battery"] as const;
@@ -52,10 +53,16 @@ export function vehicleParts(v: Vehicle): PartSetting[] {
 
 export const partsOf = (s: ServiceEntry): PartId[] => (s.parts?.length ? s.parts : KIND_PARTS[s.kind] ?? []);
 
-/** Highest reading from fuel, services, odometer logs and the starting odometer. */
-export function latestOdometer(db: DB, v: Vehicle): number {
+/**
+ * Highest reading from fuel, services, odometer logs and the starting odometer.
+ * With `today`, a live estimate (fuelCapture.ts) is used while it is ahead of typed readings.
+ */
+export function latestOdometer(db: DB, v: Vehicle, today?: string): number {
   const id = v.id;
-  return Math.max(v.initialOdometer || 0, ...db.fuel.filter((f) => f.vehicleId === id).map((f) => f.odometer || 0), ...db.services.filter((s) => s.vehicleId === id).map((s) => s.odometer || 0), ...db.odometerLogs.filter((o) => o.vehicleId === id).map((o) => o.odometer || 0));
+  const typed = Math.max(v.initialOdometer || 0, ...db.fuel.filter((f) => f.vehicleId === id).map((f) => f.odometer || 0), ...db.services.filter((s) => s.vehicleId === id).map((s) => s.odometer || 0), ...db.odometerLogs.filter((o) => o.vehicleId === id).map((o) => o.odometer || 0));
+  if (!today) return typed;
+  const est = odometerEstimate(db, v, today);
+  return est.estimated ? Math.max(typed, est.value) : typed;
 }
 
 export type DueState = "ok" | "soon" | "due";
@@ -75,7 +82,7 @@ const daysBetweenISO = (a: string, b: string) => Math.round((Date.parse(`${b}T00
  * Due = last done + interval, in km or months, whichever comes first (Q2: never done counts from odometer 0
  * and the purchase/added date). Due soon = within 10% of the km interval (at most 500 km) or 10% of the months (at least 7 days).
  */
-export function partDue(db: DB, v: Vehicle, part: PartSetting, today: string, odoNow = latestOdometer(db, v)): PartDue {
+export function partDue(db: DB, v: Vehicle, part: PartSetting, today: string, odoNow = latestOdometer(db, v, today)): PartDue {
   const last = db.services
     .filter((s) => s.vehicleId === v.id && partsOf(s).includes(part.id))
     .sort((a, b) => b.odometer - a.odometer || b.date.localeCompare(a.date))[0];
@@ -93,7 +100,7 @@ export function partDue(db: DB, v: Vehicle, part: PartSetting, today: string, od
 
 /** Enabled parts with their due state, most urgent first. */
 export function serviceSchedule(db: DB, v: Vehicle, today: string): PartDue[] {
-  const odo = latestOdometer(db, v);
+  const odo = latestOdometer(db, v, today);
   const rank = { due: 0, soon: 1, ok: 2 };
   return vehicleParts(v)
     .filter((p) => p.on)

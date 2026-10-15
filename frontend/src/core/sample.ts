@@ -4,6 +4,7 @@ import { addDays, addMonths, monthKey, todayISO, uid } from "./format";
 import { addFuel, addService } from "./actions";
 import { addTripExpense, newDocs, packFromTemplate } from "./domains";
 import { markEnd, markStart, setBleeding, setFlowLevel, setSymptom } from "./cycle";
+import { vehicleParts } from "./serviceCatalog";
 
 export function withSampleData(db: DB): DB {
   const today = todayISO();
@@ -18,6 +19,7 @@ export function withSampleData(db: DB): DB {
     body: "scooter",
     initialOdometer: 1000,
     serviceIntervalKm: 5000,
+    purchaseDate: addMonths(today, -26),
     insuranceExpiry: addDays(today, 5),
     pucExpiry: addDays(today, 24),
     createdAt: new Date().toISOString(),
@@ -32,10 +34,13 @@ export function withSampleData(db: DB): DB {
     body: "hatchback",
     initialOdometer: 32000,
     serviceIntervalKm: 10000,
+    purchaseDate: addMonths(today, -40),
     insuranceExpiry: addDays(today, 140),
     pucExpiry: addDays(today, 60),
     createdAt: new Date().toISOString(),
   };
+  v.parts = vehicleParts(v);
+  car.parts = vehicleParts(car);
   let next: DB = { ...db, vehicles: [...db.vehicles, v, car], settings: { ...db.settings, defaultVehicleId: db.settings.defaultVehicleId ?? v.id } };
 
   // services: intervals 5100, 5400, 4900, 5200 -> avg 5150; currently ~4700 since last
@@ -68,9 +73,9 @@ export function withSampleData(db: DB): DB {
     txns.push({ id: uid(), type: "income", amount: 85000, category: "Salary", date: d(1), note: "Salary" });
     txns.push({ id: uid(), type: "expense", amount: 18000, category: "Rent", date: d(2), note: "Rent" });
     txns.push({ id: uid(), type: "expense", amount: elec[5 - m], category: "Electricity", date: d(8), note: "BESCOM bill" });
-    txns.push({ id: uid(), type: "expense", amount: 3200 + ((m * 410) % 900), category: "Groceries", date: d(6), note: "Weekly groceries" });
-    txns.push({ id: uid(), type: "expense", amount: m === 0 ? 7800 : 3400 + ((m * 230) % 600), category: "Food", date: d(10), note: m === 0 ? "Dinners out + party" : "Eating out" });
-    txns.push({ id: uid(), type: "expense", amount: 1200 + ((m * 300) % 1500), category: "Shopping", date: d(14) });
+    txns.push({ id: uid(), type: "expense", amount: 3200 + ((m * 410) % 900), category: "Groceries", date: d(6), note: "Weekly groceries", channel: "online_grocery" });
+    txns.push({ id: uid(), type: "expense", amount: m === 0 ? 7800 : 3400 + ((m * 230) % 600), category: "Food", date: d(10), note: m === 0 ? "Dinners out + party" : "Eating out", channel: "in_person" });
+    txns.push({ id: uid(), type: "expense", amount: 1200 + ((m * 300) % 1500), category: "Shopping", date: d(14), channel: "online_grocery" });
   }
   next = { ...next, txns: [...next.txns, ...txns] };
 
@@ -85,7 +90,7 @@ export function withSampleData(db: DB): DB {
   // travel: a trip in 5 days, partly packed, 1 document missing
   const packing = packFromTemplate("Beach").map((p, i) => ({ ...p, done: i % 3 !== 0 }));
   const docs = newDocs().map((d, i) => ({ ...d, have: i !== 3 }));
-  const trip = { id: uid(), name: "Goa 2026", destination: "Goa, India", place: { name: "Panaji, Goa, India", lat: 15.49, lon: 73.83, country: "India", countryCode: "IN" }, start: addDays(today, 5), end: addDays(today, 9), travellers: 2, budget: 30000, packing, docs, createdAt: new Date().toISOString(),
+  const trip = { id: uid(), name: "Goa 2026", destination: "Goa, India", kind: "journey" as const, place: { name: "Panaji, Goa, India", lat: 15.49, lon: 73.83, country: "India", countryCode: "IN" }, start: addDays(today, 5), end: addDays(today, 9), travellers: 2, budget: 30000, packing, docs, createdAt: new Date().toISOString(),
     itinerary: [
       { id: uid(), date: addDays(today, 5), time: "08:00", title: "Train to Madgaon", place: "Platform 4" },
       { id: uid(), date: addDays(today, 5), time: "14:00", title: "Check-in · Beach resort" },

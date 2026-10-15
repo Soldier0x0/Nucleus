@@ -46,6 +46,17 @@ function records(db: DB) {
   return out;
 }
 
+/** v0.9.8: travel is folded off by default, so board tests turn it back on. */
+function travelOn(db: DB): DB {
+  return {
+    ...db,
+    settings: {
+      ...db.settings,
+      modules: db.settings.modules.map((m) => (m.id === "travel" ? { ...m, enabled: true, hidden: false } : m)),
+    },
+  };
+}
+
 function filled(): DB {
   const db = emptyDB();
   db.txns.push({ id: "txn-1", type: "expense", amount: 40, category: "Fuel", date: "2026-10-01" });
@@ -128,7 +139,7 @@ function numericScore(db: DB): number {
 }
 
 test("every preset shows its tiles when there is no data", () => {
-  const db = emptyDB();
+  const db = travelOn(emptyDB());
   for (const preset of ["money", "travel", "home", "desk", "workshop"] as const) {
     const shown = visiblePresetItems(db, preset);
     const catalog = presetItems(preset);
@@ -173,7 +184,7 @@ test("the decoy board hides cycle and money tiles", () => {
 });
 
 test("a preset still lists every tile when only some records exist", () => {
-  const bare = emptyDB();
+  const bare = travelOn(emptyDB());
   bare.trips.push({
     id: "trip-1",
     name: "Coast",
@@ -192,7 +203,7 @@ test("a preset still lists every tile when only some records exist", () => {
   assert.equal(shown[0], "route");
   assert.deepEqual(shown, presetItems("travel").map((item) => item.id));
 
-  const rich = filled();
+  const rich = travelOn(filled());
   rich.fuel.push({ id: "fuel-2", vehicleId: "v1", date: "2026-10-02", odometer: 1200, litres: 8, price: 100, total: 800 });
   rich.services.push({ id: "svc-1", vehicleId: "v1", date: "2026-09-01", odometer: 900, kind: "general", cost: 20, details: {} });
   rich.txns.push({ id: "txn-photo", type: "expense", amount: 12, category: "Food", date: "2026-10-02", photo: "page" });
@@ -220,7 +231,7 @@ test("a preset remembers the last thing done in it", () => {
 });
 
 test("money and travel show different tiles, and each title names that tile", () => {
-  const db = emptyDB();
+  const db = travelOn(emptyDB());
   const money = homePresetTiles(db, "money", "real").map((item) => item.id);
   const travel = homePresetTiles(db, "travel", "real").map((item) => item.id);
   assert.deepEqual(money, presetItems("money").map((item) => item.id));
@@ -248,7 +259,7 @@ test("money and travel show different tiles, and each title names that tile", ()
 });
 
 test("travel opens on the travel tiles and money opens on the money tiles", () => {
-  const db = emptyDB();
+  const db = travelOn(emptyDB());
   const travel = homePresetTiles(db, "travel", "real").map((item) => item.id);
   const money = homePresetTiles(db, "money", "real").map((item) => item.id);
   assert.deepEqual(travel.slice(0, 5), ["route", "transitmetro", "transittrain", "transitcab", "transitbus"]);

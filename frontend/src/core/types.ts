@@ -9,7 +9,8 @@ export type ItineraryItem = { id: string; date: string; time: string; title: str
 export type TripDoc = { id: string; name: string; have: boolean; expiry?: string };
 export type Place = { name: string; lat: number; lon: number; country?: string; countryCode?: string; elevation?: number };
 export type TripMode = "personal" | "public";
-export type TransitKind = "metro" | "train" | "cab" | "bus";
+export type TransitKind = "metro" | "train" | "cab" | "bus" | "flight";
+export type TripKind = "journey" | "transit";
 export type Trip = {
   id: string;
   name: string;
@@ -28,6 +29,8 @@ export type Trip = {
   weatherReminded?: boolean;
   mode?: TripMode;
   transit?: TransitKind;
+  /** Journey cards carry a checklist, plan and expenses. Daily public travel stays a Money category only. */
+  kind?: TripKind;
 };
 export type MaintPlan = { id: string; name: string; everyMonths: number; lastDone: string; cost?: number };
 export type Appliance = {
@@ -53,9 +56,14 @@ export type UtilityBill = { id: string; kind: UtilityKind; date: string; amount:
 export type Person = { id: string; name: string; note?: string };
 export type MotorCover = "comprehensive" | "third-party";
 export type PaperKind = "licence" | "registration" | "insurance" | "passport" | "fastag" | "warranty" | "puc" | "personal_accident" | "other";
+/** One vault, many sections: the same paper can sit under more than one tag. */
+export type PaperTag = "Vehicle" | "Health" | "Money" | "Home" | "Travel" | "Other";
 export type Paper = {
   id: string;
+  /** Kept for the motor XOR, PUC and PA helpers. Sections come from tags. */
   kind: PaperKind;
+  /** Sections this paper shows in. Absent on old records; derived from kind on load. */
+  tags?: PaperTag[];
   title: string;
   number?: string;
   expiry?: string;
@@ -111,6 +119,8 @@ export type Vehicle = {
   purchaseDate?: string;
   /** Per-part service intervals. Missing means defaults by type (serviceCatalog.ts). */
   parts?: import("./serviceCatalog").PartSetting[];
+  /** Saved ride-checklist template. Missing means defaults by type (rideChecklists.ts). */
+  rideChecklist?: string[];
   createdAt: string;
 };
 
@@ -151,6 +161,8 @@ export type VehicleJourney = {
   startOdometer: number;
   endOdometer?: number;
   note?: string;
+  /** Copy-on-use tick-off for this ride. Never shares items with the vehicle template. */
+  checklist?: ChecklistItem[];
 };
 
 export type ServiceKind = "general" | "oil" | "tyre" | "battery" | "brakes" | "repair" | "other";
@@ -188,6 +200,10 @@ export type Txn = {
   transfer?: boolean;
   /** A balance line from a bank text, used as a point on the balance chart. */
   balance?: number;
+  /** How the money moved, for the online-vs-in-person chart. A suggestion or a hand-picked tag. */
+  channel?: TxnChannel;
+  /** The journey card this expense belongs to. In addition to the "trip expense" link. */
+  tripId?: string;
 };
 
 export type Subscription = {
@@ -224,6 +240,11 @@ export type LayoutId = "stack" | "glass" | "bento";
 export type CloudProvider = "off" | "drive" | "onedrive";
 export type CloudSync = { provider: CloudProvider; lastSyncAt?: string; askedSinceUnlock: boolean; unlockedAt?: string };
 export type SmsMemoryRow = { key: string; choice: "category" | "transfer" | "ignore"; category?: string };
+
+/** Where a spend happened. Online-food and online-grocery are apps; everything else is in person. */
+export type TxnChannel = "online_food" | "online_grocery" | "in_person";
+/** A correction the person made for one merchant. It beats the built-in table. */
+export type TxnChannelOverride = { key: string; channel: TxnChannel };
 export type IconFamily = "paper" | "metal" | "glass" | "tiles";
 export type IconVariant = "paper" | "midnight" | "dune" | "amoled";
 /** `match` follows the app theme. The other values are a fixed picture. */
@@ -321,10 +342,22 @@ export type Settings = {
   smsMemory: SmsMemoryRow[];
   /** Endings of your own accounts, so a transfer is not treated as spending. */
   ownAccounts: string[];
+  /** v0.9.8: merchant-to-channel answers the person picked. They win over the built-in table. */
+  merchantOverrides: TxnChannelOverride[];
+  /** v0.9.8: the travel module was folded into Money once at load. The person may turn it back on. */
+  travelFolded: boolean;
   /** This phone's id. A file from another phone opens read-only. */
   installId: string;
   /** A file from another phone. Looking is allowed. Editing is not. */
   readOnly: boolean;
+  /** v0.9.8: hours a cold start may reopen the last screen. 0 or null turns reopen off. */
+  reopenHours: number | null;
+  /** v0.9.8: last content route that was on screen. */
+  lastRoute: string | null;
+  /** v0.9.8: ISO time lastRoute was recorded. */
+  lastRouteAt: string | null;
+  /** v0.9.8: single-module shell. Unset keeps it on; false turns it off. */
+  nativeModuleShell?: boolean;
   /** Which home arrangement is on screen. Records stay where they are. */
   homePreset: HomePresetId;
   /** Last thing opened in each preset. */

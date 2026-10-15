@@ -1,4 +1,6 @@
-import type { DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Txn, Vehicle, VehicleJourney } from "./types";
+import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Trip, Txn, Vehicle, VehicleJourney } from "./types";
+import { isChannel } from "./merchantTable";
+import { isTransitKind, tripKindOf } from "./transit";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { emptyWater, normalizeWater } from "./water";
 import { normalizeReminders } from "./reminders";
@@ -10,6 +12,7 @@ import { parseLayout } from "./layouts";
 import { parseTileOrder } from "./homeOrder";
 import { emptyHeadsUp, migrateHomePresetOnLoad, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { normalizePaper } from "./paperNormalize";
+import { isContentRoute, normalizeReopenHours, REOPEN_DEFAULT_HOURS } from "./reopen";
 import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
@@ -44,7 +47,7 @@ export const defaultSettings: Settings = {
   modules: [
     { id: "vehicles", enabled: true, hidden: false },
     { id: "money", enabled: true, hidden: false },
-    { id: "travel", enabled: true, hidden: false },
+    { id: "travel", enabled: false, hidden: true },
     { id: "home", enabled: true, hidden: false },
     { id: "tools", enabled: true, hidden: false },
     { id: "notes", enabled: true, hidden: false },
@@ -92,15 +95,20 @@ export const defaultSettings: Settings = {
   moneyNames: [],
   smsMemory: [],
   ownAccounts: [],
+  merchantOverrides: [],
+  travelFolded: true,
   installId: "",
   readOnly: false,
+  reopenHours: REOPEN_DEFAULT_HOURS,
+  lastRoute: null,
+  lastRouteAt: null,
   homePreset: "custom",
   presetLast: {},
   headsUp: emptyHeadsUp(),
   sampleIds: [],
 };
 
-export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
+export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
 export const INCOME_CATEGORIES = ["Salary", "Freelance", "Interest", "Refund", "Gift", "Other"];
 
 export function emptyDB(): DB {
@@ -113,6 +121,7 @@ export function emptyDB(): DB {
     moneyNames: [...defaultSettings.moneyNames],
     smsMemory: [...defaultSettings.smsMemory],
     ownAccounts: [...defaultSettings.ownAccounts],
+    merchantOverrides: [...defaultSettings.merchantOverrides],
       presetLast: {},
     headsUp: emptyHeadsUp(),
     sampleIds: [],
@@ -186,6 +195,14 @@ export function normalizeDB(raw: any): DB {
   s.postNotificationsWarned = raw?.settings?.postNotificationsWarned === true;
   s.lockAlerts = raw?.settings?.lockAlerts === true;
   s.readOnly = raw?.settings?.readOnly === true;
+  s.reopenHours = normalizeReopenHours(raw?.settings?.reopenHours);
+  const savedRoute = raw?.settings?.lastRoute;
+  s.lastRoute = typeof savedRoute === "string" && isContentRoute(savedRoute) ? savedRoute.slice(0, 120) : null;
+  const savedRouteAt = raw?.settings?.lastRouteAt;
+  s.lastRouteAt = typeof savedRouteAt === "string" && !Number.isNaN(Date.parse(savedRouteAt)) ? savedRouteAt.slice(0, 40) : null;
+  const shell = raw?.settings?.nativeModuleShell;
+  if (shell === false) s.nativeModuleShell = false;
+  else delete s.nativeModuleShell;
   s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();
   s.homePreset = migrateHomePresetOnLoad(raw, parseHomePreset(raw?.settings?.homePreset));
   // v0.9.8: ADHD mode removed. An "adhd" home preset parses to custom; its saved data is dropped.
@@ -197,13 +214,22 @@ export function normalizeDB(raw: any): DB {
   if (priorBudget && typeof priorBudget.monthly === "number" && priorBudget.categories && typeof priorBudget.categories === "object") {
     const categories: Record<string, number> = {};
     for (const [key, value] of Object.entries(priorBudget.categories)) {
-      if (typeof value === "number") categories[key.slice(0, 40)] = value;
+      if (typeof value === "number") {
+        const name = foldedCategory(key);
+        categories[name.slice(0, 40)] = (categories[name.slice(0, 40)] ?? 0) + value;
+      }
     }
     s.sampleBudget = { monthly: priorBudget.monthly, categories };
   }
   s.moneyNames = Array.isArray(raw?.settings?.moneyNames) ? raw.settings.moneyNames.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 40)) : [];
   s.smsMemory = parseSmsMemory(raw?.settings?.smsMemory);
   s.ownAccounts = Array.isArray(raw?.settings?.ownAccounts) ? raw.settings.ownAccounts.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 12)) : [];
+  s.merchantOverrides = Array.isArray(raw?.settings?.merchantOverrides)
+    ? raw.settings.merchantOverrides
+        .filter((row: any) => row && typeof row.key === "string" && isChannel(row.channel))
+        .slice(-80)
+        .map((row: any) => ({ key: String(row.key).slice(0, 40), channel: row.channel }))
+    : [];
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
   if (callName) s.givenName = callName;
@@ -226,6 +252,12 @@ export function normalizeDB(raw: any): DB {
     ...(raw?.settings?.modules ?? []).filter((m: any) => knownMods.includes(m.id)),
     ...base.settings.modules.filter((m) => !(raw?.settings?.modules ?? []).some((x: any) => x.id === m.id)),
   ];
+  // v0.9.8: Travel folded into Money. An old file without the marker hides the module once;
+  // turning it back on later writes the marker, so the choice sticks.
+  const rawSettings = raw?.settings;
+  const markerPresent = !!rawSettings && typeof rawSettings === "object" && "travelFolded" in rawSettings;
+  s.travelFolded = true;
+  if (!markerPresent) s.modules = s.modules.map((m: any) => (m.id === "travel" ? { ...m, enabled: false, hidden: true } : m));
   const knownTiles = base.settings.tiles.map((t) => t.id);
   s.tiles = [
     ...(raw?.settings?.tiles ?? []).filter((t: any) => knownTiles.includes(t.id)),
@@ -238,7 +270,7 @@ export function normalizeDB(raw: any): DB {
     ...raw,
     version: 1,
     settings: s,
-    budget: { ...base.budget, ...(raw?.budget ?? {}) },
+    budget: migrateBudget(raw?.budget),
     utilities: Array.isArray(raw?.utilities) ? raw.utilities : [],
     chores: Array.isArray(raw?.chores) ? raw.chores : [],
     media: Array.isArray(raw?.media) ? raw.media : [],
@@ -249,6 +281,7 @@ export function normalizeDB(raw: any): DB {
     vehicleJourneys: Array.isArray(raw?.vehicleJourneys) ? raw.vehicleJourneys.map(normalizeVehicleJourney) : [],
     vehicles: Array.isArray(raw?.vehicles) ? raw.vehicles.map(normalizeVehicle) : [],
     services: Array.isArray(raw?.services) ? raw.services.map(normalizeService) : [],
+    trips: Array.isArray(raw?.trips) ? raw.trips.map(normalizeTrip) : [],
     parts: Array.isArray(raw?.parts) ? raw.parts : [],
     specs: Array.isArray(raw?.specs) ? raw.specs : [],
     kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],
@@ -260,6 +293,27 @@ export function normalizeDB(raw: any): DB {
     reminders: normalizeReminders(raw?.reminders),
     medicines: normalizeMedicines(raw?.medicines),
     tombstones: Array.isArray(raw?.tombstones) ? raw.tombstones.filter((t: any) => t && typeof t.id === "string" && typeof t.kind === "string" && typeof t.deletedAt === "string") : [],
+  };
+}
+
+/** v0.9.8: one Travel category. Transport lines and budget limits move over, added up. */
+function foldedCategory(name: string): string {
+  return name === "Transport" ? "Travel" : name;
+}
+
+function migrateBudget(raw: any): Budget {
+  const base: Budget = { monthly: 0, categories: {} };
+  if (!raw || typeof raw !== "object") return base;
+  const categories: Record<string, number> = {};
+  const src = raw.categories && typeof raw.categories === "object" ? raw.categories : {};
+  for (const [key, value] of Object.entries(src)) {
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    const name = foldedCategory(key);
+    categories[name.slice(0, 40)] = (categories[name.slice(0, 40)] ?? 0) + value;
+  }
+  return {
+    monthly: typeof raw.monthly === "number" && Number.isFinite(raw.monthly) ? raw.monthly : base.monthly,
+    categories,
   };
 }
 
@@ -300,6 +354,27 @@ function normalizeVehicle(raw: Vehicle): Vehicle {
   else delete next.cover;
   if (typeof raw.tankLitres === "number" && Number.isFinite(raw.tankLitres) && raw.tankLitres > 0) next.tankLitres = raw.tankLitres;
   else delete next.tankLitres;
+  const checklist = Array.isArray(raw.rideChecklist)
+    ? raw.rideChecklist.filter((text: unknown) => typeof text === "string" && text.trim()).map((text: string) => text.trim().slice(0, 60)).slice(0, 30)
+    : [];
+  if (checklist.length) next.rideChecklist = checklist;
+  else delete next.rideChecklist;
+  return next;
+}
+
+/**
+ * A trip is a journey card unless it is clearly daily public travel: a same-day
+ * metro/train/cab/bus/flight. An explicit kind (the "Journey" tap) is kept as saved.
+ */
+function normalizeTrip(raw: Trip): Trip {
+  const next = { ...raw };
+  next.start = typeof raw.start === "string" ? raw.start.slice(0, 10) : "";
+  next.end = typeof raw.end === "string" ? raw.end.slice(0, 10) : next.start;
+  if (raw.mode === "public" || raw.mode === "personal") next.mode = raw.mode;
+  else delete next.mode;
+  if (isTransitKind(raw.transit)) next.transit = raw.transit;
+  else delete next.transit;
+  next.kind = tripKindOf({ kind: raw.kind === "journey" || raw.kind === "transit" ? raw.kind : undefined, mode: next.mode, transit: next.transit, start: next.start, end: next.end });
   return next;
 }
 
@@ -323,6 +398,14 @@ function normalizeVehicleJourney(raw: VehicleJourney): VehicleJourney {
   if (typeof raw.endAt === "string" && raw.endAt.trim()) next.endAt = raw.endAt.trim().slice(0, 40);
   if (typeof raw.endOdometer === "number" && Number.isFinite(raw.endOdometer)) next.endOdometer = Math.round(raw.endOdometer);
   if (typeof raw.note === "string" && raw.note.trim()) next.note = raw.note.trim().slice(0, 200);
+  const checklist = Array.isArray(raw.checklist)
+    ? raw.checklist
+        .filter((item: any) => item && typeof item.text === "string" && item.text.trim())
+        .map((item: any) => ({ id: typeof item.id === "string" && item.id.trim() ? item.id.slice(0, 40) : uid(), text: String(item.text).trim().slice(0, 60), done: item.done === true }))
+        .slice(0, 30)
+    : [];
+  if (checklist.length) next.checklist = checklist;
+  else delete next.checklist;
   return next;
 }
 
@@ -338,13 +421,18 @@ function normalizeService(raw: ServiceEntry): ServiceEntry {
 function normalizeTxn(raw: Txn): Txn {
   const item = typeof raw?.item === "string" ? raw.item.replace(/\s+/g, " ").trim().slice(0, 40) : "";
   const next = { ...raw };
+  if (next.category === "Transport") next.category = "Travel";
   if (item) next.item = item;
   else delete next.item;
+  if (isChannel(raw?.channel)) next.channel = raw.channel;
+  else delete next.channel;
   if (raw?.cash === true) next.cash = true;
   else delete next.cash;
   if (raw?.transfer === true) next.transfer = true;
   else delete next.transfer;
   if (typeof raw?.balance === "number" && Number.isFinite(raw.balance)) next.balance = raw.balance;
   else delete next.balance;
+  if (typeof raw?.tripId === "string" && raw.tripId.trim()) next.tripId = raw.tripId.trim().slice(0, 40);
+  else delete next.tripId;
   return next;
 }

@@ -4,10 +4,11 @@
  * apply cross-module effects (e.g. fuel.added -> Money expense + link). Modules never
  * call each other directly; they only meet through events and the links table.
  */
-import type { DB, EntityKind, FuelEntry, OdometerLog, Ref, ServiceEntry, Subscription, Txn, Vehicle, VehicleJourney } from "./types";
+import type { ChecklistItem, DB, EntityKind, FuelEntry, OdometerLog, Ref, ServiceEntry, Subscription, Txn, TxnChannel, Vehicle, VehicleJourney } from "./types";
 import { addDays, addMonths, todayISO, uid } from "./format";
 import { bestEffortDeletePaperFiles } from "./paperFiles";
 import { syncVehicleExpiryFields } from "./vehicleDocs";
+import { learnMerchantChannel } from "./merchantTable";
 
 export type DomainEvent =
   | { type: "fuel.added"; entry: FuelEntry }
@@ -129,6 +130,14 @@ export function addVehicleJourney(db: DB, entry: VehicleJourney): DB {
   return { ...db, vehicleJourneys: [...db.vehicleJourneys, entry] };
 }
 
+/** Swap this ride's checklist. The vehicle template is a separate field and is never touched. */
+export function setJourneyChecklist(db: DB, id: string, checklist: ChecklistItem[]): DB {
+  return {
+    ...db,
+    vehicleJourneys: db.vehicleJourneys.map((row) => (row.id === id ? { ...row, checklist } : row)),
+  };
+}
+
 export function closeVehicleJourney(db: DB, id: string, endAt: string, endOdometer: number): DB {
   return {
     ...db,
@@ -140,6 +149,15 @@ export function closeVehicleJourney(db: DB, id: string, endAt: string, endOdomet
 
 export function addTxn(db: DB, txn: Txn): DB {
   return { ...db, txns: [...db.txns, txn] };
+}
+
+/** Tag one txn by hand. The answer is remembered for that merchant, so the next one is ready. */
+export function setTxnChannel(db: DB, id: string, channel: TxnChannel | undefined): DB {
+  const txn = db.txns.find((t) => t.id === id);
+  if (!txn) return db;
+  const next = { ...db, txns: db.txns.map((t) => (t.id === id ? { ...t, channel } : t)) };
+  if (channel && txn.note?.trim()) return learnMerchantChannel(next, txn.note, channel);
+  return next;
 }
 
 export function upsertSubscription(db: DB, s: Subscription): DB {

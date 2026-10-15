@@ -15,18 +15,69 @@ import { useToast } from "@/src/components/Toast";
 import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
 import { DragRow, moveItem, ReorderGroup } from "@/src/components/Reorderable";
-import { TILE_META } from "@/src/core/modules";
+import { nativeModuleShellId, TILE_META } from "@/src/core/modules";
+import VehiclesHome from "@/app/vehicles/index";
+import MoneyHome from "@/app/money/index";
+import TravelHome from "@/app/travel/index";
+import HomeHome from "@/app/home/index";
+import ToolsHome from "@/app/tools/index";
+import RulesHome from "@/app/rules/index";
+import NotesHome from "@/app/notes/index";
+import DevHome from "@/app/dev/index";
+import BuilderHome from "@/app/builder/index";
+import MediaHome from "@/app/media/index";
+import LabHome from "@/app/lab/index";
+import PapersHome from "@/app/papers/index";
+import KanbanHome from "@/app/kanban/index";
+import WikiHome from "@/app/wiki/index";
+import NetHome from "@/app/net/index";
+import CycleHome from "@/app/cycle/index";
+import HealthHome from "@/app/health/index";
 import { openBoards, PRESET_CHOICES, presetBoard, presetTileTitle, showsCustomizeHome, tilePlaceholder, widenLongLabels, withTileSizes } from "@/src/core/presets";
 import { HeadsUpCard, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
-import type { Board, HomePresetId } from "@/src/core/types";
+import type { Board, HomePresetId, ModuleId } from "@/src/core/types";
 import { homeLine, oneDueToday } from "@/src/core/dueGreeting";
 import { syncStatusLine } from "@/src/core/syncStatus";
 import { repeatingBills } from "@/src/core/moneyDesk";
 import { choreDueDate } from "@/src/core/domains";
 
+const MODULE_HOME: Record<ModuleId, React.ComponentType> = {
+  vehicles: VehiclesHome,
+  money: MoneyHome,
+  travel: TravelHome,
+  home: HomeHome,
+  tools: ToolsHome,
+  rules: RulesHome,
+  notes: NotesHome,
+  dev: DevHome,
+  builder: BuilderHome,
+  media: MediaHome,
+  lab: LabHome,
+  papers: PapersHome,
+  kanban: KanbanHome,
+  wiki: WikiHome,
+  net: NetHome,
+  cycle: CycleHome,
+  health: HealthHome,
+};
+
+/**
+ * The Today tab. With exactly one module on it is that module's home
+ * (v0.9.8 shell); otherwise it is the Today board.
+ */
 export default function Today() {
+  const { db } = useStore();
+  const shell = nativeModuleShellId(db.settings);
+  if (shell) {
+    const Home = MODULE_HOME[shell];
+    return <Home />;
+  }
+  return <TodayBoard />;
+}
+
+function TodayBoard() {
   const { db, setSettings, session } = useStore();
   const { colors, sp, layout } = useTheme();
   const insets = useSafeAreaInsets();
@@ -45,15 +96,16 @@ export default function Today() {
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
   const visibleBoards = openBoards(db);
-  const preset = visibleBoards.includes(db.settings.homePreset) ? db.settings.homePreset : visibleBoards[0];
-  const presetIndex = Math.max(0, visibleBoards.indexOf(preset));
-  const openKey = visibleBoards.join(",");
+  const chips = PRESET_CHOICES.filter((choice) => visibleBoards.includes(choice.id));
+  const preset = chips.some((choice) => choice.id === db.settings.homePreset) ? db.settings.homePreset : (chips[0]?.id ?? "custom");
+  const presetIndex = Math.max(0, chips.findIndex((choice) => choice.id === preset));
+  const chipKey = chips.map((choice) => choice.id).join(",");
   useEffect(() => {
-    const ids = openKey.split(",");
+    const ids = chipKey.split(",");
     if (ids.includes(db.settings.homePreset)) return;
-    const next = ids[0] as HomePresetId;
-    if (next) setSettings({ homePreset: next });
-  }, [db.settings.homePreset, openKey, setSettings]);
+    const next = ids[0];
+    if (next) setSettings({ homePreset: next as HomePresetId });
+  }, [db.settings.homePreset, chipKey, setSettings]);
   const boardIndex = activeBoard ? boards.findIndex((board) => board.id === activeBoard.id) + 1 : 0;
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
@@ -122,7 +174,7 @@ export default function Today() {
       </View>
       <View style={{ marginHorizontal: -4 }}>
           <ChipRow testID="today-preset-row" activeIndex={presetIndex}>
-            {PRESET_CHOICES.filter((choice) => visibleBoards.includes(choice.id)).map((choice) => (
+            {chips.map((choice) => (
               <Chip key={choice.id} label={choice.name} icon={choice.icon} selected={preset === choice.id} testID={`today-preset-${choice.id}`} onPress={() => setSettings({ homePreset: choice.id })} />
             ))}
           </ChipRow>

@@ -105,9 +105,18 @@ export function LineChart({ data, width, height = 120, testID, showAvg }: { data
   );
 }
 
-/** Vertical month bars; highlights the last (current) bar. */
-export function MonthBars({ data, width, height = 110, testID }: { data: { label: string; value: number }[]; width: number; height?: number; testID?: string }) {
+/** Short number for chart labels: 950, 3.5k, 42k. */
+export function compactValue(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 10000) return `${Math.round(n / 1000)}k`;
+  if (abs >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return `${Math.round(n)}`;
+}
+
+/** Vertical month bars; highlights the last (current) bar. Values stay hidden unless asked. */
+export function MonthBars({ data, width, height = 110, testID, showValues = false, format }: { data: { label: string; value: number }[]; width: number; height?: number; testID?: string; showValues?: boolean; format?: (value: number) => string }) {
   const { colors } = useTheme();
+  const fmt = format ?? compactValue;
   const max = Math.max(1, ...data.map((d) => d.value));
   const gap = 8;
   const bw = (width - gap * (data.length - 1)) / data.length;
@@ -120,12 +129,166 @@ export function MonthBars({ data, width, height = 110, testID }: { data: { label
         return (
           <G key={d.label + i}>
             <Rect x={i * (bw + gap)} y={chartH - h} width={bw} height={h} rx={3} fill={last ? colors.brandPrimary : colors.surfaceTertiary} stroke={last ? "none" : colors.borderStrong} strokeWidth={1} />
+            {showValues && d.value > 0 ? (
+              <SvgText x={i * (bw + gap) + bw / 2} y={chartH - h - 3} fontSize={9} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+                {fmt(d.value)}
+              </SvgText>
+            ) : null}
             <SvgText x={i * (bw + gap) + bw / 2} y={height - 4} fontSize={10} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
               {d.label}
             </SvgText>
           </G>
         );
       })}
+    </Svg>
+  );
+}
+
+/** The slice order for a Pie, so a legend can point at the same colours. */
+export const PIE_TONES = ["brandPrimary", "success", "info", "warning", "error", "brandSecondary", "brandTertiary", "muted"] as const;
+
+type PieColors = { brandPrimary: string; success: string; info: string; warning: string; error: string; brandSecondary: string; brandTertiary: string; muted: string };
+
+export function pieColor(colors: PieColors, index: number): string {
+  return colors[PIE_TONES[index % PIE_TONES.length]];
+}
+
+/** Category share. Colours come from the theme; the legend stays with the screen. */
+export function Pie({ data, size = 160, showValues = false, format, testID }: { data: { label: string; value: number; color?: string }[]; size?: number; showValues?: boolean; format?: (value: number) => string; testID?: string }) {
+  const { colors } = useTheme();
+  const rows = data.filter((d) => d.value > 0);
+  const total = rows.reduce((s, d) => s + d.value, 0);
+  if (!total) return <View testID={testID} style={{ width: size, height: size }} />;
+  const fmt = format ?? compactValue;
+  const r = size / 2;
+  const cx = r;
+  const cy = r;
+  const slices = rows.map((d, i) => {
+    const frac = d.value / total;
+    const before = rows.slice(0, i).reduce((s, row) => s + row.value, 0) / total;
+    const a0 = -Math.PI / 2 + before * Math.PI * 2;
+    const a1 = a0 + frac * Math.PI * 2;
+    const mid = (a0 + a1) / 2;
+    const large = frac > 0.5 ? 1 : 0;
+    const x0 = cx + r * Math.cos(a0);
+    const y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1);
+    const y1 = cy + r * Math.sin(a1);
+    const path =
+      rows.length === 1
+        ? `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r} Z`
+        : `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+    return { path, color: d.color ?? pieColor(colors, i), label: d.label, value: d.value, mid };
+  });
+  return (
+    <View testID={testID} style={{ width: size, height: size }}>
+      <Svg width={size} height={size}>
+        {slices.map((s) => (
+          <Path key={s.label} d={s.path} fill={s.color} stroke={colors.surfaceSecondary} strokeWidth={1.5} />
+        ))}
+        {showValues
+          ? slices.map((s) => (
+              <SvgText key={`v-${s.label}`} x={cx + r * 0.62 * Math.cos(s.mid)} y={cy + r * 0.62 * Math.sin(s.mid) + 3} fontSize={10} fontFamily={fonts.monoMedium} fill={colors.onSurface} textAnchor="middle">
+                {fmt(s.value)}
+              </SvgText>
+            ))
+          : null}
+      </Svg>
+    </View>
+  );
+}
+
+/** Online vs in-person bars, two per month. Values stay hidden unless asked. */
+export function ChannelBars({ data, width, height = 110, testID, showValues = false, format }: { data: { label: string; online: number; inPerson: number }[]; width: number; height?: number; testID?: string; showValues?: boolean; format?: (value: number) => string }) {
+  const { colors } = useTheme();
+  const fmt = format ?? compactValue;
+  const max = Math.max(1, ...data.flatMap((d) => [d.online, d.inPerson]));
+  const gap = 10;
+  const groupW = (width - gap * Math.max(0, data.length - 1)) / Math.max(1, data.length);
+  const bw = Math.max(3, (groupW - 4) / 2);
+  const chartH = height - 18;
+  return (
+    <Svg testID={testID} width={width} height={height}>
+      {data.map((d, i) => {
+        const x = i * (groupW + gap);
+        const ho = Math.max(2, (d.online / max) * (chartH - 4));
+        const hp = Math.max(2, (d.inPerson / max) * (chartH - 4));
+        return (
+          <G key={d.label + i}>
+            <Rect x={x} y={chartH - ho} width={bw} height={ho} rx={2} fill={colors.info} />
+            <Rect x={x + bw + 4} y={chartH - hp} width={bw} height={hp} rx={2} fill={colors.success} />
+            {showValues ? (
+              <>
+                <SvgText x={x + bw / 2} y={chartH - ho - 3} fontSize={9} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+                  {d.online > 0 ? fmt(d.online) : ""}
+                </SvgText>
+                <SvgText x={x + bw + 4 + bw / 2} y={chartH - hp - 3} fontSize={9} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+                  {d.inPerson > 0 ? fmt(d.inPerson) : ""}
+                </SvgText>
+              </>
+            ) : null}
+            <SvgText x={x + groupW / 2} y={height - 4} fontSize={10} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+              {d.label}
+            </SvgText>
+          </G>
+        );
+      })}
+    </Svg>
+  );
+}
+
+/** Fill-up cost bars with a mileage line, for one vehicle. Values stay hidden unless asked. */
+export function FillChart({ data, width, height = 140, testID, showValues = false, format }: { data: { label: string; cost: number; mileage?: number }[]; width: number; height?: number; testID?: string; showValues?: boolean; format?: (value: number, kind: "cost" | "mileage") => string }) {
+  const { colors } = useTheme();
+  if (!data.length) return <View testID={testID} style={{ width, height }} />;
+  const fmt = (value: number, kind: "cost" | "mileage") => (format ? format(value, kind) : compactValue(value));
+  const maxCost = Math.max(1, ...data.map((d) => d.cost));
+  const miles = data.map((d) => d.mileage).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  const minM = miles.length ? Math.min(...miles) : 0;
+  const rangeM = miles.length ? Math.max(...miles) - minM || 1 : 1;
+  const gap = 6;
+  const bw = (width - gap * (data.length - 1)) / data.length;
+  const chartH = height - 18;
+  const top = 14;
+  const plot = chartH - top;
+  const barH = (cost: number) => Math.max(2, (cost / maxCost) * (plot - 4));
+  const pointY = (v: number) => top * 0.4 + (1 - (v - minM) / rangeM) * (plot - 8);
+  const points = data.map((d, i) => ({
+    x: i * (bw + gap) + bw / 2,
+    y: typeof d.mileage === "number" && Number.isFinite(d.mileage) ? pointY(d.mileage) : null,
+  }));
+  const line = points.filter((p) => p.y !== null).map((p, i) => `${i ? "L" : "M"} ${p.x} ${p.y}`).join(" ");
+  return (
+    <Svg testID={testID} width={width} height={height}>
+      {data.map((d, i) => {
+        const h = barH(d.cost);
+        return (
+          <G key={d.label + i}>
+            <Rect x={i * (bw + gap)} y={chartH - h} width={bw} height={h} rx={2} fill={colors.brandSecondary} opacity={0.55} />
+            {showValues && d.cost > 0 ? (
+              <SvgText x={i * (bw + gap) + bw / 2} y={chartH - h - 3} fontSize={8} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+                {fmt(d.cost, "cost")}
+              </SvgText>
+            ) : null}
+            <SvgText x={i * (bw + gap) + bw / 2} y={height - 4} fontSize={9} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+              {d.label}
+            </SvgText>
+          </G>
+        );
+      })}
+      {line ? <Path d={line} stroke={colors.brandPrimary} strokeWidth={2} fill="none" /> : null}
+      {points.map((p, i) =>
+        p.y === null ? null : (
+          <G key={`p-${i}`}>
+            <Circle cx={p.x} cy={p.y} r={3} fill={colors.brandPrimary} />
+            {showValues && data[i].mileage !== undefined ? (
+              <SvgText x={p.x} y={p.y - 6} fontSize={8} fontFamily={fonts.monoMedium} fill={colors.muted} textAnchor="middle">
+                {fmt(data[i].mileage as number, "mileage")}
+              </SvgText>
+            ) : null}
+          </G>
+        ),
+      )}
     </Svg>
   );
 }

@@ -3,11 +3,14 @@ import { Animated, Platform, Pressable, type GestureResponderEvent } from "react
 import { tabRipple } from "@/src/core/tabRipple";
 import { Tabs } from "expo-router/js-tabs";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import type { SFSymbolIcon } from "expo-router/unstable-native-tabs";
 import { fonts, useTheme } from "@/src/theme";
 import { usesNativeTabs } from "@/src/navigation";
 import { Icon } from "@/src/components/ui";
 import { useStore } from "@/src/core/store";
 import { visibleAttention } from "@/src/core/attention";
+import { moduleById, moduleTabLabel, nativeModuleShellId } from "@/src/core/modules";
+import type { ModuleId } from "@/src/core/types";
 
 function TabButton({ onPressIn, children, ...rest }: { onPressIn?: ((event: GestureResponderEvent) => void) | null; children?: React.ReactNode } & Record<string, unknown>) {
   const ripple = tabRipple();
@@ -28,17 +31,35 @@ function TabButton({ onPressIn, children, ...rest }: { onPressIn?: ((event: Gest
   );
 }
 
+/** SF symbols for the module home when the native tab bar is in use. Unknown ids keep the Today glyph. */
+type NativeTabSymbol = NonNullable<SFSymbolIcon["sf"]>;
+const NATIVE_SF: Partial<Record<ModuleId, NativeTabSymbol>> = {
+  vehicles: "car.fill",
+  money: "creditcard.fill",
+  travel: "suitcase.fill",
+  home: "house.fill",
+  tools: "hammer.fill",
+  notes: "note.text",
+  papers: "doc.text.fill",
+  wiki: "book.fill",
+  net: "wifi",
+  cycle: "calendar",
+  health: "drop.fill",
+};
+
 export default function TabsLayout() {
   const { colors, look } = useTheme();
   const { db } = useStore();
   const urgent = visibleAttention(db).filter((i) => i.severity === "urgent").length;
+  const shell = nativeModuleShellId(db.settings);
+  const shellTab = shell ? { label: moduleTabLabel(shell), icon: moduleById(shell).icon } : null;
 
   if (usesNativeTabs) {
     return (
       <NativeTabs>
         <NativeTabs.Trigger name="index">
-          <NativeTabs.Trigger.Icon sf="square.grid.2x2.fill" />
-          <NativeTabs.Trigger.Label>Today</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Icon sf={(shell && NATIVE_SF[shell]) ?? "square.grid.2x2.fill"} />
+          <NativeTabs.Trigger.Label>{shellTab?.label ?? "Today"}</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="attention">
           <NativeTabs.Trigger.Icon sf="bell.fill" />
@@ -64,7 +85,7 @@ export default function TabsLayout() {
         tabBarButton: (props) => <TabButton {...props} />,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />
+      <Tabs.Screen name="index" options={{ title: shellTab?.label ?? "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={shellTab ? shellTab.icon : focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />
       <Tabs.Screen
         name="attention"
         options={{
@@ -76,6 +97,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarButtonTestID: "tab-settings", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "cog" : "cog-outline"} color={color as string} size={24} /> }} />
+      <Tabs.Screen name="favorites" options={{ href: null }} />
     </Tabs>
   );
 }

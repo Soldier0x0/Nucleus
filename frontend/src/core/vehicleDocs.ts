@@ -1,24 +1,31 @@
 import type { DB, Paper } from "./types";
 import { daysBetween, todayISO } from "./format";
+import { effectivePaperTags } from "./paperTags";
 import { motorPolicyBadges } from "./vehicleMath";
 
 export type VehicleDocTileId = "vdoc-motor" | "vdoc-pa" | "vdoc-puc";
 
+/**
+ * This vehicle's document set: the one vault filtered by the Vehicle section.
+ * Kind-only records (no tags) derive their sections from the kind, so old
+ * files behave exactly as before.
+ */
+export function vehiclePapers(db: DB, vehicleId: string): Paper[] {
+  return db.papers.filter((p) => p.vehicleId === vehicleId && effectivePaperTags(p).includes("Vehicle"));
+}
+
 export function motorPaper(db: DB, vehicleId: string): Paper | undefined {
-  return db.papers.find(
-    (p) =>
-      p.vehicleId === vehicleId &&
-      p.kind === "insurance" &&
-      (p.motorCover === "comprehensive" || p.motorCover === "third-party"),
+  return vehiclePapers(db, vehicleId).find(
+    (p) => p.motorCover === "comprehensive" || p.motorCover === "third-party",
   );
 }
 
 export function personalAccidentPaper(db: DB, vehicleId: string): Paper | undefined {
-  return db.papers.find((p) => p.vehicleId === vehicleId && p.kind === "personal_accident");
+  return vehiclePapers(db, vehicleId).find((p) => p.kind === "personal_accident");
 }
 
 export function pucPaper(db: DB, vehicleId: string): Paper | undefined {
-  return db.papers.find((p) => p.vehicleId === vehicleId && p.kind === "puc");
+  return vehiclePapers(db, vehicleId).find((p) => p.kind === "puc");
 }
 
 export function vehicleDocTileIds(db: DB, vehicleId: string): VehicleDocTileId[] {

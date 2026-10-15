@@ -10,6 +10,13 @@ import { bankInboxAutoOn } from "./bankAccess.ts";
 import { heldSuggestions } from "./moneyWords.ts";
 import { reminderInputs, shouldWarnDenied } from "./reminderSync.ts";
 import { SYNC_COLLECTIONS } from "./syncStamp.ts";
+import { channelSeries, serviceCostByYear, vehicleStats } from "./intelligence.ts";
+import { classifyChannel, learnMerchantChannel, seedChannel } from "./merchantTable.ts";
+import { categorySplit } from "./moneyDesk.ts";
+import { transitExpense } from "./transit.ts";
+import { publicTransitSpend, vehicleFuelSpendMonth } from "./travelSpend.ts";
+import { monthKey, todayISO } from "./format.ts";
+import type { Txn, Vehicle } from "./types.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -128,4 +135,109 @@ test("money suggestions stay while typing a space and go when the note is cleare
   assert.deepEqual(heldSuggestions(prev, [], "lun "), ["Lunch"]);
   assert.deepEqual(heldSuggestions(prev, ["Lunch box"], "lunch b"), ["Lunch box"]);
   assert.deepEqual(heldSuggestions(prev, [], ""), []);
+});
+
+test("v0.9.8: Transport folds into Travel, in the budget too, and custom names stay", () => {
+  const raw = JSON.parse(JSON.stringify(emptyDB())) as Record<string, any>;
+  raw.txns = [
+    { id: "t1", type: "expense", amount: 40, category: "Transport", date: "2026-10-01", note: "Cab" },
+    { id: "t2", type: "expense", amount: 60, category: "Travel", date: "2026-10-02", note: "Hotel" },
+  ];
+  raw.budget = { monthly: 5000, categories: { Transport: 400, Travel: 600, Food: 100 } };
+  raw.settings.moneyNames = ["Transport"];
+  const db = normalizeDB(raw);
+  assert.deepEqual(db.txns.map((t) => t.category), ["Travel", "Travel"]);
+  assert.deepEqual(db.budget.categories, { Travel: 1000, Food: 100 });
+  assert.deepEqual(db.settings.moneyNames, ["Transport"]);
+});
+
+test("v0.9.8: an old file folds Travel off once; turning it back on sticks", () => {
+  const raw = JSON.parse(JSON.stringify(emptyDB())) as Record<string, any>;
+  delete raw.settings.travelFolded;
+  raw.settings.modules = raw.settings.modules.map((m: any) => (m.id === "travel" ? { ...m, enabled: true, hidden: false } : m));
+  const once = normalizeDB(raw);
+  const travel = once.settings.modules.find((m) => m.id === "travel");
+  assert.equal(travel?.enabled, false);
+  assert.equal(travel?.hidden, true);
+  assert.equal(once.settings.travelFolded, true);
+  const backOn = { ...once, settings: { ...once.settings, modules: once.settings.modules.map((m) => (m.id === "travel" ? { ...m, enabled: true, hidden: false } : m)) } };
+  assert.equal(normalizeDB(backOn).settings.modules.find((m) => m.id === "travel")?.enabled, true);
+});
+
+test("v0.9.8: a transit fare is Travel and never mixes with bike fuel", () => {
+  const db = emptyDB();
+  const fare = transitExpense(40, "cab", "2026-10-01");
+  assert.equal(fare.category, "Travel");
+  const month = monthKey("2026-10-01");
+  const bike: Vehicle = { id: "v", name: "Bike", type: "bike", fuelType: "petrol", initialOdometer: 0, serviceIntervalKm: 3000, createdAt: "2026-01-01" };
+  const next = { ...db, vehicles: [bike], txns: [{ id: "fare", ...fare }], fuel: [{ id: "f1", vehicleId: "v", date: "2026-10-01", odometer: 1500, litres: 5, price: 100, total: 500 }] };
+  assert.equal(publicTransitSpend(next, month, "cab"), 40);
+  assert.equal(publicTransitSpend(next, month), 40);
+  assert.equal(vehicleFuelSpendMonth(next, month), 500);
+});
+
+test("v0.9.8: the merchant table knows chains and apps; a learned answer wins", () => {
+  assert.equal(seedChannel("KFC"), "in_person");
+  assert.equal(seedChannel("dominos 499"), "in_person");
+  assert.equal(seedChannel("zomato kfc"), "online_food");
+  assert.equal(seedChannel("Blinkit order"), "online_grocery");
+  assert.equal(seedChannel("Shenoy Stores"), null);
+  assert.equal(classifyChannel([], "Shenoy Stores"), null);
+  let db = emptyDB();
+  db = learnMerchantChannel(db, "Shenoy Stores", "in_person");
+  assert.equal(classifyChannel(db.settings.merchantOverrides, "shenoy stores 240"), "in_person");
+  db = learnMerchantChannel(db, "KFC", "online_food");
+  assert.equal(classifyChannel(db.settings.merchantOverrides, "kfc 320"), "online_food");
+  const round = normalizeDB(JSON.parse(JSON.stringify(db)));
+  assert.equal(classifyChannel(round.settings.merchantOverrides, "kfc"), "online_food");
+  assert.equal(classifyChannel(round.settings.merchantOverrides, "shenoy"), "in_person");
+});
+
+test("v0.9.8: old txns stay untagged and an unknown channel is dropped", () => {
+  const raw = JSON.parse(JSON.stringify(emptyDB())) as Record<string, any>;
+  raw.txns = [
+    { id: "old", type: "expense", amount: 20, category: "Food", date: "2026-10-01" },
+    { id: "odd", type: "expense", amount: 30, category: "Food", date: "2026-10-02", channel: "telepathy" },
+  ];
+  const db = normalizeDB(raw);
+  assert.equal(db.txns[0]?.channel, undefined);
+  assert.equal(db.txns[1]?.channel, undefined);
+});
+
+test("v0.9.8: the pie total is spending without transfers, and channel bars skip untagged", () => {
+  const split = categorySplit([
+    { id: "a", type: "expense", amount: 100, category: "Food", date: "2026-10-02" },
+    { id: "b", type: "expense", amount: 50, category: "Travel", date: "2026-10-03" },
+    { id: "c", type: "expense", amount: 70, category: "Food", date: "2026-10-04" },
+    { id: "d", type: "expense", amount: 30, category: "Food", date: "2026-10-05", transfer: true },
+  ], "2026-10");
+  assert.equal(split.reduce((sum, row) => sum + row.amount, 0), 220);
+  assert.deepEqual(split.map((row) => [row.category, row.amount]), [["Food", 170], ["Travel", 50]]);
+  const today = todayISO();
+  const rows: Txn[] = [
+    { id: "a", type: "expense", amount: 100, category: "Food", date: today, channel: "online_food" },
+    { id: "b", type: "expense", amount: 50, category: "Travel", date: today, channel: "in_person" },
+    { id: "c", type: "expense", amount: 70, category: "Food", date: today },
+    { id: "d", type: "expense", amount: 30, category: "Food", date: today, transfer: true },
+  ];
+  const series = channelSeries({ ...emptyDB(), txns: rows }, 6);
+  const last = series[series.length - 1];
+  assert.equal(series.length, 6);
+  assert.equal(last.online, 100);
+  assert.equal(last.inPerson, 50);
+  assert.equal(last.untagged, 70);
+});
+
+test("v0.9.8: service cost buckets per calendar year and the stat is this year", () => {
+  const db = emptyDB();
+  const v: Vehicle = { id: "v", name: "Bike", type: "bike", fuelType: "petrol", initialOdometer: 0, serviceIntervalKm: 3000, createdAt: todayISO() };
+  db.vehicles.push(v);
+  const year = todayISO().slice(0, 4);
+  db.services.push({ id: "s1", vehicleId: "v", date: `${year}-02-01`, odometer: 1000, kind: "general", cost: 500, details: {} });
+  db.services.push({ id: "s2", vehicleId: "v", date: "2020-03-01", odometer: 500, kind: "oil", cost: 300, details: {} });
+  const years = serviceCostByYear(db, "v");
+  assert.deepEqual(years.map((row) => row.year), ["2020", year]);
+  const st = vehicleStats(db, v);
+  assert.equal(st.serviceCost, 500);
+  assert.equal(st.serviceCostTotal, 800);
 });

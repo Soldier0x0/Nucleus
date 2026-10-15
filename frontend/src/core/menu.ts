@@ -15,6 +15,7 @@ export const MENU_SECTIONS: MenuSection[] = [
     title: "Money",
     links: [
       { id: "money", label: "Money", icon: "wallet-outline", route: "/money", module: "money" },
+      { id: "journeys", label: "Journeys", icon: "bag-suitcase-outline", route: "/travel", module: "money" },
       { id: "plan", label: "Plan and jars", icon: "piggy-bank-outline", route: "/money/plan", module: "money" },
       { id: "bills", label: "Bills", icon: "calendar-clock", route: "/bills", module: "money" },
     ],

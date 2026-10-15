@@ -129,7 +129,7 @@ test("capture lexicon acceptance samples from v0.9.2 plan", () => {
   const uber = parseCapture(db, "uber 180");
   assert.ok(uber && !("error" in uber));
   if (!uber || "error" in uber) return;
-  assert.equal(uber.apply(db).txns[0]?.category, "Transport");
+  assert.equal(uber.apply(db).txns[0]?.category, "Travel");
 
   const hotel = parseCapture(db, "hotel 3200");
   assert.ok(hotel && !("error" in hotel));

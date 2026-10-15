@@ -41,7 +41,7 @@ export default function PaperViewScreen() {
         }
       />
       <DocumentContent paper={paper} />
-      {edit ? <PaperSheet paper={paper} onClose={() => setEdit(false)} onDeleted={() => router.back()} /> : null}
+      {edit ? <PaperSheet paper={paper} onClose={() => setEdit(false)} onDeleteRequest={() => setConfirmDel(true)} /> : null}
       <ConfirmSheet
         visible={confirmDel}
         id="paper-view-delete"
@@ -52,6 +52,7 @@ export default function PaperViewScreen() {
         onConfirm={() => {
           update((d) => removePaper(d, paper.id));
           setConfirmDel(false);
+          setEdit(false);
           toast("Paper deleted", "delete-outline");
           router.back();
         }}

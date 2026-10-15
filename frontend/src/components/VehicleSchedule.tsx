@@ -4,6 +4,7 @@ import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { upsertVehicle } from "@/src/core/actions";
 import { fmtDate, num, parseNum, todayISO } from "@/src/core/format";
+import { odometerEstimate } from "@/src/core/fuelCapture";
 import { PART_LABEL, serviceSchedule, vehicleParts, type PartSetting } from "@/src/core/serviceCatalog";
 import type { Vehicle } from "@/src/core/types";
 import { Button, Card, Eyebrow, Icon, T } from "./ui";
@@ -16,7 +17,9 @@ export function VehicleSchedule({ vehicle }: { vehicle: Vehicle }) {
   const { db } = useStore();
   const { colors } = useTheme();
   const [edit, setEdit] = useState(false);
-  const rows = serviceSchedule(db, vehicle, todayISO());
+  const today = todayISO();
+  const rows = serviceSchedule(db, vehicle, today);
+  const est = odometerEstimate(db, vehicle, today);
   const tone = { due: colors.error, soon: colors.warning, ok: colors.success };
   return (
     <Card testID="vehicle-schedule-card">
@@ -33,6 +36,15 @@ export function VehicleSchedule({ vehicle }: { vehicle: Vehicle }) {
           </T>
         </View>
       ))}
+      {est.estimated ? (
+        <T muted style={{ fontSize: 11, marginTop: 8 }} testID="vehicle-schedule-odo-note">
+          Odometer is estimated at ~{num(est.value, 0)} km from the last reading {est.daysAgo === 1 ? "yesterday" : `${est.daysAgo} days ago`}.
+        </T>
+      ) : est.stale ? (
+        <T muted style={{ fontSize: 11, marginTop: 8 }} testID="vehicle-schedule-odo-note">
+          Odometer is the last reading, {est.daysAgo} days old.
+        </T>
+      ) : null}
       {edit ? <IntervalSheet vehicle={vehicle} onClose={() => setEdit(false)} /> : null}
     </Card>
   );

@@ -2,7 +2,7 @@ import { monthKey } from "./format";
 import { isPersonalTrip, transitLabel } from "./transit";
 import type { DB, TransitKind } from "./types";
 
-const KINDS: TransitKind[] = ["metro", "train", "cab", "bus"];
+const KINDS: TransitKind[] = ["metro", "train", "cab", "bus", "flight"];
 
 export function transitTileId(kind: TransitKind): string {
   return `transit-${kind}`;
@@ -32,12 +32,12 @@ export function publicTransitSpend(db: DB, month: string, kind?: TransitKind): n
   const hasPublicTrip = db.trips.some((trip) => !isPersonalTrip(trip));
   return db.txns
     .filter((t) => t.type === "expense" && !t.transfer && monthKey(t.date) === month)
-    .filter((t) => t.category === "Transport" || (hasPublicTrip && t.category !== "Fuel" && t.category !== "Vehicle"))
+    .filter((t) => t.category === "Travel" || (hasPublicTrip && t.category !== "Fuel" && t.category !== "Vehicle"))
     .filter((t) => {
       if (t.category === "Fuel" || t.category === "Vehicle") return false;
       const note = t.note ?? "";
       if (!kind) {
-        return KINDS.some((k) => noteMatchesTransit(note, k)) || (hasPublicTrip && t.category === "Transport");
+        return KINDS.some((k) => noteMatchesTransit(note, k)) || (hasPublicTrip && t.category === "Travel");
       }
       return noteMatchesTransit(note, kind);
     })

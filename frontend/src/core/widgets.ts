@@ -15,6 +15,28 @@ export type WidgetSnapshot = {
   updated: string;
 };
 
+/**
+ * Action widgets deep-link with `nucleus://open?path=…&action=…`. The widget
+ * process only opens the app; the sheet itself runs after unlock.
+ */
+export const WIDGET_ACTIONS = ["fuel", "expense", "service"] as const;
+export type WidgetAction = (typeof WIDGET_ACTIONS)[number];
+
+/** An action from a deep-link URL or a bare action word. Unknown or missing gives null. */
+export function parseWidgetAction(raw: unknown): WidgetAction | null {
+  if (typeof raw !== "string") return null;
+  const text = raw.trim();
+  const inUrl = /[?&]action=([^&#]*)/i.exec(text);
+  let value = inUrl ? inUrl[1] : text;
+  try {
+    value = decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+  value = value.trim().toLowerCase();
+  return (WIDGET_ACTIONS as readonly string[]).includes(value) ? (value as WidgetAction) : null;
+}
+
 export function widgetSnapshot(db: DB, today = todayISO(), updated = ""): WidgetSnapshot {
   const soon = calendarEvents(db)
     .map((e) => ({ ...e, days: daysBetween(today, e.date) }))

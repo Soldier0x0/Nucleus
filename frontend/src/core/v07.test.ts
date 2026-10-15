@@ -20,6 +20,20 @@ import { dataHealth, dueDayLabel } from "./life.ts";
 import { withoutSampleData } from "./sample.ts";
 import type { DB } from "./types.ts";
 
+// Settings moved into a hub plus child screens (v0.9.8 phase 9.5), so these
+// source checks read every piece that makes up the old single screen.
+const readSettings = () =>
+  [
+    "../../app/(tabs)/settings.tsx",
+    "../components/settings/DisplaySettings.tsx",
+    "../components/settings/SecuritySettings.tsx",
+    "../components/settings/NotificationsSettings.tsx",
+    "../components/settings/DataSettings.tsx",
+    "../components/settings/AboutSettings.tsx",
+  ]
+    .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
+    .join("\n");
+
 function upgradedPhone(): DB {
   return normalizeDB({
     version: 1,
@@ -166,7 +180,7 @@ test("public transport is metro, train, cab or taxi, or bus", () => {
   assert.equal(isPersonalTrip({ mode: "personal" }), true);
   assert.equal(isPersonalTrip({ mode: "public" }), false);
   const fare = transitExpense(40, "cab", "2026-09-04");
-  assert.deepEqual(fare, { type: "expense", amount: 40, category: "Transport", date: "2026-09-04", note: "Cab or taxi" });
+  assert.deepEqual(fare, { type: "expense", amount: 40, category: "Travel", date: "2026-09-04", note: "Cab or taxi" });
   assert.notEqual(fare.category, "Fuel");
   assert.notEqual(fare.category, "Vehicle");
   const travel = readFileSync(new URL("../../app/travel/index.tsx", import.meta.url), "utf8");
@@ -182,7 +196,7 @@ test("location is asked once, read once, then stopped", () => {
   assert.equal(locationPhase({ asked: true, granted: true, read: true }), "stop");
   assert.equal(locationPhase({ asked: true, granted: false, read: false }), "stop");
   assert.deepEqual(placeFromFix({ lat: 12.97, lon: 77.59 }, "This phone"), { name: "This phone", lat: 12.97, lon: 77.59 });
-  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const settings = readSettings();
   const appJson = readFileSync(new URL("../../app.json", import.meta.url), "utf8");
   assert.match(settings, /Nucleus cannot turn the phone's location switch on or off/);
   assert.equal(settings.includes("ACTION_LOCATION_SOURCE_SETTINGS"), false);
@@ -323,7 +337,7 @@ test("the bank-texts switch opens notification access and does not turn it on", 
   assert.match(prompt.line, /Turn Nucleus on/);
   assert.match(prompt.blockedLine, /restricted settings/);
   assert.match(prompt.blockedLine, /app info/);
-  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const settings = readSettings();
   const kotlin = readFileSync(new URL("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt", import.meta.url), "utf8");
   assert.match(settings, /bankAccessPrompt\(/);
   assert.match(settings, /prompt\.line/);

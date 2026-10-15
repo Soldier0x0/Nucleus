@@ -6,11 +6,12 @@ import { useStore } from "@/src/core/store";
 import { removePaper } from "@/src/core/actions";
 import { missingDocumentNames } from "@/src/core/documents";
 import { PAPER_KINDS } from "@/src/core/life";
+import { PAPER_TAGS, effectivePaperTags, papersByTag, type PaperTagFilter } from "@/src/core/paperTags";
 import type { Paper, Person } from "@/src/core/types";
 import { daysBetween, fmtDate, todayISO, uid } from "@/src/core/format";
 import { paperAttachmentUri } from "@/src/core/paperFiles";
 import { Header } from "@/src/components/Header";
-import { Button, Card, Chip, EmptyState, Eyebrow, IconButton, StatusBadge, T } from "@/src/components/ui";
+import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, StatusBadge, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
 import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { Field } from "@/src/components/inputs";
@@ -29,8 +30,19 @@ export default function Papers() {
   const [person, setPerson] = useState<Person | "new" | null>(null);
   const [preview, setPreview] = useState<Paper | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Paper | null>(null);
+  const [tag, setTag] = useState<PaperTagFilter>("All");
   const today = todayISO();
   const missing = missingDocumentNames(db);
+  const filtered = papersByTag(db.papers, tag);
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    update((d) => removePaper(d, id));
+    setDeleteTarget(null);
+    setEdit((e) => (e && e !== "new" && e.id === id ? null : e));
+    setPreview((p) => (p && p.id === id ? null : p));
+    toast("Paper deleted", "delete-outline");
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
@@ -58,10 +70,22 @@ export default function Papers() {
             ))}
           </Card>
         ) : null}
+        {db.papers.length ? (
+          <ChipRow testID="paper-sections">
+            <Chip label="All" selected={tag === "All"} testID="paper-section-all" onPress={() => setTag("All")} />
+            {PAPER_TAGS.map((t) => (
+              <Chip key={t} label={t} selected={tag === t} testID={`paper-section-${t.toLowerCase()}`} onPress={() => setTag(t)} />
+            ))}
+          </ChipRow>
+        ) : null}
         {db.papers.length === 0 ? (
           <EmptyState testID="papers-empty" icon="file-document-outline" title="No papers yet" body="A driving licence, RC, insurance page or passport. The date feeds Attention. The file stays on this phone." action={<Button label="Add a paper" icon="plus" testID="papers-empty-add" onPress={() => setEdit("new")} />} />
+        ) : filtered.length === 0 ? (
+          <Card testID="papers-section-empty">
+            <T muted>No papers in {tag} yet. Papers can sit in more than one section.</T>
+          </Card>
         ) : (
-          db.papers.map((p) => {
+          filtered.map((p) => {
             const days = p.expiry ? daysBetween(today, p.expiry) : undefined;
             const who = db.people.find((x) => x.id === p.personId)?.name;
             const badge = paperBadgeForRow(p);
@@ -74,7 +98,7 @@ export default function Papers() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={{ flex: 1 }}>
                     <T v="h2" numberOfLines={1}>{p.title}</T>
-                    <T muted style={{ fontSize: 12 }} numberOfLines={1}>{[PAPER_KINDS.find((k) => k.id === p.kind)?.label, who, p.number, badge].filter(Boolean).join(" · ")}</T>
+                    <T muted style={{ fontSize: 12 }} numberOfLines={1}>{[...effectivePaperTags(p), PAPER_KINDS.find((k) => k.id === p.kind)?.label, who, p.number, badge].filter(Boolean).join(" · ")}</T>
                   </View>
                   <IconButton icon="pencil-outline" label="Edit paper" testID={`paper-edit-${p.id}`} onPress={() => setEdit(p)} />
                   <IconButton icon="delete-outline" label="Delete paper" testID={`paper-list-delete-${p.id}`} onPress={() => setDeleteTarget(p)} />
@@ -86,7 +110,7 @@ export default function Papers() {
           })
         )}
       </ScrollView>
-      {edit ? <PaperSheet paper={edit === "new" ? undefined : edit} onClose={() => setEdit(null)} /> : null}
+      {edit ? <PaperSheet paper={edit === "new" ? undefined : edit} onClose={() => setEdit(null)} onDeleteRequest={() => { if (edit && edit !== "new") setDeleteTarget(edit); }} /> : null}
       {person ? <PersonSheet person={person === "new" ? undefined : person} onClose={() => setPerson(null)} /> : null}
       {preview ? (
         <DocViewer
@@ -97,10 +121,7 @@ export default function Papers() {
             setPreview(null);
             setEdit(preview);
           }}
-          onDelete={() => {
-            update((d) => removePaper(d, preview.id));
-            toast("Paper deleted", "delete-outline");
-          }}
+          onDelete={() => { if (preview) setDeleteTarget(preview); }}
         />
       ) : null}
       <ConfirmSheet
@@ -110,12 +131,7 @@ export default function Papers() {
         body="The file and expiry reminders for this document will be removed from Nucleus. This can't be undone."
         confirmLabel="Delete"
         onCancel={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (!deleteTarget) return;
-          update((d) => removePaper(d, deleteTarget.id));
-          setDeleteTarget(null);
-          toast("Paper deleted", "delete-outline");
-        }}
+        onConfirm={confirmDelete}
       />
       <ModuleGate id="papers" name="Documents" icon="file-document-outline" />
     </View>
