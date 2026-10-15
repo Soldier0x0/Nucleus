@@ -44,5 +44,15 @@ export async function resolve(specifier, context, nextResolve) {
   if ((specifier.startsWith("./") || specifier.startsWith("../")) && !specifier.endsWith(".ts") && !specifier.endsWith(".js") && !specifier.endsWith(".mjs")) {
     return nextResolve(specifier + ".ts", context);
   }
+  // desktop/src files import @noble/* directly. CI's phone job installs only
+  // frontend packages, so desktop imports resolve against the frontend copy.
+  if (context.parentURL?.includes("/desktop/") && !specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.startsWith("@/")) {
+    try {
+      return await nextResolve(specifier, context);
+    } catch (err) {
+      if (err?.code !== "ERR_MODULE_NOT_FOUND") throw err;
+      return nextResolve(specifier, { ...context, parentURL: frontendRoot + "src/core/probe.ts" });
+    }
+  }
   return nextResolve(specifier, context);
 }
