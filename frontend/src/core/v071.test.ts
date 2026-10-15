@@ -9,6 +9,20 @@ import { hasSampleData, withoutSampleData } from "./sample.ts";
 import { saveBankNotices } from "./smsMoney.ts";
 import type { DB } from "./types.ts";
 
+// Settings moved into a hub plus child screens (v0.9.8 phase 9.5), so these
+// source checks read every piece that makes up the old single screen.
+const readSettings = () =>
+  [
+    "../../app/(tabs)/settings.tsx",
+    "../components/settings/DisplaySettings.tsx",
+    "../components/settings/SecuritySettings.tsx",
+    "../components/settings/NotificationsSettings.tsx",
+    "../components/settings/DataSettings.tsx",
+    "../components/settings/AboutSettings.tsx",
+  ]
+    .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
+    .join("\n");
+
 function upgradedPhone(): DB {
   return normalizeDB({
     version: 1,
@@ -56,7 +70,7 @@ test("an upgraded phone with an empty sample list still removes every demo lefto
   const db = upgradedPhone();
   assert.deepEqual(db.settings.sampleIds, []);
   assert.equal(hasSampleData(db), true);
-  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const settings = readSettings();
   assert.match(settings, /Add sample data/);
   assert.match(settings, /Remove sample data/);
   assert.equal(/hasSampleData\(db\) \?/.test(settings), false);
@@ -133,7 +147,7 @@ test("a saved city shows the forecast, and each card opens its own place", () =>
   assert.match(modes, /homeCard\(/);
   assert.match(modes, /<Icon /);
   assert.doesNotMatch(modes, /FadeIn|LinearTransition/);
-  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const settings = readSettings();
   assert.match(settings, /settings-weather/);
   assert.match(settings, /section === "weather"|section == "weather"|params\.section/);
   const money = readFileSync(new URL("../../app/money/index.tsx", import.meta.url), "utf8");
@@ -173,7 +187,7 @@ test("google pay, phonepe, and bank notices save once notification access is on"
   assert.equal(bankInboxAfterReturn({ asked: true, accessOn: true, inboxOn: false }), true);
   assert.equal(bankInboxAfterReturn({ asked: true, accessOn: false, inboxOn: false }), false);
   assert.equal(bankInboxAfterReturn({ asked: false, accessOn: true, inboxOn: false }), false);
-  const settings = readFileSync(new URL("../../app/(tabs)/settings.tsx", import.meta.url), "utf8");
+  const settings = readSettings();
   const sync = readFileSync(new URL("../components/BankTextSync.tsx", import.meta.url), "utf8");
   const kotlin = readFileSync(new URL("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/BankNoticeService.kt", import.meta.url), "utf8");
   assert.match(settings, /bankInboxAfterReturn/);

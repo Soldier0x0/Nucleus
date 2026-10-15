@@ -250,6 +250,17 @@ export async function openChannelSettings(key: ChannelKey, androidPackage: strin
   }
 }
 
+/** Opens Android's notification settings for this app, where every channel and its sound are listed. */
+export async function openNotificationSounds(androidPackage: string) {
+  if (Platform.OS !== "android") return Linking.openSettings();
+  ensureHandler();
+  try {
+    await Linking.sendIntent("android.settings.APP_NOTIFICATION_SETTINGS", [{ key: "android.provider.extra.APP_PACKAGE", value: androidPackage }]);
+  } catch {
+    await Linking.openSettings().catch(() => {});
+  }
+}
+
 /** The channel a rule or bill reminder uses. Lock alerts use the public lock-screen channel. */
 export function reminderChannel(lockAlerts: boolean): string {
   return lockAlerts ? CHANNELS.lock : CHANNELS.reminders;

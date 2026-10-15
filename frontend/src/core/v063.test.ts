@@ -15,6 +15,18 @@ import { cloudScope, cloudSignIn, cloudStoreMessage } from "./vaultFile.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
+// Settings moved into a hub plus child screens (v0.9.8 phase 9.5), so these
+// source checks read every piece that makes up the old single screen.
+const readSettings = () =>
+  [
+    "../../app/(tabs)/settings.tsx",
+    "../components/settings/DisplaySettings.tsx",
+    "../components/settings/SecuritySettings.tsx",
+    "../components/settings/NotificationsSettings.tsx",
+    "../components/settings/DataSettings.tsx",
+    "../components/settings/AboutSettings.tsx",
+  ].map(read).join("\n");
+
 test("the emergency card is public and high, with blood, phone, and plate, only while the switch is on", () => {
   assert.equal(emergencyLockCard({ showOnLock: false, bloodGroup: "O+", phone: "9876543210", plate: "KA 01 AB 1234" }), null);
   assert.equal(emergencyLockCard({ showOnLock: true, bloodGroup: "  ", phone: "", plate: "" }), null);
@@ -96,7 +108,7 @@ test("bank and UPI notices accept both wordings, keep balance lines, and still d
 });
 
 test("the screen, the listener, and the upload say what this version does", () => {
-  const settings = read("../../app/(tabs)/settings.tsx");
+  const settings = readSettings();
   const enable = read("../native/enableFeature.ts");
   const cloud = read("../native/cloudFile.ts");
   const android = read("../native/android.ts");
@@ -181,7 +193,7 @@ test("sample rows can be removed and entries the user added stay", () => {
   assert.equal(fromOld.txns.some((row) => row.note === "Salary"), false);
   assert.equal(fromOld.vehicles.some((row) => row.plate === "KA 01 AB 1234"), false);
   assert.equal(fromOld.budget.monthly, 9999);
-  const settings = read("../../app/(tabs)/settings.tsx");
+  const settings = readSettings();
   assert.match(settings, /settings-sample-remove-button/);
   assert.match(settings, /withoutSampleData/);
 });
@@ -292,7 +304,7 @@ test("about shows the installed version and follows a later stamp", () => {
   assert.equal(aboutTitle("0.8"), "Nucleus 0.8");
   assert.equal(aboutTitle(" 0.6.4 "), "Nucleus 0.6.4");
   assert.notEqual(aboutTitle("0.6.3"), "Nucleus 2.0");
-  const settings = read("../../app/(tabs)/settings.tsx");
+  const settings = readSettings();
   assert.doesNotMatch(settings, /Nucleus 2\.0/);
   assert.match(settings, /aboutTitle\(installedVersion\(\)\)/);
   const kt = read("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt");

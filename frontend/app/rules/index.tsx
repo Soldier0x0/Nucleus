@@ -8,7 +8,8 @@ import { dryRun, evaluateRule, markFired, reminders, ruleSentence, TRIGGERS, tri
 import { notificationsSupported, permissionState, reminderChannel, requestPermission, scheduledCount, syncReminders } from "@/src/core/notify";
 import { num, uid } from "@/src/core/format";
 import { Header } from "@/src/components/Header";
-import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
+import { Button, Card, Chip, EmptyState, Eyebrow, Icon, IconButton, Press, T } from "@/src/components/ui";
+import { QuietHours } from "@/src/components/settings/QuietHours";
 import { Sheet } from "@/src/components/Sheet";
 import { Field } from "@/src/components/inputs";
 import { useToast } from "@/src/components/Toast";
@@ -133,39 +134,7 @@ export default function Rules() {
         ) : null}
 
         <Card testID="rules-quiet-card">
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Icon name="weather-night" size={20} color={colors.muted} />
-            <View style={{ flex: 1 }}>
-              <T v="label">Quiet hours</T>
-              <T muted style={{ fontSize: 12 }}>
-                {db.settings.quietHours.enabled ? `No reminders between ${String(db.settings.quietHours.from).padStart(2, "0")}:00 and ${String(db.settings.quietHours.to).padStart(2, "0")}:00 — they move to the morning.` : "Reminders can arrive at any hour."}
-              </T>
-            </View>
-            <Switch
-              testID="rules-quiet-switch"
-              value={db.settings.quietHours.enabled}
-              onValueChange={(v) => setSettings({ quietHours: { ...db.settings.quietHours, enabled: v } })}
-              trackColor={{ true: colors.brandPrimary, false: colors.surfaceTertiary }}
-              thumbColor={colors.surfaceSecondary}
-            />
-          </View>
-          {db.settings.quietHours.enabled ? (
-            <View style={{ marginTop: 12 }}>
-              <Segmented
-                testID="rules-quiet-window"
-                value={`${db.settings.quietHours.from}-${db.settings.quietHours.to}`}
-                onChange={(v) => {
-                  const [from, to] = v.split("-").map(Number);
-                  setSettings({ quietHours: { enabled: true, from, to } });
-                }}
-                options={[
-                  { value: "21-7", label: "21 – 07" },
-                  { value: "22-7", label: "22 – 07" },
-                  { value: "23-8", label: "23 – 08" },
-                ]}
-              />
-            </View>
-          ) : null}
+          <QuietHours idPrefix="rules" />
         </Card>
       </ScrollView>
 
