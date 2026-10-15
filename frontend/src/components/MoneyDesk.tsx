@@ -1,28 +1,37 @@
 import { useEffect, useState } from "react";
-import { Share, TextInput, View } from "react-native";
+import { Share, TextInput, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useStore } from "@/src/core/store";
 import { useTheme } from "@/src/theme";
-import { addMonths, monthKey, todayISO } from "@/src/core/format";
+import { addMonths, money, monthKey, todayISO } from "@/src/core/format";
+import { readiness } from "@/src/core/domains";
+import { channelSeries } from "@/src/core/intelligence";
 import { balanceOverTime, categorySplit, dayBefore, grewMost, monthFlow, priceChange, repeatingBills, unusedCategories } from "@/src/core/moneyDesk";
 import { memoryKey, type BankAsk } from "@/src/core/smsMoney";
 import { suggestShared } from "@/src/core/recordLinks";
 import { shareBill } from "@/src/core/shareLine";
+import { ChannelBars, compactValue } from "./charts";
 import { syncBankInbox } from "./BankTextSync";
-import { Button, Card, Eyebrow, IconButton, T } from "./ui";
+import { Button, Card, Eyebrow, IconButton, Press, T } from "./ui";
 import { useToast } from "./Toast";
 
 /** Charts, bills, bank texts, and links. Visible on Money, not behind another tap. */
 export function MoneyDesk({ month }: { month: string }) {
   const { db, update, setSettings } = useStore();
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, sp } = useTheme();
+  const { width } = useWindowDimensions();
   const [person, setPerson] = useState("");
   const [account, setAccount] = useState("");
   const [asks, setAsks] = useState<BankAsk[]>([]);
   const [readNote, setReadNote] = useState("");
+  const [numbers, setNumbers] = useState(false);
   const toast = useToast();
+  const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
+  const chartFmt = db.settings.privacyMode ? () => "•••" : compactValue;
   const flow = monthFlow(db.txns, month);
+  const journeys = db.trips.filter((trip) => trip.end >= todayISO()).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 3);
+  const channels = channelSeries(db, 6);
   const split = categorySplit(db.txns, month);
   const previousMonth = addMonths(`${month}-01`, -1).slice(0, 7);
   const grew = grewMost(db.txns, month, previousMonth);
@@ -87,6 +96,39 @@ export function MoneyDesk({ month }: { month: string }) {
           <T key={row.category} style={{ marginTop: 6 }}>{row.category} · {row.amount}</T>
         ))}
       </Card>
+      <Card testID="money-journeys-card">
+        <Eyebrow>Journeys</Eyebrow>
+        {journeys.length === 0 ? (
+          <T muted style={{ marginTop: 6 }}>Trips live here now. Add one and its spend shows beside it.</T>
+        ) : (
+          journeys.map((trip) => {
+            const r = readiness(db, trip);
+            return (
+              <Press key={trip.id} testID={`money-journey-${trip.id}`} onPress={() => router.push(`/travel/${trip.id}`)} style={{ marginTop: 8 }}>
+                <T v="label">{trip.name}</T>
+                <T muted>{trip.start} → {trip.end} · {db.settings.privacyMode ? "•••" : money(r.spent, db.settings.currency, { decimals: false })} spent</T>
+              </Press>
+            );
+          })
+        )}
+      </Card>
+      <Press testID="money-channel-toggle" onPress={() => setNumbers((v) => !v)}>
+        <Card testID="money-channel-card">
+          <Eyebrow>Online vs in person · last 6 months</Eyebrow>
+          <View style={{ flexDirection: "row", gap: 14, marginTop: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.info }} />
+              <T muted style={{ fontSize: 12 }}>Online</T>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
+              <T muted style={{ fontSize: 12 }}>In person</T>
+            </View>
+          </View>
+          <ChannelBars data={channels.map((row) => ({ label: row.label, online: row.online, inPerson: row.inPerson }))} width={chartW} showValues={numbers} format={chartFmt} testID="money-channel-bars" />
+          <T muted style={{ fontSize: 11, marginTop: 6 }}>Only tagged spends are counted. {numbers ? "Tap to hide amounts" : "Tap for amounts"}.</T>
+        </Card>
+      </Press>
       <Card testID="money-grew-card">
         <Eyebrow>Since last month</Eyebrow>
         <T style={{ marginTop: 6 }}>{grew ? grew.line : "No category grew from last month."}</T>

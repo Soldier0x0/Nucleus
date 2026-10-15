@@ -62,6 +62,28 @@ test("export bounds", () => {
   assert.deepEqual(exportBounds("2026-10-03", "custom", "2026-10-20", "2026-10-01"), { from: "2026-10-01", to: "2026-10-20" });
 });
 
+test("v0.9.8: rides and local transit file under Travel, there is no Transport row", () => {
+  assert.deepEqual(classifyMoney("uber", "expense"), { category: "Travel", item: "Cab" });
+  assert.deepEqual(classifyMoney("rapido", "expense"), { category: "Travel", item: "Bike taxi" });
+  assert.deepEqual(classifyMoney("metro", "expense"), { category: "Travel", item: "Metro" });
+  assert.deepEqual(classifyMoney("toll", "expense"), { category: "Travel", item: "Toll" });
+  assert.deepEqual(classifyMoney("hotel", "expense"), { category: "Travel", item: "Hotel" });
+});
+
+test("v0.9.8: capture tags a known chain in person and a delivery app online", () => {
+  const db = emptyDB();
+  const dominos = parseCapture(db, "dominos 499");
+  assert.ok(dominos && !("error" in dominos));
+  if (!dominos || "error" in dominos) return;
+  const saved = dominos.apply(db);
+  assert.equal(saved.txns[0]?.category, "Food");
+  assert.equal(saved.txns[0]?.channel, "in_person");
+  const swiggy = parseCapture(db, "swiggy 250");
+  assert.ok(swiggy && !("error" in swiggy));
+  if (!swiggy || "error" in swiggy) return;
+  assert.equal(swiggy.apply(db).txns[0]?.channel, "online_food");
+});
+
 test("capture still reads 450 food lunch and files samosa under snacks", () => {
   const db = emptyDB();
   const lunch = parseCapture(db, "450 food lunch");

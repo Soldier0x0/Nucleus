@@ -8,6 +8,7 @@ export type LexCapture = { label: string; icon: string; apply: (db: DB) => DB } 
 import { addOdometerLog, addService, addTxn, addVehicleJourney, upsertVehicle } from "./actions";
 import { namedVehicle, parseFuelDraft } from "./fuelCapture";
 import { classifyMoney } from "./moneyWords";
+import { classifyChannel } from "./merchantTable";
 import { PRODUCTS, SYMPTOMS, markEnd, markStart, restockPack, setStashCount, setSymptom } from "./cycle";
 import { motorPaper, pucPaper } from "./vehicleDocs";
 import { money, num, todayISO, uid } from "./format";
@@ -232,7 +233,8 @@ export function parseMoneyCapture(db: DB, input: string): LexCapture | null {
   const amount = Number(m[3]);
   if (!(amount > 0)) return null;
   const typed = (m[4] ?? "").trim();
-  const hit = classifyMoney([m[2], typed].filter(Boolean).join(" "), income ? "income" : "expense");
+  const text = [m[2], typed].filter(Boolean).join(" ");
+  const hit = classifyMoney(text, income ? "income" : "expense");
   if (!hit) return null;
   const category = hit.category;
   const item = hit.item;
@@ -241,8 +243,9 @@ export function parseMoneyCapture(db: DB, input: string): LexCapture | null {
   return {
     icon: income ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline",
     label: `${income ? "Income" : "Expense"} · ${money(amount, cur)} · ${detail}`,
-    apply: (d) =>
-      addTxn(d, {
+    apply: (d) => {
+      const channel = income ? null : classifyChannel(d.settings.merchantOverrides, text);
+      return addTxn(d, {
         id: uid(),
         type: income ? "income" : "expense",
         amount,
@@ -250,7 +253,9 @@ export function parseMoneyCapture(db: DB, input: string): LexCapture | null {
         date: todayISO(),
         note,
         ...(item ? { item } : {}),
-      }),
+        ...(channel ? { channel } : {}),
+      });
+    },
   };
 }
 

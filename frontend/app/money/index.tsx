@@ -5,11 +5,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { Insight, moneyInsights, monthSeries, monthTotals } from "@/src/core/intelligence";
-import { addMonths, daysBetween, fmtDate, monthKey, monthLabel, num, todayISO } from "@/src/core/format";
+import { addMonths, daysBetween, fmtDate, money, monthKey, monthLabel, num, todayISO } from "@/src/core/format";
 import type { Subscription } from "@/src/core/types";
 import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
-import { Bar, MonthBars, Ring } from "@/src/components/charts";
+import { Bar, MonthBars, Pie, Ring, pieColor } from "@/src/components/charts";
 import { BudgetSheet, SubscriptionSheet, TxnSheet } from "@/src/components/MoneyForms";
 import { MoneyExport } from "@/src/components/MoneyExport";
 import { itemTotals } from "@/src/core/moneyWords";
@@ -18,7 +18,7 @@ import { subscribeReceipt, takeReceiptText } from "@/src/core/receiptBus";
 import { WhySheet } from "@/src/components/WhySheet";
 import { ModuleGate } from "@/src/components/ModuleGate";
 import { MoneyDesk } from "@/src/components/MoneyDesk";
-import { monthFlow } from "@/src/core/moneyDesk";
+import { categorySplit, monthFlow } from "@/src/core/moneyDesk";
 import { useRealSession } from "@/src/components/useRealSession";
 import { Field } from "@/src/components/inputs";
 
@@ -40,8 +40,11 @@ export default function Money() {
   const [receipt, setReceipt] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [filter, setFilter] = useState<string>("All");
+  const [numbers, setNumbers] = useState(false);
   const mt = monthTotals(db, month);
   const flow = monthFlow(db.txns, month);
+  const split = categorySplit(db.txns, month);
+  const chartFmt = db.settings.privacyMode ? () => "•••" : (v: number) => money(v, db.settings.currency, { decimals: false });
   const b = db.budget.monthly;
   const pct = b > 0 ? flow.out / b : 0;
   const chartW = Math.min(width, 720) - sp.lg * 2 - 34;
@@ -100,15 +103,31 @@ export default function Money() {
 
             {real ? <MoneyDesk month={month} /> : null}
             <Card testID="money-categories-card">
+              {split.length ? (
+                <Press testID="money-pie-toggle" onPress={() => setNumbers((v) => !v)}>
+                  <View style={{ alignItems: "center", marginBottom: 8 }}>
+                    <Pie
+                      data={split.map((row, i) => ({ label: row.category, value: row.amount, color: pieColor(colors, i) }))}
+                      size={Math.min(180, chartW)}
+                      showValues={numbers}
+                      format={chartFmt}
+                      testID="money-pie"
+                    />
+                  </View>
+                  <T muted style={{ fontSize: 11, textAlign: "center", marginBottom: 12 }}>{numbers ? "Tap to hide amounts" : "Tap for amounts"}</T>
+                </Press>
+              ) : null}
               <Eyebrow style={{ marginBottom: 10 }}>By category</Eyebrow>
               {mt.categories.length === 0 ? (
                 <T muted>No expenses this month.</T>
               ) : (
                 mt.categories.map(([c, v]) => {
                   const lim = db.budget.categories[c];
+                  const sliceIdx = split.findIndex((row) => row.category === c);
                   return (
                     <View key={c} style={{ marginBottom: 12 }} testID={`money-category-${c}`}>
                       <View style={{ flexDirection: "row", marginBottom: 6, alignItems: "center" }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, marginRight: 6, backgroundColor: sliceIdx >= 0 ? pieColor(colors, sliceIdx) : colors.muted }} />
                         <T v="label" style={{ flex: 1 }}>{c}</T>
                         {lim && v > lim ? <Icon name="alert-circle-outline" size={14} color={colors.error} /> : null}
                         <Amount value={v} style={{ marginLeft: 4 }} />
@@ -127,10 +146,13 @@ export default function Money() {
               )}
             </Card>
 
-            <Card testID="money-trend-card">
-              <Eyebrow style={{ marginBottom: 10 }}>Spending · last 6 months</Eyebrow>
-              <MonthBars data={monthSeries(db, 6)} width={chartW} />
-            </Card>
+            <Press testID="money-trend-toggle" onPress={() => setNumbers((v) => !v)}>
+              <Card testID="money-trend-card">
+                <Eyebrow style={{ marginBottom: 10 }}>Spending · last 6 months</Eyebrow>
+                <MonthBars data={monthSeries(db, 6)} width={chartW} showValues={numbers} format={chartFmt} />
+                <T muted style={{ fontSize: 11, marginTop: 6 }}>{numbers ? "Tap to hide amounts" : "Tap for amounts"}</T>
+              </Card>
+            </Press>
 
             <View testID="money-insights">
               <Eyebrow style={{ marginBottom: 8 }}>Insights · {insights.length}</Eyebrow>

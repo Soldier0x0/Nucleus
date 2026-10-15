@@ -9,6 +9,7 @@
 import type { DB } from "./types";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "./defaults";
 import { classifyMoney } from "./moneyWords";
+import { classifyChannel } from "./merchantTable";
 import { addFuel, addTxn, nextCycleDate, upsertSubscription } from "./actions";
 import { parseCycleCapture, parseMoneyCapture, parsePapersCapture, parseVehicleCapture } from "./captureLexicon";
 import { estimateOdometer, parseFuelDraft } from "./fuelCapture";
@@ -79,12 +80,16 @@ export function parseCapture(db: DB, input: string): Capture | null {
     const income = !!m[1], amount = Number(m[2]);
     if (!(amount > 0)) return { error: "Amount must be above 0" };
     const typed = (m[4] ?? "").trim();
-    const hit = classifyMoney([m[3], typed].filter(Boolean).join(" "), income ? "income" : "expense");
+    const text = [m[3], typed].filter(Boolean).join(" ");
+    const hit = classifyMoney(text, income ? "income" : "expense");
     const category = hit?.category ?? matchCat(m[3], income ? INCOME_CATEGORIES : EXPENSE_CATEGORIES);
     const item = hit?.item;
     const note = (hit ? typed || (m[3].toLowerCase() === category.toLowerCase() ? "" : m[3]) : [category === "Other" ? m[3] : "", typed].filter(Boolean).join(" ")).trim() || undefined;
     const detail = [category, item, note].filter((part, i, all) => part && all.indexOf(part) === i).join(" · ");
-    return { icon: income ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline", label: `${income ? "Income" : "Expense"} · ${money(amount, cur)} · ${detail}`, apply: (d) => addTxn(d, { id: uid(), type: income ? "income" : "expense", amount, category, date: todayISO(), note, ...(item ? { item } : {}) }) };
+    return { icon: income ? "arrow-down-bold-circle-outline" : "arrow-up-bold-circle-outline", label: `${income ? "Income" : "Expense"} · ${money(amount, cur)} · ${detail}`, apply: (d) => {
+      const channel = income ? null : classifyChannel(d.settings.merchantOverrides, text);
+      return addTxn(d, { id: uid(), type: income ? "income" : "expense", amount, category, date: todayISO(), note, ...(item ? { item } : {}), ...(channel ? { channel } : {}) });
+    } };
   }
   return { error: "Try: 450 food lunch · Activa 5.4L 560 full · period started · hotel 3200" };
 }

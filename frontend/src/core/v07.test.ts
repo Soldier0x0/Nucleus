@@ -166,7 +166,7 @@ test("public transport is metro, train, cab or taxi, or bus", () => {
   assert.equal(isPersonalTrip({ mode: "personal" }), true);
   assert.equal(isPersonalTrip({ mode: "public" }), false);
   const fare = transitExpense(40, "cab", "2026-09-04");
-  assert.deepEqual(fare, { type: "expense", amount: 40, category: "Transport", date: "2026-09-04", note: "Cab or taxi" });
+  assert.deepEqual(fare, { type: "expense", amount: 40, category: "Travel", date: "2026-09-04", note: "Cab or taxi" });
   assert.notEqual(fare.category, "Fuel");
   assert.notEqual(fare.category, "Vehicle");
   const travel = readFileSync(new URL("../../app/travel/index.tsx", import.meta.url), "utf8");

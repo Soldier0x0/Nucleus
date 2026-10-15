@@ -43,7 +43,7 @@ export function search(db: DB, q: string): SearchGroup[] {
       const linkedSpend = db.links.filter((l) => l.from.kind === "vehicle" && l.from.id === v.id && l.to.kind === "txn").map((l) => db.txns.find((t) => t.id === l.to.id)?.amount ?? 0).reduce((a, b) => a + b, 0);
       groups.push({
         title: `Vehicle · ${v.name}`,
-        summary: `${st.fuel.length} fuel entries · ${money(linkedSpend || st.totalFuelCost + st.serviceCost, cur)} spent · ${serviceLeftLine(st.service.remaining)}`,
+        summary: `${st.fuel.length} fuel entries · ${money(linkedSpend || st.totalFuelCost + st.serviceCostTotal, cur)} spent · ${serviceLeftLine(st.service.remaining)}`,
         items: [{ id: v.id, title: v.name, subtitle: [v.make, v.model, v.plate].filter(Boolean).join(" · "), icon: v.type === "bike" ? "motorbike" : "car-side", route: `/vehicles/${v.id}` }],
       });
     }

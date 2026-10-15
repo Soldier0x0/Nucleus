@@ -5,7 +5,8 @@ import { useStore } from "@/src/core/store";
 import { addTxn, nextCycleDate, upsertSubscription } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/src/core/defaults";
 import { categoryFromOther, classifyMoney, heldSuggestions, moneySuggestions } from "@/src/core/moneyWords";
-import type { Subscription } from "@/src/core/types";
+import { CHANNEL_LABELS, classifyChannel, learnMerchantChannel } from "@/src/core/merchantTable";
+import type { Subscription, TxnChannel } from "@/src/core/types";
 import { budgetCleared } from "@/src/core/budgetSave";
 import { money, parseNum, todayISO, uid } from "@/src/core/format";
 import { Sheet } from "./Sheet";
@@ -28,6 +29,8 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const [otherName, setOtherName] = useState("");
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | undefined>();
+  const [channel, setChannel] = useState<TxnChannel | undefined>();
+  const [channelPicked, setChannelPicked] = useState(false);
   const [cash, setCash] = useState(false);
   const [ownTransfer, setOwnTransfer] = useState(false);
   const [date, setDate] = useState(todayISO());
@@ -48,14 +51,31 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
   const held = useRef<ReturnType<typeof moneySuggestions>>([]);
   const suggestions = heldSuggestions(held.current, moneySuggestions(note, type), note);
   held.current = suggestions;
+  const onNote = (text: string) => {
+    setNote(text);
+    const hit = classifyMoney(text, type);
+    if (hit) {
+      setCat(hit.category);
+      setItem(hit.item);
+    }
+    if (!channelPicked && type === "expense") setChannel(classifyChannel(db.settings.merchantOverrides, text) ?? undefined);
+  };
+  const pickChannel = (value: TxnChannel) => {
+    const nextValue = channel === value ? undefined : value;
+    setChannel(nextValue);
+    setChannelPicked(true);
+    if (nextValue && note.trim()) update((d) => learnMerchantChannel(d, note, nextValue));
+  };
   const save = () => {
     if (!(value > 0)) return;
     const category = cat === "Other" ? categoryFromOther(otherName) : cat;
-    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category, item: cat === "Other" ? undefined : item, date, note: note.trim() || undefined, photo, cash: cash || undefined, transfer: ownTransfer || undefined }), recents: { ...d.recents, lastCategory: category } }));
+    update((d) => ({ ...addTxn(d, { id: uid(), type, amount: value, category, item: cat === "Other" ? undefined : item, date, note: note.trim() || undefined, photo, channel: type === "expense" ? channel : undefined, cash: cash || undefined, transfer: ownTransfer || undefined }), recents: { ...d.recents, lastCategory: category } }));
     toast(`${type === "expense" ? "Expense" : "Income"} ${money(value, db.settings.currency)} saved`, "check-circle-outline");
     setAmt("");
     setNote("");
     setPhoto(undefined);
+    setChannel(undefined);
+    setChannelPicked(false);
     onClose();
   };
 
@@ -87,20 +107,25 @@ export function TxnSheet({ visible, onClose }: { visible: boolean; onClose: () =
           </Press>
         ))}
       </View>
-      <Field label="Note (optional)" testID="txn-note-input" value={note} onChangeText={(text) => {
-        setNote(text);
-        const hit = classifyMoney(text, type);
-        if (hit) {
-          setCat(hit.category);
-          setItem(hit.item);
-        }
-      }} placeholder="What was it for?" />
+      <Field label="Note (optional)" testID="txn-note-input" value={note} onChangeText={onNote} placeholder="What was it for?" />
       {suggestions.length ? (
         <ChipRow testID="txn-suggestions">
           {suggestions.map((s) => (
             <Chip key={`${s.hit.category}:${s.label}`} label={s.label} selected={item === s.hit.item && cat === s.hit.category} onPress={() => (setCat(s.hit.category), setItem(s.hit.item))} testID={`txn-suggest-${s.label}`} />
           ))}
         </ChipRow>
+      ) : null}
+      {type === "expense" ? (
+        <>
+          <Eyebrow style={{ marginBottom: 8 }}>{channel ? "Tag" : "Tag this? (optional)"}</Eyebrow>
+          <View style={{ marginHorizontal: -16 }}>
+            <ChipRow testID="txn-channel-row">
+              {CHANNEL_LABELS.map((row) => (
+                <Chip key={row.value} label={row.label} selected={channel === row.value} onPress={() => pickChannel(row.value)} testID={`txn-channel-${row.value}`} />
+              ))}
+            </ChipRow>
+          </View>
+        </>
       ) : null}
       {cat === "Other" ? <Field label="Name this category (optional)" testID="txn-other-name" value={otherName} onChangeText={setOtherName} placeholder="Dividend, School fees" hint="Leave blank and it stays Other." /> : null}
       {type === "expense" ? <PhotoNote uri={photo} onChange={setPhoto} testID="txn-photo" /> : null}
@@ -208,7 +233,7 @@ export function BudgetSheet({ visible, onClose }: { visible: boolean; onClose: (
   const toast = useToast();
   const [monthly, setMonthly] = useState(db.budget.monthly ? String(db.budget.monthly) : "");
   const [cats, setCats] = useState<Record<string, string>>(Object.fromEntries(Object.entries(db.budget.categories).map(([k, v]) => [k, String(v)])));
-  const main = ["Food", "Groceries", "Fuel", "Shopping", "Entertainment", "Transport", "Bills"];
+  const main = ["Food", "Groceries", "Fuel", "Shopping", "Entertainment", "Travel", "Bills"];
   const save = () => {
     const m = parseNum(monthly);
     const categories = Object.fromEntries(Object.entries(cats).map(([k, v]) => [k, parseNum(v)]).filter(([, v]) => (v as number) > 0)) as Record<string, number>;

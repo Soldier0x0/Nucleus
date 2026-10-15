@@ -23,6 +23,6 @@ export function isPersonalTrip(trip: { mode?: TripMode }): boolean {
   return trip.mode !== "public";
 }
 
-export function transitExpense(amount: number, transit: TransitKind, date: string): { type: "expense"; amount: number; category: "Transport"; date: string; note: string } {
-  return { type: "expense", amount, category: "Transport", date, note: transitLabel(transit) };
+export function transitExpense(amount: number, transit: TransitKind, date: string): { type: "expense"; amount: number; category: "Travel"; date: string; note: string } {
+  return { type: "expense", amount, category: "Travel", date, note: transitLabel(transit) };
 }

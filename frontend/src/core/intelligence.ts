@@ -48,8 +48,22 @@ export function vehicleStats(db: DB, v: Vehicle) {
   const lastMileage = mileage.length ? mileage[mileage.length - 1].value : NaN;
   const thisMonth = monthKey(todayISO());
   const monthFuel = fuel.filter((f) => monthKey(f.date) === thisMonth).reduce((s, f) => s + f.total, 0);
-  const serviceCost = db.services.filter((s) => s.vehicleId === v.id).reduce((s, x) => s + x.cost, 0);
-  return { fuel, mileage, totalFuelCost, distanceTracked, costPerKm, avgMileage, lastMileage, monthFuel, serviceCost, odometer: currentOdometer(db, v), service: serviceEstimate(db, v) };
+  const serviceCostYears = serviceCostByYear(db, v.id);
+  const serviceCost = serviceCostYears.find((row) => row.year === thisMonth.slice(0, 4))?.total ?? 0;
+  const serviceCostTotal = serviceCostYears.reduce((s, row) => s + row.total, 0);
+  return { fuel, mileage, totalFuelCost, distanceTracked, costPerKm, avgMileage, lastMileage, monthFuel, serviceCost, serviceCostYears, serviceCostTotal, odometer: currentOdometer(db, v), service: serviceEstimate(db, v) };
+}
+
+/** Service spend grouped by calendar year, oldest first. "Undated" sorts last. */
+export function serviceCostByYear(db: DB, vehicleId: string): { year: string; total: number }[] {
+  const by: Record<string, number> = {};
+  for (const s of db.services.filter((x) => x.vehicleId === vehicleId)) {
+    const year = /^\d{4}/.test(s.date) ? s.date.slice(0, 4) : "Undated";
+    by[year] = (by[year] ?? 0) + s.cost;
+  }
+  return Object.entries(by)
+    .map(([year, total]) => ({ year, total }))
+    .sort((a, b) => (a.year === "Undated" ? 1 : b.year === "Undated" ? -1 : a.year.localeCompare(b.year)));
 }
 
 export function serviceEstimate(db: DB, v: Vehicle) {
@@ -98,6 +112,28 @@ export function monthSeries(db: DB, n: number, category?: string) {
     const key = monthKey(addMonths(cur + "-01", -i));
     const value = db.txns.filter((t) => t.type === "expense" && monthKey(t.date) === key && (!category || t.category === category)).reduce((s, t) => s + t.amount, 0);
     out.push({ key, label: monthLabel(key), value });
+  }
+  return out;
+}
+
+export type ChannelPoint = { key: string; label: string; online: number; inPerson: number; untagged: number };
+
+/** Online vs in-person spend per month. Transfers never count; untagged rows are counted apart. */
+export function channelSeries(db: DB, n: number): ChannelPoint[] {
+  const cur = monthKey(todayISO());
+  const out: ChannelPoint[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const key = monthKey(addMonths(cur + "-01", -i));
+    let online = 0;
+    let inPerson = 0;
+    let untagged = 0;
+    for (const t of db.txns) {
+      if (t.type !== "expense" || t.transfer || monthKey(t.date) !== key) continue;
+      if (t.channel === "online_food" || t.channel === "online_grocery") online += t.amount;
+      else if (t.channel === "in_person") inPerson += t.amount;
+      else untagged += t.amount;
+    }
+    out.push({ key, label: monthLabel(key), online, inPerson, untagged });
   }
   return out;
 }
@@ -372,7 +408,7 @@ export function attentionItems(db: DB, today = todayISO()): AttentionItem[] {
     }
   }
 
-  if (on("travel")) {
+  if (db.trips.length) {
     for (const t of db.trips.filter((x) => tripStatus(x) === "upcoming")) {
       const r = readiness(db, t);
       if (r.daysToStart <= 14 && r.score < 1) {

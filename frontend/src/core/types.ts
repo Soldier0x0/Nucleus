@@ -188,6 +188,8 @@ export type Txn = {
   transfer?: boolean;
   /** A balance line from a bank text, used as a point on the balance chart. */
   balance?: number;
+  /** How the money moved, for the online-vs-in-person chart. A suggestion or a hand-picked tag. */
+  channel?: TxnChannel;
 };
 
 export type Subscription = {
@@ -224,6 +226,11 @@ export type LayoutId = "stack" | "glass" | "bento";
 export type CloudProvider = "off" | "drive" | "onedrive";
 export type CloudSync = { provider: CloudProvider; lastSyncAt?: string; askedSinceUnlock: boolean; unlockedAt?: string };
 export type SmsMemoryRow = { key: string; choice: "category" | "transfer" | "ignore"; category?: string };
+
+/** Where a spend happened. Online-food and online-grocery are apps; everything else is in person. */
+export type TxnChannel = "online_food" | "online_grocery" | "in_person";
+/** A correction the person made for one merchant. It beats the built-in table. */
+export type TxnChannelOverride = { key: string; channel: TxnChannel };
 export type IconFamily = "paper" | "metal" | "glass" | "tiles";
 export type IconVariant = "paper" | "midnight" | "dune" | "amoled";
 /** `match` follows the app theme. The other values are a fixed picture. */
@@ -321,6 +328,10 @@ export type Settings = {
   smsMemory: SmsMemoryRow[];
   /** Endings of your own accounts, so a transfer is not treated as spending. */
   ownAccounts: string[];
+  /** v0.9.8: merchant-to-channel answers the person picked. They win over the built-in table. */
+  merchantOverrides: TxnChannelOverride[];
+  /** v0.9.8: the travel module was folded into Money once at load. The person may turn it back on. */
+  travelFolded: boolean;
   /** This phone's id. A file from another phone opens read-only. */
   installId: string;
   /** A file from another phone. Looking is allowed. Editing is not. */

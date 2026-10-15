@@ -5,14 +5,15 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { deleteEntity, getEntity, SERVICE_LABEL } from "@/src/core/actions";
+import { deleteEntity, getEntity, SERVICE_LABEL, setTxnChannel } from "@/src/core/actions";
 import { fuelFactsPatch, setFuelFacts } from "@/src/core/fuelCapture";
 import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import type { EntityKind, Paper } from "@/src/core/types";
 import { fmtDate, money, num } from "@/src/core/format";
+import { CHANNEL_LABELS, channelLabel } from "@/src/core/merchantTable";
 import { Header } from "@/src/components/Header";
 import { DocumentContent } from "@/src/components/DocumentContent";
-import { Button, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
+import { Button, Chip, ChipRow, EmptyState, Eyebrow, IconButton, T } from "@/src/components/ui";
 import { DateField, Field } from "@/src/components/inputs";
 import { LinkedSection } from "@/src/components/LinkedSection";
 import { Sheet } from "@/src/components/Sheet";
@@ -59,7 +60,7 @@ export default function RecordDetail() {
     fields = [["Vehicle", vName(e.vehicleId)], ["Date", fmtDate(e.date)], ["Odometer", `${num(e.odometer, 0)} ${s.distanceUnit}`], ["Cost", money(e.cost, cur)], ...(Object.entries(e.details) as [string, string][]).map(([k, v]) => [k[0].toUpperCase() + k.slice(1), v] as [string, string])];
   } else if (kind === "txn") {
     headline = `${e.type === "income" ? "+" : "-"}${money(e.amount, cur)}`;
-    fields = [["Type", e.type], ["Category", e.category], ...(e.item ? ([["Item", e.item]] as [string, string][]) : []), ["Date", fmtDate(e.date)], ...(e.origCurrency ? ([["Original", `${num(e.origAmount, 2)} ${e.origCurrency}`]] as [string, string][]) : []), ...(e.note ? ([["Note", e.note]] as [string, string][]) : [])];
+    fields = [["Type", e.type], ["Category", e.category], ...(e.item ? ([["Item", e.item]] as [string, string][]) : []), ...(e.channel ? ([["Channel", channelLabel(e.channel)]] as [string, string][]) : []), ["Date", fmtDate(e.date)], ...(e.origCurrency ? ([["Original", `${num(e.origAmount, 2)} ${e.origCurrency}`]] as [string, string][]) : []), ...(e.note ? ([["Note", e.note]] as [string, string][]) : [])];
   } else if (kind === "subscription") {
     headline = e.name;
     fields = [["Amount", money(e.amount, cur)], ["Cycle", e.cycle], ["Next renewal", fmtDate(e.nextRenewal)], ["Category", e.category], ["Status", e.active ? "Active" : "Paused"]];
@@ -97,6 +98,22 @@ export default function RecordDetail() {
               setFuelEdit(true);
             }}
           />
+        ) : null}
+        {kind === "txn" && e.type === "expense" ? (
+          <View style={{ marginTop: 16 }} testID="record-channel-section">
+            <Eyebrow style={{ marginBottom: 8 }}>{e.channel ? "Channel" : "Tag this? (optional)"}</Eyebrow>
+            <ChipRow testID="record-channel-row">
+              {CHANNEL_LABELS.map((row) => (
+                <Chip
+                  key={row.value}
+                  label={row.label}
+                  selected={e.channel === row.value}
+                  onPress={() => update((d) => setTxnChannel(d, id, e.channel === row.value ? undefined : row.value))}
+                  testID={`record-channel-${row.value}`}
+                />
+              ))}
+            </ChipRow>
+          </View>
         ) : null}
         {kind === "txn" && e.photo ? (
           <View style={{ marginTop: 12, gap: 8 }}>

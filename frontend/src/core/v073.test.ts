@@ -11,6 +11,17 @@ const frames: TileBox[] = [
   { x: 158, y: 192, w: 146, h: 100 },
 ];
 
+/** v0.9.8: travel is folded off by default, so a board that holds the trip tile turns it on. */
+function travelOn<T extends { settings: { modules: { id: string; enabled: boolean; hidden: boolean }[] } }>(db: T): T {
+  return {
+    ...db,
+    settings: {
+      ...db.settings,
+      modules: db.settings.modules.map((m) => (m.id === "travel" ? { ...m, enabled: true, hidden: false } : m)),
+    },
+  };
+}
+
 test("the tile under the finger is where the held tile lands", () => {
   assert.equal(homeDropIndex(1, { x: 230, y: 240 }, frames), 2);
   assert.equal(homeDropIndex(1, { x: 20, y: 20 }, frames), 0);
@@ -28,7 +39,7 @@ test("holding a home tile moves it and does not change its size", () => {
   );
   assert.deepEqual(moved.settings.tileSizes, start.settings.tileSizes);
 
-  const board = emptyDB();
+  const board = travelOn(emptyDB());
   board.settings.tileSizes = { trip: "small" };
   board.settings.boards = [{ id: "b1", name: "Board", icon: "home-outline", tiles: ["notes", "weather", "trip"] }];
   board.settings.activeBoardId = "b1";

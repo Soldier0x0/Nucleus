@@ -1,4 +1,5 @@
-import type { DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Txn, Vehicle, VehicleJourney } from "./types";
+import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, ServiceEntry, Settings, Txn, Vehicle, VehicleJourney } from "./types";
+import { isChannel } from "./merchantTable";
 import { emptyCycle, normalizeCycle } from "./cycle";
 import { emptyWater, normalizeWater } from "./water";
 import { normalizeReminders } from "./reminders";
@@ -44,7 +45,7 @@ export const defaultSettings: Settings = {
   modules: [
     { id: "vehicles", enabled: true, hidden: false },
     { id: "money", enabled: true, hidden: false },
-    { id: "travel", enabled: true, hidden: false },
+    { id: "travel", enabled: false, hidden: true },
     { id: "home", enabled: true, hidden: false },
     { id: "tools", enabled: true, hidden: false },
     { id: "notes", enabled: true, hidden: false },
@@ -92,6 +93,8 @@ export const defaultSettings: Settings = {
   moneyNames: [],
   smsMemory: [],
   ownAccounts: [],
+  merchantOverrides: [],
+  travelFolded: true,
   installId: "",
   readOnly: false,
   homePreset: "custom",
@@ -100,7 +103,7 @@ export const defaultSettings: Settings = {
   sampleIds: [],
 };
 
-export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Transport", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
+export const EXPENSE_CATEGORIES = ["Food", "Groceries", "Fuel", "Vehicle", "Bills", "Electricity", "Rent", "Shopping", "Health", "Entertainment", "Subscriptions", "Travel", "Loan EMI", "Other"];
 export const INCOME_CATEGORIES = ["Salary", "Freelance", "Interest", "Refund", "Gift", "Other"];
 
 export function emptyDB(): DB {
@@ -113,6 +116,7 @@ export function emptyDB(): DB {
     moneyNames: [...defaultSettings.moneyNames],
     smsMemory: [...defaultSettings.smsMemory],
     ownAccounts: [...defaultSettings.ownAccounts],
+    merchantOverrides: [...defaultSettings.merchantOverrides],
       presetLast: {},
     headsUp: emptyHeadsUp(),
     sampleIds: [],
@@ -197,13 +201,22 @@ export function normalizeDB(raw: any): DB {
   if (priorBudget && typeof priorBudget.monthly === "number" && priorBudget.categories && typeof priorBudget.categories === "object") {
     const categories: Record<string, number> = {};
     for (const [key, value] of Object.entries(priorBudget.categories)) {
-      if (typeof value === "number") categories[key.slice(0, 40)] = value;
+      if (typeof value === "number") {
+        const name = foldedCategory(key);
+        categories[name.slice(0, 40)] = (categories[name.slice(0, 40)] ?? 0) + value;
+      }
     }
     s.sampleBudget = { monthly: priorBudget.monthly, categories };
   }
   s.moneyNames = Array.isArray(raw?.settings?.moneyNames) ? raw.settings.moneyNames.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 40)) : [];
   s.smsMemory = parseSmsMemory(raw?.settings?.smsMemory);
   s.ownAccounts = Array.isArray(raw?.settings?.ownAccounts) ? raw.settings.ownAccounts.filter((name: unknown) => typeof name === "string").map((name: string) => name.slice(0, 12)) : [];
+  s.merchantOverrides = Array.isArray(raw?.settings?.merchantOverrides)
+    ? raw.settings.merchantOverrides
+        .filter((row: any) => row && typeof row.key === "string" && isChannel(row.channel))
+        .slice(-80)
+        .map((row: any) => ({ key: String(row.key).slice(0, 40), channel: row.channel }))
+    : [];
   s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
   if (callName) s.givenName = callName;
@@ -226,6 +239,12 @@ export function normalizeDB(raw: any): DB {
     ...(raw?.settings?.modules ?? []).filter((m: any) => knownMods.includes(m.id)),
     ...base.settings.modules.filter((m) => !(raw?.settings?.modules ?? []).some((x: any) => x.id === m.id)),
   ];
+  // v0.9.8: Travel folded into Money. An old file without the marker hides the module once;
+  // turning it back on later writes the marker, so the choice sticks.
+  const rawSettings = raw?.settings;
+  const markerPresent = !!rawSettings && typeof rawSettings === "object" && "travelFolded" in rawSettings;
+  s.travelFolded = true;
+  if (!markerPresent) s.modules = s.modules.map((m: any) => (m.id === "travel" ? { ...m, enabled: false, hidden: true } : m));
   const knownTiles = base.settings.tiles.map((t) => t.id);
   s.tiles = [
     ...(raw?.settings?.tiles ?? []).filter((t: any) => knownTiles.includes(t.id)),
@@ -238,7 +257,7 @@ export function normalizeDB(raw: any): DB {
     ...raw,
     version: 1,
     settings: s,
-    budget: { ...base.budget, ...(raw?.budget ?? {}) },
+    budget: migrateBudget(raw?.budget),
     utilities: Array.isArray(raw?.utilities) ? raw.utilities : [],
     chores: Array.isArray(raw?.chores) ? raw.chores : [],
     media: Array.isArray(raw?.media) ? raw.media : [],
@@ -260,6 +279,27 @@ export function normalizeDB(raw: any): DB {
     reminders: normalizeReminders(raw?.reminders),
     medicines: normalizeMedicines(raw?.medicines),
     tombstones: Array.isArray(raw?.tombstones) ? raw.tombstones.filter((t: any) => t && typeof t.id === "string" && typeof t.kind === "string" && typeof t.deletedAt === "string") : [],
+  };
+}
+
+/** v0.9.8: one Travel category. Transport lines and budget limits move over, added up. */
+function foldedCategory(name: string): string {
+  return name === "Transport" ? "Travel" : name;
+}
+
+function migrateBudget(raw: any): Budget {
+  const base: Budget = { monthly: 0, categories: {} };
+  if (!raw || typeof raw !== "object") return base;
+  const categories: Record<string, number> = {};
+  const src = raw.categories && typeof raw.categories === "object" ? raw.categories : {};
+  for (const [key, value] of Object.entries(src)) {
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    const name = foldedCategory(key);
+    categories[name.slice(0, 40)] = (categories[name.slice(0, 40)] ?? 0) + value;
+  }
+  return {
+    monthly: typeof raw.monthly === "number" && Number.isFinite(raw.monthly) ? raw.monthly : base.monthly,
+    categories,
   };
 }
 
@@ -338,8 +378,11 @@ function normalizeService(raw: ServiceEntry): ServiceEntry {
 function normalizeTxn(raw: Txn): Txn {
   const item = typeof raw?.item === "string" ? raw.item.replace(/\s+/g, " ").trim().slice(0, 40) : "";
   const next = { ...raw };
+  if (next.category === "Transport") next.category = "Travel";
   if (item) next.item = item;
   else delete next.item;
+  if (isChannel(raw?.channel)) next.channel = raw.channel;
+  else delete next.channel;
   if (raw?.cash === true) next.cash = true;
   else delete next.cash;
   if (raw?.transfer === true) next.transfer = true;

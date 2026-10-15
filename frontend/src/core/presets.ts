@@ -232,7 +232,7 @@ export function presetItemHasData(db: DB, id: string): boolean {
     case "transittrain":
     case "transitcab":
     case "transitbus":
-      return db.txns.some((row) => row.type === "expense" && row.category === "Transport");
+      return db.txns.some((row) => row.type === "expense" && row.category === "Travel");
     case "costkm":
     case "fueltank":
     case "servleft":
@@ -333,7 +333,7 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   packing: "travel",
   heading: "travel",
   stops: "travel",
-  weather: "travel",
+  weather: "home",
   transitmetro: "travel",
   transittrain: "travel",
   transitcab: "travel",
