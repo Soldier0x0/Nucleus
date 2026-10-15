@@ -32,7 +32,14 @@ export async function resolve(specifier, context, nextResolve) {
     return { url: STUBS[specifier], shortCircuit: true };
   }
   if (specifier.startsWith("@/")) {
-    return nextResolve(frontendRoot + specifier.slice(2), context);
+    const base = frontendRoot + specifier.slice(2);
+    try {
+      return await nextResolve(base, context);
+    } catch (err) {
+      // Metro resolves a bare directory to its index file; plain ESM needs the hint.
+      if (err?.code === "ERR_UNSUPPORTED_DIR_IMPORT") return nextResolve(base + "/index.ts", context);
+      throw err;
+    }
   }
   if ((specifier.startsWith("./") || specifier.startsWith("../")) && !specifier.endsWith(".ts") && !specifier.endsWith(".js") && !specifier.endsWith(".mjs")) {
     return nextResolve(specifier + ".ts", context);
