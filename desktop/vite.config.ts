@@ -17,7 +17,8 @@ export default defineConfig({
       { find: "@core", replacement: fileURLToPath(new URL("../frontend/src/core", import.meta.url)) },
       // Shared core files import @noble/*; CI installs only the desktop app, so
       // these resolve from desktop/node_modules rather than the phone's copy.
-      { find: "@noble/", replacement: fileURLToPath(new URL("node_modules/@noble/", import.meta.url)) },
+      // Forward slashes keep rollup happy on Windows too.
+      { find: "@noble", replacement: fileURLToPath(new URL("node_modules/@noble", import.meta.url)).replace(/\\/g, "/") },
       { find: /^expo-crypto$/, replacement: shim("expo-crypto.ts") },
       { find: /^@\/src\/utils\/storage$/, replacement: shim("phoneStorage.ts") },
       { find: /^react-native$/, replacement: stub("react-native.ts") },
