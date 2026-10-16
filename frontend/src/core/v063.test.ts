@@ -352,6 +352,9 @@ test("v0.10: the camera is allowed back for pairing only, over plain LAN HTTP", 
   const camera = plugins.find((p) => Array.isArray(p) && p[0] === "expo-camera") as [string, { cameraPermission?: string }] | undefined;
   assert.ok(camera);
   assert.match(String(camera[1]?.cameraPermission), /scan the pairing code/);
+  const picker = plugins.find((p) => Array.isArray(p) && p[0] === "expo-image-picker") as [string, { cameraPermission?: unknown }] | undefined;
+  assert.ok(picker);
+  assert.notEqual(picker[1]?.cameraPermission, false);
   const buildProps = plugins.find((p) => Array.isArray(p) && p[0] === "expo-build-properties") as [string, { android?: { usesCleartextTraffic?: boolean } }] | undefined;
   assert.ok(buildProps);
   assert.equal(buildProps[1]?.android?.usesCleartextTraffic, true);

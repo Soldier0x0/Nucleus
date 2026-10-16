@@ -10,6 +10,11 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.11.1
+
+- Fixed the camera permission silently vanishing from the built app: a leftover photo-picker setting marked it for removal when the manifest was merged, so the QR pairing scan never had a camera to ask for.
+- Added build checks that fail the release if the camera permission is missing, both on the generated manifest and on the finished APK itself.
+
 ## v0.11
 
 - Fixed reopening the last screen on start leaving Back stuck on that screen with no way home; Back now lands on the home screen and the phone's Back button no longer quits the app from there.
