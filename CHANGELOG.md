@@ -16,7 +16,7 @@ From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed
 - Fixed the camera permission missing from the app, so pairing by QR code asks for the camera and the phone's camera app can open Nucleus straight from the code.
 - Fixed the menu jumping in and out; it now slides in and out smoothly and has Search at the top.
 - Fixed the keyboard staying up after tapping Set a PIN during setup; it closes because the app shows its own keypad.
-- Removed the home preset pills from Today and the currency switcher on the desktop, since amounts are in rupees and nothing converts them.
+- Changed Today to drop the preset pills, and the desktop to drop the currency switcher; amounts are in rupees and nothing converts them.
 - Fixed the desktop drop-downs (color, distance unit, transaction kind) that showed a white box with unreadable text.
 - Fixed the desktop app icon, which drew the round logo on a square panel; the icon is now the round logo itself.
 
