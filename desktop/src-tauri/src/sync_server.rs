@@ -71,7 +71,8 @@ struct Mdns {
 
 impl RunningServer {
     pub fn start(handler: Arc<dyn SyncHandler>, options: StartOptions) -> std::io::Result<RunningServer> {
-        let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, 0))?;
+        let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, 8787))
+            .or_else(|_| TcpListener::bind((Ipv4Addr::UNSPECIFIED, 0)))?;
         listener.set_nonblocking(true)?;
         let addr = listener.local_addr()?;
         let running = Arc::new(AtomicBool::new(true));
