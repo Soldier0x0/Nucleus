@@ -33,6 +33,8 @@ type Store = {
   retryLoad: () => void;
   discardUnreadable: () => Promise<void>;
   update: (fn: (db: DB) => DB) => void;
+  /** Applies an already-merged document (sync) without re-stamping local rows. */
+  applySync: (fn: (db: DB) => DB) => void;
   setSettings: (patch: Partial<Settings>) => void;
   replace: (db: DB) => void;
   openReal: () => Promise<void>;
@@ -199,6 +201,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!writable.current) return;
     setDb((d) => (d.settings.readOnly ? d : stampChanges(d, fn(d), new Date().toISOString())));
   }, []);
+  const applySync = useCallback((fn: (db: DB) => DB) => {
+    if (!writable.current) return;
+    setDb((d) => (d.settings.readOnly ? d : fn(d)));
+  }, []);
   const setSettings = useCallback((patch: Partial<Settings>) => {
     if (!writable.current) return;
     setDb((d) => (d.settings.readOnly ? d : { ...d, settings: { ...d.settings, ...patch } }));
@@ -351,6 +357,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       retryLoad,
       discardUnreadable,
       update,
+      applySync,
       setSettings,
       replace,
       openReal,
@@ -373,6 +380,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       retryLoad,
       discardUnreadable,
       update,
+      applySync,
       setSettings,
       replace,
       openReal,

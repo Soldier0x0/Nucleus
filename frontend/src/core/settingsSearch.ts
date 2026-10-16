@@ -107,6 +107,9 @@ export const SETTINGS_INDEX: readonly SettingsEntry[] = [
   { id: "erase", title: "Erase all data", group: "Data and backup", route: "/settings/data", anchor: "your-data", terms: "erase delete reset wipe everything" },
   { id: "locked-file", title: "Locked file", group: "Data and backup", route: "/settings/data", anchor: "locked-file", terms: "locked file passphrase cloud drive onedrive upload copy" },
   { id: "cloud-store", title: "Store the locked file in the cloud", group: "Data and backup", route: "/settings/data", anchor: "locked-file", terms: "cloud drive onedrive upload sign in store backup" },
+  { id: "desktop-sync", title: "Desktop sync", group: "Data and backup", route: "/settings/sync", anchor: "how", terms: "desktop sync computer laptop pair wifi wi-fi local network changes" },
+  { id: "desktop-pair", title: "Pair a desktop", group: "Data and backup", route: "/settings/sync", anchor: "how", terms: "pair desktop computer qr scan code address wifi connect" },
+  { id: "desktop-paired-list", title: "Paired desktops", group: "Data and backup", route: "/settings/sync", anchor: "paired", terms: "paired desktops list sync now forget last synced" },
 
   // About.
   { id: "version", title: "Version", group: "About", route: "/settings/about", anchor: "about", terms: "version build number nucleus" },

@@ -16,6 +16,7 @@ const GROUPS: { route: string; icon: string; label: string; sub: string; testID:
   { route: "/settings/notifications", icon: "bell-outline", label: "Notifications", sub: "Reminders, quiet hours, channels, bank texts and the lock screen", testID: "settings-group-notifications" },
   { route: "/modules", icon: "view-grid-outline", label: "Modules", sub: "Turn on or off and set the menu order", testID: "settings-modules-button" },
   { route: "/settings/data", icon: "database-outline", label: "Data and backup", sub: "Your data, locked file, cloud, sample data and developer logs", testID: "settings-group-data" },
+  { route: "/settings/sync", icon: "sync", label: "Desktop sync", sub: "Pair a computer and swap changes over your own Wi-Fi", testID: "settings-group-sync" },
   { route: "/settings/about", icon: "information-outline", label: "About", sub: "Version and licences", testID: "settings-group-about" },
 ];
 
