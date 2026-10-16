@@ -239,6 +239,8 @@ export type LookId = "current" | "soft" | "tight" | "plain" | "cards" | "ink" | 
 export type LayoutId = "stack" | "glass" | "bento";
 export type CloudProvider = "off" | "drive" | "onedrive";
 export type CloudSync = { provider: CloudProvider; lastSyncAt?: string; askedSinceUnlock: boolean; unlockedAt?: string };
+/** A desktop paired over the LAN. `key` is the peer's X25519 public key (base64). */
+export type PairedDevice = { id: string; name: string; key: string; lastSyncAt: string };
 export type SmsMemoryRow = { key: string; choice: "category" | "transfer" | "ignore"; category?: string };
 
 /** Where a spend happened. Online-food and online-grocery are apps; everything else is in person. */
@@ -348,6 +350,8 @@ export type Settings = {
   travelFolded: boolean;
   /** This phone's id. A file from another phone opens read-only. */
   installId: string;
+  /** Desktops paired to this device. Device-only: never merged during sync. */
+  pairedDevices: PairedDevice[];
   /** A file from another phone. Looking is allowed. Editing is not. */
   readOnly: boolean;
   /** v0.9.8: hours a cold start may reopen the last screen. 0 or null turns reopen off. */

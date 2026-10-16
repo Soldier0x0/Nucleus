@@ -1,22 +1,30 @@
-# Builds a single installable Nucleus release APK.
+# Builds the installable Nucleus releases: an Android APK and the Windows and
+# Linux desktop installers. One merged pull request publishes one version that
+# carries every platform's file in the same GitHub Release.
 #
 # The JavaScript bundle is compiled into the APK, so the file can be copied to
 # a phone and installed without Expo Go or a development server.
 #
-# A successful build on main publishes the APK itself as a GitHub Release, named
+# A successful build on main publishes the files as a GitHub Release, named
 # nucleus-v0.1.apk, nucleus-v0.2.apk, and so on. The version stays below 1.
-# Download that file from Releases. It is the APK, not the Actions artifact zip.
-# Notes come from the CHANGELOG.md section for the version being published.
-# That section must be short bullet points of what the version added or changed.
+# Download those files from Releases. They are the installers, not the Actions
+# artifact zips. Notes come from the CHANGELOG.md section for the version being
+# published. That section must be short bullet points of what the version
+# added or changed.
 # One pull request publishes one version. A section for any other unpublished
 # version fails the job. A missing section for a later version does not fail
 # the build and does not publish.
 #
-# The job stays on the free GitHub runner. It reuses the Gradle cache between
-# runs and skips release lint. A docs, changelog, or README-only change does
-# not compile. A green pull-request APK for the same git tree is what gets
-# published, so the merge does not compile that tree a second time.
+# The jobs stay on the free GitHub runners. The APK job reuses the Gradle
+# cache between runs and skips release lint. A docs, changelog, or README-only
+# change does not compile. A green pull-request APK for the same git tree is
+# what gets published, so the merge does not compile that tree a second time.
 # The APK contains only arm64-v8a, which is what current phones use.
+#
+# The desktop job builds installers on Windows (.msi, -setup.exe) and Linux
+# (.deb, .AppImage) only when the change touches desktop/, the shared core,
+# the release scripts, or the changelog. On merge it waits for the APK job to
+# create the release, then attaches its installers to the same release.
 #
 # Signing:
 # - With no secrets, the APK is signed with the debug keystore that Expo puts in
@@ -274,3 +282,173 @@ jobs:
           # create tags the default branch instead. This is the only tag created.
           gh release create "$TAG" "nucleus-${TAG}.apk" --title "$TAG" --target "$GITHUB_SHA" --latest --notes-file release-notes.md
           echo "Release ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+
+  desktop:
+    name: Build desktop (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            bundles: msi,nsis
+          - os: ubuntu-22.04
+            bundles: deb,appimage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Decide whether this change touches the desktop app
+        id: scope
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          changed=true
+          case "$EVENT" in
+            pull_request)
+              if [ -n "$BASE" ]; then
+                git fetch --no-tags origin "$BASE"
+                if git diff --name-only "$BASE" HEAD | grep -qE '^(desktop/|frontend/src/core/|\.github/scripts/|\.github/workflows/android-apk\.yml|CHANGELOG\.md)'; then
+                  changed=true
+                else
+                  changed=false
+                fi
+              fi
+              ;;
+            push)
+              if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+                git fetch --no-tags origin "$BEFORE" || true
+                if git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                  if git diff --name-only "$BEFORE" HEAD | grep -qE '^(desktop/|frontend/src/core/|\.github/scripts/|\.github/workflows/android-apk\.yml|CHANGELOG\.md)'; then
+                    changed=true
+                  else
+                    changed=false
+                  fi
+                fi
+              fi
+              ;;
+          esac
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+          echo "Desktop build needed: ${changed}"
+
+      - name: Choose the next version under 1.0
+        if: steps.scope.outputs.changed == 'true'
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")' 2>/dev/null || true)
+          # shellcheck disable=SC2086
+          name=$(node .github/scripts/next-android-version.js --changelog CHANGELOG.md $tags)
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${name}" >> "$GITHUB_OUTPUT"
+          echo "Next release is v${name}"
+          # One release, one version, the same rule the APK job enforces.
+          # shellcheck disable=SC2086
+          node .github/scripts/release-notes.js --only-this-version "v${name}" $tags
+          # shellcheck disable=SC2086
+          node .github/scripts/release-notes.js --if-ready "v${name}" > release-notes-check.md
+          if [ -s release-notes-check.md ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: steps.scope.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.scope.outputs.changed == 'true'
+
+      - uses: swatinem/rust-cache@v2
+        if: steps.scope.outputs.changed == 'true'
+        with:
+          workspaces: desktop/src-tauri -> target
+
+      - name: Linux build libraries
+        if: steps.scope.outputs.changed == 'true' && runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install JavaScript dependencies
+        if: steps.scope.outputs.changed == 'true'
+        shell: bash
+        working-directory: desktop
+        run: yarn install --frozen-lockfile
+
+      - name: Stamp the desktop version
+        if: steps.scope.outputs.changed == 'true'
+        shell: bash
+        run: node .github/scripts/stamp-desktop-version.js --version "${{ steps.version.outputs.name }}"
+
+      - name: Build installers
+        if: steps.scope.outputs.changed == 'true'
+        shell: bash
+        working-directory: desktop
+        run: npx tauri build --bundles ${{ matrix.bundles }}
+
+      - uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.changed == 'true'
+        # Artifact storage is only a shortcut for future reuse. When it is
+        # unavailable, the merge run still builds and attaches the installers.
+        continue-on-error: true
+        with:
+          name: nucleus-desktop-${{ runner.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            desktop/src-tauri/target/release/bundle/msi/*.msi
+            desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/deb/*.deb
+            desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Attach the Linux installers to the release
+        if: steps.scope.outputs.changed == 'true' && steps.version.outputs.publish == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && runner.os == 'Linux'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" >/dev/null 2>&1; then break; fi
+            echo "Waiting for the APK job to create the release..."
+            sleep 30
+          done
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" >/dev/null
+          mkdir -p release-files
+          cp desktop/src-tauri/target/release/bundle/deb/*.deb "release-files/nucleus-${TAG}-linux-amd64.deb"
+          cp desktop/src-tauri/target/release/bundle/appimage/*.AppImage "release-files/nucleus-${TAG}-linux-amd64.AppImage"
+          gh release upload "$TAG" release-files/* --clobber
+          echo "Attached Linux installers to ${TAG}"
+
+      - name: Attach the Windows installers to the release
+        if: steps.scope.outputs.changed == 'true' && steps.version.outputs.publish == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && runner.os == 'Windows'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" >/dev/null 2>&1; then break; fi
+            echo "Waiting for the APK job to create the release..."
+            sleep 30
+          done
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" >/dev/null
+          mkdir -p release-files
+          cp desktop/src-tauri/target/release/bundle/msi/*.msi "release-files/nucleus-${TAG}-windows-x64.msi"
+          cp desktop/src-tauri/target/release/bundle/nsis/*-setup.exe "release-files/nucleus-${TAG}-windows-x64-setup.exe"
+          gh release upload "$TAG" release-files/* --clobber
+          echo "Attached Windows installers to ${TAG}"

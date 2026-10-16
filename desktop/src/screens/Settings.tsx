@@ -9,6 +9,7 @@ import { localPrefs } from "../platform/storage";
 import { backupFileName, decryptBackup, exportBackup, parseBackup, type BackupFile, type PickedBackup } from "../platform/backup";
 import { passwordStrength } from "../platform/crypto";
 import { isTauri } from "../platform/env";
+import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
 
 const DESKTOP_MODULES: ModuleId[] = ["vehicles", "money", "papers", "notes", "kanban", "wiki"];
@@ -170,6 +171,8 @@ export function Settings() {
             </table>
           </details>
         </section>
+
+        <Pairing />
 
         <section className="card">
           <h2>Sections</h2>

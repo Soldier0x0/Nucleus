@@ -340,6 +340,23 @@ test("a gap names the missing document or unpacked item", () => {
   assert.doesNotMatch(today, /things need attention/);
 });
 
+test("v0.10: the camera is allowed back for pairing only, over plain LAN HTTP", () => {
+  const app = JSON.parse(read("../../app.json"));
+  const blocked: string[] = app.expo.android.blockedPermissions;
+  assert.equal(blocked.includes("android.permission.CAMERA"), false);
+  for (const still of ["android.permission.RECORD_AUDIO", "android.permission.ACCESS_FINE_LOCATION", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.READ_SMS"]) {
+    assert.ok(blocked.includes(still), still);
+  }
+  assert.equal(app.expo.android.permissions.includes("android.permission.CAMERA"), false);
+  const plugins = app.expo.plugins as unknown[];
+  const camera = plugins.find((p) => Array.isArray(p) && p[0] === "expo-camera") as [string, { cameraPermission?: string }] | undefined;
+  assert.ok(camera);
+  assert.match(String(camera[1]?.cameraPermission), /scan the pairing code/);
+  const buildProps = plugins.find((p) => Array.isArray(p) && p[0] === "expo-build-properties") as [string, { android?: { usesCleartextTraffic?: boolean } }] | undefined;
+  assert.ok(buildProps);
+  assert.equal(buildProps[1]?.android?.usesCleartextTraffic, true);
+});
+
 test("about shows the installed version and follows a later stamp", () => {
   assert.equal(aboutTitle("0.6.3"), "Nucleus 0.6.3");
   assert.equal(aboutTitle("0.8"), "Nucleus 0.8");
