@@ -202,8 +202,9 @@ jobs:
         if: steps.plan.outputs.build == 'true'
         working-directory: frontend
         run: |
-          if ! grep -q 'android.permission.CAMERA' android/app/src/main/AndroidManifest.xml; then
-            echo "android.permission.CAMERA is missing from the generated AndroidManifest.xml. Pairing by QR code would ship broken."
+          line=$(grep 'android.permission.CAMERA' android/app/src/main/AndroidManifest.xml || true)
+          if [ -z "${line}" ] || echo "${line}" | grep -q 'tools:node="remove"'; then
+            echo "android.permission.CAMERA is missing from the generated AndroidManifest.xml or is marked tools:node=\"remove\". Pairing by QR code would ship broken."
             exit 1
           fi
 
@@ -252,6 +253,10 @@ jobs:
           fi
           cp frontend/android/app/build/outputs/apk/release/*.apk nucleus.apk
           ls -lh nucleus.apk
+          if ! unzip -p nucleus.apk AndroidManifest.xml | strings -el | grep -q 'android.permission.CAMERA'; then
+            echo "The built APK lost android.permission.CAMERA. Pairing by QR code would ship broken."
+            exit 1
+          fi
 
       - name: Upload the APK
         if: steps.plan.outputs.build == 'true'

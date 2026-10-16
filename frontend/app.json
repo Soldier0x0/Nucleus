@@ -51,7 +51,6 @@
         "expo-image-picker",
         {
           "photosPermission": "Nucleus uses a photo you choose as a cover on your media shelf.",
-          "cameraPermission": false,
           "microphonePermission": false
         }
       ],
