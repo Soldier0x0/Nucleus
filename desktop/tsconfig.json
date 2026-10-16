@@ -9,7 +9,11 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
-    "paths": { "@core/*": ["../frontend/src/core/*"] }
+    "paths": {
+      "@core/*": ["../frontend/src/core/*"],
+      "expo-crypto": ["./src/coreShims/expo-crypto.ts"],
+      "@/src/utils/storage": ["./src/coreShims/phoneStorage.ts"]
+    }
   },
   "include": ["src"]
 }

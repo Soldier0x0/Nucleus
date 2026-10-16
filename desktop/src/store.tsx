@@ -22,6 +22,8 @@ type Store = {
   discardUnreadable: () => Promise<void>;
   update: (fn: (db: DB) => DB) => void;
   setSettings: (patch: Partial<Settings>) => void;
+  /** Applies an already-merged document (sync) without re-stamping local rows. */
+  applySync: (fn: (db: DB) => DB) => void;
   replace: (db: DB) => void;
 };
 
@@ -123,14 +125,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setDb((d) => (d.settings.readOnly ? d : { ...d, settings: { ...d.settings, ...patch } }));
   }, []);
 
+  const applySync = useCallback((fn: (db: DB) => DB) => {
+    if (!writable.current) return;
+    setDb((d) => (d.settings.readOnly ? d : fn(d)));
+  }, []);
+
   const replace = useCallback((next: DB) => {
     if (!writable.current) return;
     setDb({ ...next, settings: { ...next.settings, readOnly: false } });
   }, []);
 
   const value = useMemo(
-    () => ({ db, ready, unreadable, retryLoad, discardUnreadable, update, setSettings, replace }),
-    [db, ready, unreadable, retryLoad, discardUnreadable, update, setSettings, replace],
+    () => ({ db, ready, unreadable, retryLoad, discardUnreadable, update, setSettings, applySync, replace }),
+    [db, ready, unreadable, retryLoad, discardUnreadable, update, setSettings, applySync, replace],
   );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

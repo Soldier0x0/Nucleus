@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { syncStatusLine } from "@core/syncStatus";
 import { StoreProvider, useStore } from "./store";
 import { LockScreen } from "./LockScreen";
+import { SyncBridge } from "./sync/SyncBridge";
 import { secureStatus } from "./platform/secure";
 import { Today } from "./screens/Today";
 import { Money } from "./screens/Money";
@@ -59,6 +60,7 @@ export function App() {
 function Shell() {
   const { db, ready, unreadable, retryLoad, discardUnreadable } = useStore();
   const [section, setSection] = useState<SectionId>("today");
+  const lastDeviceSync = (db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -107,6 +109,7 @@ function Shell() {
 
   return (
     <div className="shell">
+      <SyncBridge />
       <nav className="side" aria-label="Sections">
         <div className="brand">Nucleus</div>
         {SECTIONS.map((s, i) => (
@@ -121,7 +124,7 @@ function Shell() {
           </button>
         ))}
         <div className="side-foot">
-          <div className="sync" data-testid="sidebar-sync-status">{syncStatusLine(db.settings.lastSyncAt, new Date().toISOString())}</div>
+          <div className="sync" data-testid="sidebar-sync-status">{syncStatusLine(lastDeviceSync, new Date().toISOString())}</div>
           <p className="muted small">Your data stays on this computer.</p>
         </div>
       </nav>

@@ -8,12 +8,15 @@ import { fileURLToPath } from "node:url";
 // bills -> actions) still name native packages at the top. Those paths are never
 // reached from desktop code, so the test stubs make the graph bundle cleanly.
 const stub = (name: string) => fileURLToPath(new URL(`../frontend/src/core/__stubs__/${name}`, import.meta.url));
+const shim = (name: string) => fileURLToPath(new URL(`src/coreShims/${name}`, import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
       { find: "@core", replacement: fileURLToPath(new URL("../frontend/src/core", import.meta.url)) },
+      { find: /^expo-crypto$/, replacement: shim("expo-crypto.ts") },
+      { find: /^@\/src\/utils\/storage$/, replacement: shim("phoneStorage.ts") },
       { find: /^react-native$/, replacement: stub("react-native.ts") },
       { find: /^expo-file-system\/legacy$/, replacement: stub("expo-file-system-legacy.ts") },
       { find: /^expo-file-system$/, replacement: stub("expo-file-system.ts") },
