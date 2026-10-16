@@ -10,6 +10,16 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.10
+
+- Added the desktop app for Windows and Linux, carried in every release from now on: Today, Money, Vehicles, Papers, Notes, Wiki and Kanban on a wide layout, with the same editing rights as the phone and a PIN lock.
+- Added pairing your phone to your desktop by scanning a QR code or typing the six-digit code, over your own Wi-Fi only; nothing goes to the internet.
+- Added Sync in Settings: choose a paired desktop and both sides swap changes since the last sync and show "12 in, 3 out"; deleted items stay deleted on both sides.
+- Added automatic sync while both apps are open on the same Wi-Fi: it runs a few seconds after a change and again when you come back to the app.
+- Added sending paper files and photos by content hash, so only the files the other side is missing travel.
+- Added the camera permission for the pairing scan only; audio, location, storage and SMS permissions stay blocked, and the camera is not used anywhere else in the app.
+- Added importing a phone backup on the desktop with its export code, and a desktop export the phone can read back.
+
 ## v0.9.9
 
 - Changed Travel spend into one Money category: metro, train, cab, bus and bike-taxi fares, hotel and flight all sit under Travel; rides and fuel stay under Vehicle.
