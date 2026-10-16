@@ -165,12 +165,14 @@ function handleSync(body: Uint8Array): HttpReply {
   const outgoing = changesSince(withFiles, owner.lastSyncAt || null);
   const missing = missingVaultFiles(vaultFileList(withFiles), vaultHashes);
   const files = collectVaultFiles(withFiles, missing);
+  const haveOnDesktop = new Set(vaultFileList(withFiles).map((f) => f.hash));
+  const needFromPhone = vaultHashes.filter((f) => !haveOnDesktop.has(f.hash)).map((f) => ({ hash: f.hash }));
   const outCount = countDelta(outgoing);
   const next = setDeviceLastSync(withFiles, owner.id, now);
 
   runtime.apply(() => next);
   noteSyncSummary(owner.id, { at: now, inCount: merged.inCount, outCount });
-  return reply(200, sealMessage(owner.key, { ok: true, changes: outgoing, vaultFiles: files, summary: { in: merged.inCount, out: outCount } }));
+  return reply(200, sealMessage(owner.key, { ok: true, changes: outgoing, vaultFiles: files, needFromPhone, summary: { in: merged.inCount, out: outCount } }));
 }
 
 function normalizeChanges(raw: unknown): SyncDelta {
