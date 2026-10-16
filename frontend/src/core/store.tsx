@@ -35,6 +35,8 @@ type Store = {
   update: (fn: (db: DB) => DB) => void;
   /** Applies an already-merged document (sync) without re-stamping local rows. */
   applySync: (fn: (db: DB) => DB) => void;
+  /** Wall-clock ms of the last local edit. Remote-applied sync data does not move it. */
+  localChangeAt: number | null;
   setSettings: (patch: Partial<Settings>) => void;
   replace: (db: DB) => void;
   openReal: () => Promise<void>;
@@ -82,6 +84,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [unreadable, setUnreadable] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [localChangeAt, setLocalChangeAt] = useState<number | null>(null);
   const [session, setSession] = useState<VaultSession>("real");
   const [profiles, setProfiles] = useState<ProfileMeta[]>(defaultProfileIndex().profiles);
   const [activeProfileId, setActiveProfileId] = useState(defaultProfileIndex().activeId);
@@ -198,8 +201,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const update = useCallback((fn: (db: DB) => DB) => {
-    if (!writable.current) return;
+    if (!writable.current || dbRef.current.settings.readOnly) return;
     setDb((d) => (d.settings.readOnly ? d : stampChanges(d, fn(d), new Date().toISOString())));
+    setLocalChangeAt(Date.now());
   }, []);
   const applySync = useCallback((fn: (db: DB) => DB) => {
     if (!writable.current) return;
@@ -212,6 +216,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const replace = useCallback((next: DB) => {
     if (!writable.current) return;
     setDb(normalizeDB(next));
+    setLocalChangeAt(Date.now());
   }, []);
 
   const openReal = useCallback(async () => {
@@ -358,6 +363,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       discardUnreadable,
       update,
       applySync,
+      localChangeAt,
       setSettings,
       replace,
       openReal,
@@ -381,6 +387,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       discardUnreadable,
       update,
       applySync,
+      localChangeAt,
       setSettings,
       replace,
       openReal,

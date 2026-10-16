@@ -1,12 +1,12 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import type { PairedDevice } from "@/src/core/types";
 import { syncStatusLine } from "@/src/core/syncStatus";
-import { applySyncResponse, buildSyncRequest, buildVaultUpload, desktopAddress, forgetDesktop, SyncError, syncErrorMessage } from "@/src/core/syncClient";
-import { postSyncJson } from "@/src/core/syncTransport";
+import { desktopAddress, forgetDesktop, SyncError, syncErrorMessage } from "@/src/core/syncClient";
+import { syncWithDesktop } from "@/src/core/syncWithDesktop";
 import { Button, Icon, IconButton, T } from "@/src/components/ui";
 import { ConfirmSheet } from "@/src/components/ConfirmSheet";
 import { useToast } from "@/src/components/Toast";
@@ -30,6 +30,8 @@ export function SyncSettings() {
   const [forget, setForget] = useState<PairedDevice | null>(null);
   const devices = db.settings.pairedDevices ?? [];
   const now = new Date().toISOString();
+  const dbRef = useRef(db);
+  dbRef.current = db;
 
   function note(id: string, message: string) {
     setLines((rows) => ({ ...rows, [id]: message }));
@@ -46,16 +48,9 @@ export function SyncSettings() {
     setBusy(device.id);
     note(device.id, "Syncing…");
     try {
-      const first = await postSyncJson(address.host, address.port, "/sync", buildSyncRequest(db, device));
-      const round = applySyncResponse(db, device, first.body);
-      let merged = round.db;
-      if (round.needFromPhone.length) {
-        note(device.id, "Sending files…");
-        const follow = await postSyncJson(address.host, address.port, "/sync", buildVaultUpload(merged, device, round.needFromPhone));
-        merged = applySyncResponse(merged, device, follow.body).db;
-      }
-      applySync(() => merged);
-      const line = `${round.summary.in} in, ${round.summary.out} out`;
+      const result = await syncWithDesktop(dbRef.current, device, { onProgress: (line) => note(device.id, line) });
+      applySync(() => result.db);
+      const line = `${result.summary.in} in, ${result.summary.out} out`;
       note(device.id, line);
       toast(line, "sync");
     } catch (err) {
@@ -70,9 +65,12 @@ export function SyncSettings() {
   return (
     <SettingsScreen title="Desktop sync" testID="settings-sync" anchor={anchor}>
       <Section title="How it works" anchor="how">
-        <View style={{ padding: 12 }}>
+        <View style={{ padding: 12, gap: 8 }}>
           <T muted style={{ fontSize: 12 }} testID="settings-sync-note">
             Nucleus on your phone and Nucleus on your computer swap records directly over your own Wi-Fi while both apps are open and unlocked. Nothing goes to the internet.
+          </T>
+          <T muted style={{ fontSize: 12 }} testID="settings-sync-auto-note">
+            Nucleus syncs a few seconds after a change and again when you come back, while both apps are open on the same Wi-Fi.
           </T>
         </View>
         <Row

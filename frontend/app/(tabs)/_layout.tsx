@@ -7,6 +7,7 @@ import type { SFSymbolIcon } from "expo-router/unstable-native-tabs";
 import { fonts, useTheme } from "@/src/theme";
 import { usesNativeTabs } from "@/src/navigation";
 import { Icon } from "@/src/components/ui";
+import { AutoSync } from "@/src/components/AutoSync";
 import { useStore } from "@/src/core/store";
 import { visibleAttention } from "@/src/core/attention";
 import { moduleById, moduleTabLabel, nativeModuleShellId } from "@/src/core/modules";
@@ -56,48 +57,54 @@ export default function TabsLayout() {
 
   if (usesNativeTabs) {
     return (
-      <NativeTabs>
-        <NativeTabs.Trigger name="index">
-          <NativeTabs.Trigger.Icon sf={(shell && NATIVE_SF[shell]) ?? "square.grid.2x2.fill"} />
-          <NativeTabs.Trigger.Label>{shellTab?.label ?? "Today"}</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="attention">
-          <NativeTabs.Trigger.Icon sf="bell.fill" />
-          <NativeTabs.Trigger.Label>Attention</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-        <NativeTabs.Trigger name="settings">
-          <NativeTabs.Trigger.Icon sf="gearshape.fill" />
-          <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-      </NativeTabs>
+      <>
+        <AutoSync />
+        <NativeTabs>
+          <NativeTabs.Trigger name="index">
+            <NativeTabs.Trigger.Icon sf={(shell && NATIVE_SF[shell]) ?? "square.grid.2x2.fill"} />
+            <NativeTabs.Trigger.Label>{shellTab?.label ?? "Today"}</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+          <NativeTabs.Trigger name="attention">
+            <NativeTabs.Trigger.Icon sf="bell.fill" />
+            <NativeTabs.Trigger.Label>Attention</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+          <NativeTabs.Trigger name="settings">
+            <NativeTabs.Trigger.Icon sf="gearshape.fill" />
+            <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+        </NativeTabs>
+      </>
     );
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.onSurface,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.surfaceSecondary, borderTopColor: colors.border, ...(Platform.OS === "web" ? { height: 64 } : {}) },
-        tabBarItemStyle: { alignSelf: "center" },
-        tabBarLabelStyle: { fontFamily: look.plain ? fonts.text : fonts.textSemi, fontSize: look.typeScale === 1 ? 11 : Math.round(11 * look.typeScale) },
-        tabBarButton: (props) => <TabButton {...props} />,
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: shellTab?.label ?? "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={shellTab ? shellTab.icon : focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />
-      <Tabs.Screen
-        name="attention"
-        options={{
-          title: "Attention",
-          tabBarButtonTestID: "tab-attention",
-          tabBarBadge: urgent || undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.error, color: colors.onError, fontFamily: fonts.monoBold, fontSize: 10 },
-          tabBarIcon: ({ color, focused }) => <Icon name={focused ? "bell" : "bell-outline"} color={color as string} size={24} />,
+    <>
+      <AutoSync />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.onSurface,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: { backgroundColor: colors.surfaceSecondary, borderTopColor: colors.border, ...(Platform.OS === "web" ? { height: 64 } : {}) },
+          tabBarItemStyle: { alignSelf: "center" },
+          tabBarLabelStyle: { fontFamily: look.plain ? fonts.text : fonts.textSemi, fontSize: look.typeScale === 1 ? 11 : Math.round(11 * look.typeScale) },
+          tabBarButton: (props) => <TabButton {...props} />,
         }}
-      />
-      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarButtonTestID: "tab-settings", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "cog" : "cog-outline"} color={color as string} size={24} /> }} />
-      <Tabs.Screen name="favorites" options={{ href: null }} />
-    </Tabs>
+      >
+        <Tabs.Screen name="index" options={{ title: shellTab?.label ?? "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={shellTab ? shellTab.icon : focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />
+        <Tabs.Screen
+          name="attention"
+          options={{
+            title: "Attention",
+            tabBarButtonTestID: "tab-attention",
+            tabBarBadge: urgent || undefined,
+            tabBarBadgeStyle: { backgroundColor: colors.error, color: colors.onError, fontFamily: fonts.monoBold, fontSize: 10 },
+            tabBarIcon: ({ color, focused }) => <Icon name={focused ? "bell" : "bell-outline"} color={color as string} size={24} />,
+          }}
+        />
+        <Tabs.Screen name="settings" options={{ title: "Settings", tabBarButtonTestID: "tab-settings", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "cog" : "cog-outline"} color={color as string} size={24} /> }} />
+        <Tabs.Screen name="favorites" options={{ href: null }} />
+      </Tabs>
+    </>
   );
 }
