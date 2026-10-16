@@ -123,11 +123,6 @@ export function Settings() {
               <option value="system">Follow the system</option>
             </select>
           </label>
-          <label className="field"><span>Currency</span>
-            <select value={db.settings.currency} onChange={(e) => setSettings({ currency: e.target.value })}>
-              {["INR", "USD", "EUR", "GBP", "AED", "AUD", "CAD", "SGD", "JPY"].map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
           <label className="field"><span>Distance unit</span>
             <select value={db.settings.distanceUnit} onChange={(e) => setSettings({ distanceUnit: e.target.value as "km" | "mi" })}>
               <option value="km">Kilometres</option>

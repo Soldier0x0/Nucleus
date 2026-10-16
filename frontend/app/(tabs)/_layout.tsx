@@ -1,7 +1,9 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Animated, Platform, Pressable, type GestureResponderEvent } from "react-native";
-import { tabRipple } from "@/src/core/tabRipple";
+import { useRouter } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
+import { takePendingReopen } from "@/app/index";
+import { tabRipple } from "@/src/core/tabRipple";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import type { SFSymbolIcon } from "expo-router/unstable-native-tabs";
 import { fonts, useTheme } from "@/src/theme";
@@ -32,6 +34,22 @@ function TabButton({ onPressIn, children, ...rest }: { onPressIn?: ((event: Gest
   );
 }
 
+/**
+ * Pushes the screen a cold start remembered, once, on top of the tabs. The
+ * small delay lets the tab bar settle so Back lands here instead of exiting.
+ */
+function ReopenOnce() {
+  const router = useRouter();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current) return;
+    done.current = true;
+    const route = takePendingReopen();
+    if (route) setTimeout(() => router.push(route as never), 80);
+  }, [router]);
+  return null;
+}
+
 /** SF symbols for the module home when the native tab bar is in use. Unknown ids keep the Today glyph. */
 type NativeTabSymbol = NonNullable<SFSymbolIcon["sf"]>;
 const NATIVE_SF: Partial<Record<ModuleId, NativeTabSymbol>> = {
@@ -58,6 +76,7 @@ export default function TabsLayout() {
   if (usesNativeTabs) {
     return (
       <>
+        <ReopenOnce />
         <AutoSync />
         <NativeTabs>
           <NativeTabs.Trigger name="index">
@@ -79,6 +98,7 @@ export default function TabsLayout() {
 
   return (
     <>
+      <ReopenOnce />
       <AutoSync />
       <Tabs
         screenOptions={{

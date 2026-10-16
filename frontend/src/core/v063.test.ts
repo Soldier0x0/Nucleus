@@ -347,7 +347,7 @@ test("v0.10: the camera is allowed back for pairing only, over plain LAN HTTP", 
   for (const still of ["android.permission.RECORD_AUDIO", "android.permission.ACCESS_FINE_LOCATION", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.READ_SMS"]) {
     assert.ok(blocked.includes(still), still);
   }
-  assert.equal(app.expo.android.permissions.includes("android.permission.CAMERA"), false);
+  assert.equal(app.expo.android.permissions.includes("android.permission.CAMERA"), true);
   const plugins = app.expo.plugins as unknown[];
   const camera = plugins.find((p) => Array.isArray(p) && p[0] === "expo-camera") as [string, { cameraPermission?: string }] | undefined;
   assert.ok(camera);

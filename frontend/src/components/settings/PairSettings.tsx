@@ -1,6 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
@@ -27,6 +27,25 @@ export function PairSettings() {
   const [error, setError] = useState("");
   const [done, setDone] = useState<string | null>(null);
   const scanning = useRef(true);
+  const askedCamera = useRef(false);
+  const deepHandled = useRef(false);
+  const params = useLocalSearchParams<{ p?: string }>();
+
+  /** Opened from the system camera scanning the desktop code: pair straight away. */
+  useEffect(() => {
+    const p = typeof params.p === "string" ? params.p.trim() : "";
+    if (!p || deepHandled.current || gate !== "unlocked") return;
+    deepHandled.current = true;
+    void onScan(p);
+  }, [params.p, gate, onScan]);
+
+  /** Unlocking lands on this screen with the camera off; ask once, right away. */
+  useEffect(() => {
+    if (askedCamera.current || done || gate !== "unlocked") return;
+    if (!permission || permission.granted || !permission.canAskAgain) return;
+    askedCamera.current = true;
+    void requestPermission();
+  }, [done, gate, permission, requestPermission]);
 
   function fail(err: unknown) {
     const message = syncErrorMessage(err instanceof SyncError ? err.code : "unreachable");

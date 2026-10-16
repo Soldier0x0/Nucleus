@@ -198,6 +198,15 @@ jobs:
         working-directory: frontend
         run: npx expo prebuild --platform android --no-install
 
+      - name: Check the camera permission survived prebuild
+        if: steps.plan.outputs.build == 'true'
+        working-directory: frontend
+        run: |
+          if ! grep -q 'android.permission.CAMERA' android/app/src/main/AndroidManifest.xml; then
+            echo "android.permission.CAMERA is missing from the generated AndroidManifest.xml. Pairing by QR code would ship broken."
+            exit 1
+          fi
+
       - name: Configure release signing
         if: steps.plan.outputs.build == 'true'
         working-directory: frontend

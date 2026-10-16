@@ -62,10 +62,21 @@ test("sealed messages throw when a ciphertext byte is tampered with or the envel
 test("the pair QR round-trips with trimmed name and host and keeps a six-digit code", () => {
   const keys = newDeviceKeyPair();
   const text = pairQrPayload({ deviceId: "desktop-1", name: "  Studio PC  ", publicKey: keys.publicKey, host: " 192.168.1.20 ", port: 43110, code: "012345" });
-  assert.match(text, /"t":"nucleus-pair-1"/);
+  assert.match(text, /^nucleus:\/\/settings\/pair\?p=/);
   const parsed = parsePairQrPayload(text);
   assert.deepEqual(parsed, { deviceId: "desktop-1", name: "Studio PC", publicKey: keys.publicKey, host: "192.168.1.20", port: 43110, code: "012345" });
   assert.deepEqual(parsePairQrPayload(pairQrPayload(parsed!)), parsed);
+});
+
+test("the pair QR link is a nucleus:// link so the system camera can open the app, and bare JSON still reads", () => {
+  const keys = newDeviceKeyPair();
+  const bare = JSON.stringify({ t: "nucleus-pair-1", deviceId: "d1", name: "Desk", publicKey: keys.publicKey, host: "10.0.0.2", port: 5000, code: "123456" });
+  const link = pairQrPayload({ deviceId: "d1", name: "Desk", publicKey: keys.publicKey, host: "10.0.0.2", port: 5000, code: "123456" });
+  assert.equal(link, `nucleus://settings/pair?p=${encodeURIComponent(bare)}`);
+  assert.deepEqual(parsePairQrPayload(bare), parsePairQrPayload(link));
+  assert.equal(parsePairQrPayload("nucleus://settings/pair?p=%E0%A4%A"), null);
+  assert.equal(parsePairQrPayload("nucleus://settings/pair"), null);
+  assert.equal(parsePairQrPayload("nucleus://settings/pair?p="), null);
 });
 
 test("a malformed pairing QR is null, never a partial read", () => {

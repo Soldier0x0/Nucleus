@@ -40,18 +40,34 @@ export function newDeviceKeyPair(): DeviceKeyPair {
   return { privateKey: toB64(privateKey), publicKey: toB64(x25519.getPublicKey(privateKey)) };
 }
 
-/** The QR the desktop shows: `{ deviceId, name, public key, LAN host/port, one-time code }`. */
+/** Prefix of the link inside the QR, so the system camera app can open Nucleus. */
+export const PAIR_LINK_PREFIX = "nucleus://settings/pair?p=";
+
+/** The QR the desktop shows: a `nucleus://` link carrying device, key, address, and code. */
 export function pairQrPayload(input: PairQr): string {
-  return JSON.stringify({ t: PAIR_QR_TAG, deviceId: input.deviceId, name: input.name, publicKey: input.publicKey, host: input.host, port: input.port, code: input.code });
+  const body = JSON.stringify({ t: PAIR_QR_TAG, deviceId: input.deviceId, name: input.name, publicKey: input.publicKey, host: input.host, port: input.port, code: input.code });
+  return `${PAIR_LINK_PREFIX}${encodeURIComponent(body)}`;
 }
 
 /** Strict reader for pairQrPayload. Anything malformed is null, never a throw. */
 export function parsePairQrPayload(text: string): PairQr | null {
+  let body = text.trim();
+  if (body.startsWith(PAIR_LINK_PREFIX)) {
+    try {
+      body = decodeURIComponent(body.slice(PAIR_LINK_PREFIX.length));
+    } catch {
+      return null;
+    }
+  }
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    raw = JSON.parse(body);
   } catch {
-    return null;
+    try {
+      raw = JSON.parse(decodeURIComponent(body));
+    } catch {
+      return null;
+    }
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const row = raw as Record<string, unknown>;

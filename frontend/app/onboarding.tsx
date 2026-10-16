@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { Platform, ScrollView, StyleSheet, Switch, useColorScheme, View } from "react-native";
+import { Keyboard, Platform, ScrollView, StyleSheet, Switch, useColorScheme, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInRight } from "react-native-reanimated";
 import { radius, THEMES, useTheme, bindLookStyles } from "@/src/theme";
 import { useStore } from "@/src/core/store";
-import { CURRENCIES } from "@/src/core/format";
 import { MODULES } from "@/src/core/modules";
 import { withSampleData } from "@/src/core/sample";
 import { biometricAvailable, biometricUnlock, setDecoyPin, setPin, verifyPin } from "@/src/core/security";
@@ -191,16 +190,6 @@ export default function Onboarding() {
                   ))}
                 </ChipRow>
               </View>
-              <T v="label" style={{ marginBottom: 4 }}>
-                Currency
-              </T>
-              <View style={{ marginHorizontal: -16 }}>
-                <ChipRow testID="onboarding-currency-row">
-                  {CURRENCIES.map((c) => (
-                    <Chip key={c} label={c} selected={s.currency === c} onPress={() => setSettings({ currency: c })} testID={`onboarding-currency-${c}`} />
-                  ))}
-                </ChipRow>
-              </View>
               {[
                 { l: "Distance", k: "distanceUnit", o: [{ value: "km", label: "Kilometres" }, { value: "mi", label: "Miles" }] },
                 { l: "Fuel volume", k: "volumeUnit", o: [{ value: "L", label: "Litres" }, { value: "gal", label: "Gallons" }] },
@@ -256,7 +245,7 @@ export default function Onboarding() {
               <Field label="What should I call you?" testID="onboarding-name" value={s.givenName ?? ""} onChangeText={(v) => setSettings({ givenName: cleanCallName(v) || undefined })} placeholder="Harsha" autoCapitalize="words" hint="Optional. Today will say good afternoon with this name." />
               {pinStage === "off" && (
                 <View style={{ gap: 10 }}>
-                  <Button label="Set a PIN" icon="lock-outline" testID="onboarding-set-pin-button" onPress={() => setPinStage("enter")} />
+                  <Button label="Set a PIN" icon="lock-outline" testID="onboarding-set-pin-button" onPress={() => (Keyboard.dismiss(), setPinStage("enter"))} />
                 </View>
               )}
               {(pinStage === "enter" || pinStage === "confirm" || pinStage === "decoy" || pinStage === "decoyConfirm") && (

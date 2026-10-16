@@ -10,16 +10,20 @@ const HOME_ROUTE = "/(tabs)";
 
 /** One cold-start decision per app run. Later visits to "/" go straight home. */
 let booted = false;
+/** The remembered screen a cold start restores; the tabs layout pushes it once. */
+let pendingReopen: string | null = null;
 
-function landingRoute(settings: Parameters<typeof reopenTarget>[0]): string {
-  const target = reopenTarget(settings, Date.now());
-  if (target) return target;
-  return usesNativeTabs ? HOME_ROUTE : FAVORITES_ROUTE;
+/** Hands the remembered screen to the tabs layout exactly once per app run. */
+export function takePendingReopen(): string | null {
+  const route = pendingReopen;
+  pendingReopen = null;
+  return route;
 }
 
 /**
- * Cold-start fork: onboarding, then wait for the lock gate, then the last
- * screen inside the reopen window or the Favourites landing.
+ * Cold-start fork: onboarding, then wait for the lock gate, then the Favourites
+ * landing. The last screen inside the reopen window rides on top of the tabs
+ * (pushed by the tabs layout), so its back button always has a way home.
  */
 export default function Index() {
   const { db } = useStore();
@@ -30,10 +34,15 @@ export default function Index() {
 
   useEffect(() => {
     if (!onboarded || decided.current) return;
+    if (booted) {
+      decided.current = true;
+      return;
+    }
     if (gate === "unknown" || gate === "locked") return;
     decided.current = true;
     booted = true;
-    setTarget(landingRoute(db.settings));
+    pendingReopen = reopenTarget(db.settings, Date.now());
+    setTarget(usesNativeTabs ? HOME_ROUTE : FAVORITES_ROUTE);
   }, [onboarded, gate, db.settings]);
 
   if (!onboarded) return <Redirect href="/onboarding" />;

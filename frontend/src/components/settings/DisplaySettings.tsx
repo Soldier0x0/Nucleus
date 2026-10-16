@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, Switch, TextInput, View } from "react-native";
+import { Switch, TextInput, View } from "react-native";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { accents, radius, THEMES, useTheme } from "@/src/theme";
+import { accents, THEMES, useTheme } from "@/src/theme";
 import { geocode } from "@/src/core/online";
 import { locationPhase, placeFromFix } from "@/src/core/locationAsk";
 import { cleanCallName } from "@/src/core/greeting";
 import type { Place } from "@/src/core/types";
 import { useStore } from "@/src/core/store";
-import { CURRENCIES } from "@/src/core/format";
 import { LauncherPicker } from "@/src/components/LauncherPicker";
 import { LookPicker } from "@/src/components/LookPicker";
 import { Field } from "@/src/components/inputs";
@@ -33,8 +32,6 @@ export function DisplaySettings() {
   const toast = useToast();
   const router = useRouter();
   const sw = useSwitchColors();
-  const [currencyOpen, setCurrencyOpen] = useState(false);
-  const currencies = [...CURRENCIES].sort((a, b) => a.localeCompare(b, "en"));
   const [city, setCity] = useState("");
   const [cityMatches, setCityMatches] = useState<Place[]>([]);
   const [showLog, setShowLog] = useState(false);
@@ -124,12 +121,7 @@ export function DisplaySettings() {
       </Section>
 
       <Section title="Defaults" anchor="defaults">
-        <View style={{ padding: 12 }}>
-          <Press testID="settings-currency-row" onPress={() => setCurrencyOpen(true)} style={{ height: 46, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderStrong, paddingHorizontal: 16, justifyContent: "center", backgroundColor: colors.surfaceTertiary }}>
-            <T>{s.currency}</T>
-          </Press>
-        </View>
-        <View style={{ padding: 12, paddingTop: 4, gap: 10 }}>
+        <View style={{ padding: 12, gap: 10 }}>
           <Segmented testID="settings-distance" value={s.distanceUnit} onChange={(v) => setSettings({ distanceUnit: v })} options={[{ value: "km", label: "km" }, { value: "mi", label: "miles" }]} />
           <Segmented testID="settings-volume" value={s.volumeUnit} onChange={(v) => setSettings({ volumeUnit: v })} options={[{ value: "L", label: "Litres" }, { value: "gal", label: "Gallons" }]} />
           <Segmented testID="settings-temp" value={s.tempUnit} onChange={(v) => setSettings({ tempUnit: v })} options={[{ value: "C", label: "°C" }, { value: "F", label: "°F" }]} />
@@ -170,15 +162,6 @@ export function DisplaySettings() {
         ))}
       </Sheet>
 
-      <Sheet visible={currencyOpen} onClose={() => setCurrencyOpen(false)} title="Currency" testID="settings-currency-sheet">
-        <ScrollView style={{ maxHeight: 360 }}>
-          {currencies.map((c) => (
-            <Press key={c} testID={`settings-currency-${c}`} onPress={() => (setSettings({ currency: c }), setCurrencyOpen(false))} style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.divider, opacity: s.currency === c ? 1 : 0.85 }}>
-              <T v="label">{c}</T>
-            </Press>
-          ))}
-        </ScrollView>
-      </Sheet>
     </SettingsScreen>
   );
 }
