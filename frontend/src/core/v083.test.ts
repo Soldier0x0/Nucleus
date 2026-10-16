@@ -26,7 +26,7 @@ test("today tells the pill row which chip is selected, and the row scrolls to it
   assert.match(row, /chipScrollX/);
   assert.match(row, /scrollTo\(/);
   assert.match(row, /activeIndex\?: number/);
-  assert.match(today, /testID="today-preset-row" activeIndex=\{presetIndex\}/);
+  assert.equal(/today-preset-row/.test(today), false);
   assert.match(today, /testID="today-board-row" activeIndex=\{boardIndex\}/);
   const swipe = read("../components/HomeModes.tsx");
   assert.match(swipe, /fromSwipe/);

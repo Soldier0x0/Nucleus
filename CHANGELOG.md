@@ -10,6 +10,16 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.11
+
+- Fixed reopening the last screen on start leaving Back stuck on that screen with no way home; Back now lands on the home screen and the phone's Back button no longer quits the app from there.
+- Fixed the camera permission missing from the app, so pairing by QR code asks for the camera and the phone's camera app can open Nucleus straight from the code.
+- Fixed the menu jumping in and out; it now slides in and out smoothly and has Search at the top.
+- Fixed the keyboard staying up after tapping Set a PIN during setup; it closes because the app shows its own keypad.
+- Changed Today to drop the preset pills, and the desktop to drop the currency switcher; amounts are in rupees and nothing converts them.
+- Fixed the desktop drop-downs (color, distance unit, transaction kind) that showed a white box with unreadable text.
+- Fixed the desktop app icon, which drew the round logo on a square panel; the icon is now the round logo itself.
+
 ## v0.10
 
 - Added the desktop app for Windows and Linux, carried in every release from now on: Today, Money, Vehicles, Papers, Notes, Wiki and Kanban on a wide layout, with the same editing rights as the phone and a PIN lock.

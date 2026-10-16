@@ -1,6 +1,7 @@
 /* Nucleus desktop. Hand-rolled, no UI framework. Dark by default, light via [data-theme="light"]. */
 :root,
 :root[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #16161a;
   --panel: #1e1e24;
   --panel-2: #26262e;
@@ -15,6 +16,7 @@
   --radius: 12px;
 }
 :root[data-theme="light"] {
+  color-scheme: light;
   --bg: #f4f2ee;
   --panel: #ffffff;
   --panel-2: #f0ede7;
@@ -82,6 +84,19 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
+}
+/* Native selects paint their own white chrome in the webview; draw ours instead. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239a9aa7' stroke-width='1.6' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+select option {
+  background-color: var(--panel-2);
+  color: var(--ink);
 }
 input[type="checkbox"] {
   width: 16px;

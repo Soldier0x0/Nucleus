@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,7 +33,7 @@ import WikiHome from "@/app/wiki/index";
 import NetHome from "@/app/net/index";
 import CycleHome from "@/app/cycle/index";
 import HealthHome from "@/app/health/index";
-import { openBoards, PRESET_CHOICES, presetBoard, presetTileTitle, showsCustomizeHome, tilePlaceholder, widenLongLabels, withTileSizes } from "@/src/core/presets";
+import { presetBoard, presetTileTitle, showsCustomizeHome, tilePlaceholder, widenLongLabels, withTileSizes } from "@/src/core/presets";
 import { HeadsUpCard, SwipeHome } from "@/src/components/HomeModes";
 import { ChipRow, Chip } from "@/src/components/ui";
 import { useReminderSync } from "@/src/core/useReminders";
@@ -95,17 +95,7 @@ function TodayBoard() {
   const greeting = homeLine(hour, session === "real" ? db.settings.givenName : undefined, oneDueToday(dues, today)?.title ?? null);
   const boards = db.settings.boards;
   const activeBoard = boards.find((b) => b.id === db.settings.activeBoardId);
-  const visibleBoards = openBoards(db);
-  const chips = PRESET_CHOICES.filter((choice) => visibleBoards.includes(choice.id));
-  const preset = chips.some((choice) => choice.id === db.settings.homePreset) ? db.settings.homePreset : (chips[0]?.id ?? "custom");
-  const presetIndex = Math.max(0, chips.findIndex((choice) => choice.id === preset));
-  const chipKey = chips.map((choice) => choice.id).join(",");
-  useEffect(() => {
-    const ids = chipKey.split(",");
-    if (ids.includes(db.settings.homePreset)) return;
-    const next = ids[0];
-    if (next) setSettings({ homePreset: next as HomePresetId });
-  }, [db.settings.homePreset, chipKey, setSettings]);
+  const preset: HomePresetId = "custom";
   const boardIndex = activeBoard ? boards.findIndex((board) => board.id === activeBoard.id) + 1 : 0;
   const anyModule = db.settings.modules.some((m) => m.enabled);
   const [boardSheet, setBoardSheet] = useState<null | { board: Board | null }>(null);
@@ -173,19 +163,14 @@ function TodayBoard() {
         </View>
       </View>
       <View style={{ marginHorizontal: -4 }}>
-          <ChipRow testID="today-preset-row" activeIndex={presetIndex}>
-            {chips.map((choice) => (
-              <Chip key={choice.id} label={choice.name} icon={choice.icon} selected={preset === choice.id} testID={`today-preset-${choice.id}`} onPress={() => setSettings({ homePreset: choice.id })} />
-            ))}
-          </ChipRow>
-          {preset === "custom" ? <ChipRow testID="today-board-row" activeIndex={boardIndex}>
-            <Chip label="Home" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
-            {boards.map((b) => (
-              <Chip key={b.id} label={b.name} icon={b.icon} selected={activeBoard?.id === b.id} testID={`today-board-${b.id}`} onPress={() => setSettings({ activeBoardId: b.id })} />
-            ))}
-            {activeBoard ? <Chip label="Edit" icon="pencil-outline" testID="today-board-edit" onPress={() => setBoardSheet({ board: activeBoard })} /> : null}
-            <Chip label="New board" icon="plus" testID="today-board-new" onPress={() => setBoardSheet({ board: null })} />
-        </ChipRow> : null}
+        <ChipRow testID="today-board-row" activeIndex={boardIndex}>
+          <Chip label="Home" icon="view-dashboard-outline" selected={!activeBoard} testID="today-board-default" onPress={() => setSettings({ activeBoardId: undefined })} />
+          {boards.map((b) => (
+            <Chip key={b.id} label={b.name} icon={b.icon} selected={activeBoard?.id === b.id} testID={`today-board-${b.id}`} onPress={() => setSettings({ activeBoardId: b.id })} />
+          ))}
+          {activeBoard ? <Chip label="Edit" icon="pencil-outline" testID="today-board-edit" onPress={() => setBoardSheet({ board: activeBoard })} /> : null}
+          <Chip label="New board" icon="plus" testID="today-board-new" onPress={() => setBoardSheet({ board: null })} />
+        </ChipRow>
       </View>
       {!anyModule ? (
         <View style={{ paddingHorizontal: sp.lg, paddingBottom: bottomChrome + 24 }}>

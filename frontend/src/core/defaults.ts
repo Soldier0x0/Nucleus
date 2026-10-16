@@ -207,6 +207,8 @@ export function normalizeDB(raw: any): DB {
   else delete s.nativeModuleShell;
   s.installId = typeof raw?.settings?.installId === "string" && raw.settings.installId.trim() ? String(raw.settings.installId).slice(0, 40) : uid();
   s.homePreset = migrateHomePresetOnLoad(raw, parseHomePreset(raw?.settings?.homePreset));
+  // v0.11: amounts are plain numbers and nothing converts them, so the only honest currency is rupees.
+  s.currency = "INR";
   // v0.9.8: ADHD mode removed. An "adhd" home preset parses to custom; its saved data is dropped.
   delete (s as { adhd?: unknown }).adhd;
   s.presetLast = parsePresetLast(raw?.settings?.presetLast);

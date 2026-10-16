@@ -10,7 +10,7 @@ import { Bars, Donut, PALETTE } from "../components/Charts";
 const blank = { type: "expense" as Txn["type"], amount: "", category: "Food", date: todayISO(), note: "" };
 
 export function Money() {
-  const { db, update, setSettings } = useStore();
+  const { db, update } = useStore();
   const [month, setMonth] = useState(monthKey(todayISO()));
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState(blank);
@@ -51,14 +51,6 @@ export function Money() {
         <label className="field inline grow">
           <span>Search</span>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="category, item or note" />
-        </label>
-        <label className="field inline">
-          <span>Currency</span>
-          <select value={currency} onChange={(e) => setSettings({ currency: e.target.value })}>
-            {["INR", "USD", "EUR", "GBP", "AED", "AUD", "CAD", "SGD", "JPY"].map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
         </label>
       </div>
 
