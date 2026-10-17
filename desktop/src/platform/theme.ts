@@ -8,7 +8,7 @@ export function applyThemePref(pref: string) {
 }
 
 export function storedThemePref(): string {
-  return localPrefs.get(THEME_KEY) ?? "dark";
+  return localPrefs.get(THEME_KEY) ?? "system";
 }
 
 export function applyStoredTheme() {

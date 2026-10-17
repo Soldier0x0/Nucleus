@@ -10,6 +10,19 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.14
+
+- Added the Ctrl+K command palette: sections, money, vehicles, papers, notes, kanban, trips, media and attention reachable as one flat search, with the arrows/Enter/Esc keys.
+- Added Attention as its own desktop section with a boxed badge showing the open count on the sidebar.
+- Added module parity on desktop: Home edits appliances, utility bills and chores; Health edits cycle days (cycle sits under Health on desktop), medicines and water times; Travel lists and adds trips; Media lists what to watch, read and play.
+- Added named saved views on Money and Papers: the month/search or tag/search set is one chip, stored in this document's settings so it survives sync and never crosses to the phone.
+- Added an in-app PDF viewer (pdf.js renders in the window, page and zoom controls kept) with "Open in system viewer" still one click away.
+- Added drag-and-drop onto the app window: a backup .json replaces the document after a confirm, and images and PDFs attach themselves as new papers (20 MB cap, error notes for anything else).
+- Added print-ready pages for the tables and lists — sidebars, toolbars and inputs drop out of the print.
+- Added the tray icon with Show Nucleus / Quit Nucleus and a start-with-this-computer toggle in Settings.
+- Changed Today into a bento dashboard: the budget ring, service table and renewals share the grid, and a "Pick up where you left" tile reads this computer's change journal (the full attention list moved to its own section).
+- Changed first launch to follow the system look and ask once which look to keep (dark, light or system; changing in Settings still works).
+
 ## v0.13
 
 - Added the change journal: every add, edit and delete this phone makes is kept with the rows it replaced, so a record's page shows its History (who changed what, when) and any edit can be rolled back with one tap.

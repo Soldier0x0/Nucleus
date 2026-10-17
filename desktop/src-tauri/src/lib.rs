@@ -6,7 +6,10 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_autostart::MacosLauncher;
 
 mod sync_server;
 use sync_server::{RunningServer, ServerInfo, StartOptions, SyncHandler, SyncRequest, SyncResponse};
@@ -152,9 +155,11 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![])))
         .plugin(tauri_plugin_stronghold::Builder::new(pin_to_key).build())
         .setup(|app| {
             app.manage(SyncState::new(app.handle().clone()));
+            setup_tray(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -168,4 +173,29 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nucleus");
+}
+
+/// The Nucleus tray (v0.14): show the window or quit. Left-click also shows.
+fn setup_tray(app: &tauri::App) -> Result<(), tauri::Error> {
+    let show = MenuItem::with_id(app, "show", "Show Nucleus", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Nucleus", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &quit])?;
+    TrayIconBuilder::with_id("nucleus")
+        .icon(app.default_window_icon().expect("default window icon").clone())
+        .tooltip("Nucleus")
+        .menu(&menu)
+        .show_menu_on_left_click(true)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "show" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            }
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .build(app)?;
+    Ok(())
 }

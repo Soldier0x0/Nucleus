@@ -5,6 +5,7 @@ import { countsOf } from "@core/merge";
 import { isValidPin } from "../platform/security";
 import { WrongPinError, changeSecurePin, lockSecure } from "../platform/secure";
 import { applyThemePref, storedThemePref, THEME_KEY } from "../platform/theme";
+import { autostartEnabled, autostartSet } from "../platform/autostart";
 import { localPrefs } from "../platform/storage";
 import { backupFileName, decryptBackup, exportBackup, parseBackup, type BackupFile, type PickedBackup } from "../platform/backup";
 import { passwordStrength } from "../platform/crypto";
@@ -24,12 +25,29 @@ export function Settings() {
   const [dataMsg, setDataMsg] = useState("");
   const [pending, setPending] = useState<{ picked: PickedBackup & { kind: "encrypted" }; name: string } | null>(null);
   const [importPw, setImportPw] = useState("");
+  const [startWithPc, setStartWithPc] = useState(false);
+  const [startMsg, setStartMsg] = useState("");
   const importInput = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     applyThemePref(theme);
     localPrefs.set(THEME_KEY, theme);
   }, [theme]);
+
+  useEffect(() => {
+    void autostartEnabled().then(setStartWithPc).catch(() => {});
+  }, []);
+
+  const toggleAutostart = async (on: boolean) => {
+    setStartMsg("");
+    try {
+      await autostartSet(on);
+      setStartWithPc(await autostartEnabled());
+      setStartMsg(on ? "Nucleus starts with this computer." : "Nucleus will not start with this computer.");
+    } catch (err) {
+      setStartMsg(err instanceof Error ? err.message : "Could not change that setting.");
+    }
+  };
 
   const changePin = async () => {
     setPinMsg("");
@@ -101,6 +119,16 @@ export function Settings() {
   return (
     <div className="stack">
       <div className="settings-grid">
+        <section className="card">
+          <h2>General</h2>
+          <label className="switch">
+            <input type="checkbox" checked={startWithPc} disabled={!isTauri()} onChange={(e) => void toggleAutostart(e.target.checked)} />
+            <span>Start with this computer</span>
+          </label>
+          {startMsg ? <p className="muted small" data-testid="autostart-note">{startMsg}</p> : null}
+          {!isTauri() ? <p className="muted small">Available in the installed app.</p> : null}
+        </section>
+
         <section className="card">
           <h2>Security</h2>
           <p className="muted">The PIN opens the key store on this computer. The document is always encrypted with that key.</p>

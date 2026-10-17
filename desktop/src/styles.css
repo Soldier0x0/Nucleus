@@ -729,3 +729,251 @@ button {
     grid-template-columns: 170px 1fr;
   }
 }
+
+/* ---------- v0.14: bento today ---------- */
+.no-view {
+  display: none;
+}
+.bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.bento > .card {
+  margin: 0;
+}
+.bento .b2 {
+  grid-column: span 2;
+}
+.bento .b3 {
+  grid-column: span 3;
+}
+.bento .b4 {
+  grid-column: span 4;
+}
+.bento .b6 {
+  grid-column: span 6;
+}
+.pickup-line {
+  font-size: 17px;
+  margin-bottom: 2px;
+}
+@media (max-width: 1100px) {
+  .bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bento .b2,
+  .bento .b3,
+  .bento .b4,
+  .bento .b6 {
+    grid-column: span 2;
+  }
+  .bento .b6 {
+    grid-column: span 2;
+  }
+}
+
+/* ---------- v0.14: attention screen + sidebar badge ---------- */
+.attention-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.nav {
+  position: relative;
+}
+.nav-badge {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--error);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  padding: 3px 7px;
+}
+.nav-palette {
+  font-size: 12.5px;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: none;
+  padding: 7px 10px;
+  text-align: left;
+}
+.nav-palette:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+/* ---------- v0.14: two-stack module screens ---------- */
+.two-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.saved-view-row {
+  margin-bottom: 0;
+}
+.chip-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.self-end {
+  align-self: flex-end;
+}
+
+/* ---------- v0.14: command palette ---------- */
+.pal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 14, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 16px 16px;
+  z-index: 60;
+}
+.pal {
+  width: min(620px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+.pal-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 14px 16px;
+  font-size: 16px;
+  background: transparent;
+}
+.pal-input:focus {
+  border-color: var(--line);
+}
+.pal-list {
+  max-height: 46vh;
+  overflow: auto;
+}
+.pal-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-top: 1px solid transparent;
+  padding: 9px 16px;
+  color: var(--ink);
+}
+.pal-row.on {
+  background: var(--panel-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.pal-title {
+  font-weight: 550;
+  white-space: nowrap;
+}
+.pal-sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pal-foot {
+  padding: 8px 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- v0.14: pdf viewer ---------- */
+.pdf-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.pdf-bar {
+  margin-bottom: 0;
+}
+.pdf-scroll {
+  max-height: 65vh;
+  overflow: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px;
+  display: flex;
+  justify-content: center;
+}
+.pdf-canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- v0.14: drag-drop + look chooser + dev lab ---------- */
+.drop-overlay,
+.look-ask {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 14, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+}
+.look-ask {
+  background: var(--bg);
+}
+.drop-note {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 8px 14px;
+  z-index: 80;
+}
+.debug-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 40vh;
+  overflow: auto;
+  font-size: 12px;
+}
+
+/* ---------- v0.14: print ---------- */
+@media print {
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .no-print,
+  .side {
+    display: none !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+  }
+  input,
+  select,
+  button {
+    display: none !important;
+  }
+  table td,
+  table th {
+    color: #111 !important;
+  }
+}
