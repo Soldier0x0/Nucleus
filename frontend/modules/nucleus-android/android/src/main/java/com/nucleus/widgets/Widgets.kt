@@ -125,8 +125,6 @@ internal object WidgetRender {
     return PendingIntent.getActivity(context, seed, intent, flags)
   }
 
-  private data class Card(val kicker: String, val value: String, val subtitle: String, val path: String, val action: String? = null)
-
   private fun cardFor(context: Context, kind: String, snap: JSONObject?): Card {
     if (kind == "battery") return battery(context)
     if (kind == "cycle") return cycle(context)
