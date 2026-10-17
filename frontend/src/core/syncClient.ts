@@ -27,7 +27,7 @@ export type SyncSummary = { in: number; out: number };
 export type SyncApplication = { db: DB; summary: SyncSummary; needFromPhone: { hash: string }[] };
 export type VaultSend = { hash: string; kind: string; ref: string; size: number; dataB64: string };
 
-export type SyncErrorCode = "bad-code" | "locked" | "unknown-device" | "bad-response" | "not-paired" | "bad-address" | "timeout" | "unreachable";
+export type SyncErrorCode = "bad-code" | "locked" | "unknown-device" | "bad-response" | "not-paired" | "bad-address" | "timeout" | "unreachable" | "key-changed";
 
 /** Plain-word wording lives in one place so every sync screen says the same thing. */
 export function syncErrorMessage(code: SyncErrorCode): string {
@@ -47,6 +47,8 @@ export function syncErrorMessage(code: SyncErrorCode): string {
       return "No desktop answered. Keep both apps open on the same Wi-Fi and try again.";
     case "bad-response":
       return "The desktop sent a reply Nucleus could not read.";
+    case "key-changed":
+      return "This desktop answers with a different key than when we paired. Pair again only if you changed or reinstalled the desktop.";
     default: {
       const unreachable: never = code;
       return unreachable;
@@ -170,6 +172,16 @@ export function buildPairRequest(identity: PhoneSyncIdentity, desktop: DesktopId
   return { path: "/pair", body: JSON.stringify({ t: PAIR_QR_TAG, publicKey: identity.publicKey, body }) };
 }
 
+/**
+ * Trust on first use: a desktop's public key is pinned when we pair with it.
+ * A second pairing with the same device id and a different key is refused
+ * until the user says it is theirs (a reinstall rotates the key).
+ */
+export function pairKeyConflict(db: DB, desktop: DesktopIdentity): boolean {
+  const existing = db.settings.pairedDevices?.find((d) => d.id === desktop.deviceId);
+  return !!existing?.pubKey && existing.pubKey !== desktop.publicKey;
+}
+
 /** Open the desktop's answer and keep it, with the pair key as the device's shared key. */
 export function handlePairResponse(db: DB, desktop: DesktopIdentity, code: string, sealedResponse: string): DB {
   const identity = readPhoneSync(db);
@@ -179,7 +191,7 @@ export function handlePairResponse(db: DB, desktop: DesktopIdentity, code: strin
   noteIfRefused(opened);
   const id = typeof opened.deviceId === "string" && opened.deviceId.trim() ? opened.deviceId.trim() : desktop.deviceId;
   const name = typeof opened.name === "string" && opened.name.trim() ? opened.name.trim() : desktop.name;
-  const device: PairedDevice = { id: id.slice(0, 40), name: name.slice(0, 40), key: pairKey, lastSyncAt: "" };
+  const device: PairedDevice = { id: id.slice(0, 40), name: name.slice(0, 40), key: pairKey, lastSyncAt: "", pubKey: desktop.publicKey };
   return addPairedDevice(db, device);
 }
 

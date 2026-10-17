@@ -22,16 +22,18 @@ export function replaceAllowed(described: boolean, confirmed: boolean): boolean 
   return described && confirmed;
 }
 
-/** The locked file holds the document. Biometric material stays on this phone. */
+/** The locked file holds the document. Biometric material and this phone's sync keys stay here. */
 export function bundleForFile(db: DB): DB {
-  const copy = JSON.parse(JSON.stringify(db)) as DB;
+  const copy = JSON.parse(JSON.stringify(db)) as Record<string, unknown> & { settings: Settings };
   const settings = { ...copy.settings } as Settings & Record<string, unknown>;
+  const SECRET_KEYS = ["biometric", "phonesync", "desktopsync"];
   for (const key of Object.keys(settings)) {
-    if (key.toLowerCase().includes("biometric")) delete settings[key];
+    if (SECRET_KEYS.some((word) => key.toLowerCase().includes(word))) delete settings[key];
   }
   if (settings.unlockMethod === "biometric" || settings.unlockMethod === "both") settings.unlockMethod = "pin";
-  copy.settings = settings as Settings;
-  return copy;
+  copy.settings = settings;
+  delete copy.journal;
+  return copy as unknown as DB;
 }
 
 export function canOpenFile(input: { passphrase: string; samePhone: boolean; biometricOk: boolean }): boolean {

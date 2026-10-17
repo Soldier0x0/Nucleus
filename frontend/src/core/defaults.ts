@@ -12,6 +12,7 @@ import { parseLayout } from "./layouts";
 import { parseTileOrder } from "./homeOrder";
 import { emptyHeadsUp, migrateHomePresetOnLoad, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { normalizePaper } from "./paperNormalize";
+import { normalizeJournal } from "./journal";
 import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
@@ -164,6 +165,7 @@ export function emptyDB(): DB {
     reminders: [],
     medicines: [],
     tombstones: [],
+    journal: [],
   };
 }
 
@@ -295,6 +297,7 @@ export function normalizeDB(raw: any): DB {
     medicines: normalizeMedicines(raw?.medicines),
     stations: normalizeStations(raw?.stations),
     tombstones: Array.isArray(raw?.tombstones) ? raw.tombstones.filter((t: any) => t && typeof t.id === "string" && typeof t.kind === "string" && typeof t.deletedAt === "string") : [],
+    journal: normalizeJournal(raw?.journal),
   };
 }
 

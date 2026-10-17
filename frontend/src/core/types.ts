@@ -242,6 +242,12 @@ export type Budget = { monthly: number; categories: Record<string, number> };
 /** A deleted row, kept so a merge or sync does not bring it back. `kind` is the DB list it lived in. */
 export type Tombstone = { kind: string; id: string; deletedAt: string };
 
+/** A row as it was kept in the journal (before an edit, or before it was deleted). */
+export type JournalRow = { id: string; [key: string]: unknown };
+
+/** One change in this phone's own record of what happened: added, edited or deleted, with the rows. */
+export type JournalEntry = { id: string; at: string; act: "add" | "edit" | "delete"; kind: string; recordId: string; before?: JournalRow; after?: JournalRow };
+
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
 export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "net" | "cycle" | "health";
@@ -259,7 +265,7 @@ export type LayoutId = "stack" | "glass" | "bento";
 export type CloudProvider = "off" | "drive" | "onedrive";
 export type CloudSync = { provider: CloudProvider; lastSyncAt?: string; askedSinceUnlock: boolean; unlockedAt?: string };
 /** A desktop paired over the LAN. `key` is the peer's X25519 public key (base64). */
-export type PairedDevice = { id: string; name: string; key: string; lastSyncAt: string };
+export type PairedDevice = { id: string; name: string; key: string; lastSyncAt: string; pubKey?: string };
 export type SmsMemoryRow = { key: string; choice: "category" | "transfer" | "ignore"; category?: string };
 
 /** Where a spend happened. Online-food and online-grocery are apps; everything else is in person. */
@@ -522,4 +528,5 @@ export type DB = {
   reminders: PlainReminder[];
   medicines: Medicine[];
   tombstones: Tombstone[];
+  journal: JournalEntry[];
 };

@@ -6,7 +6,7 @@ import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { useLockSignal } from "@/src/core/lockSignal";
 import { parsePairQrPayload } from "@/src/core/pairing";
-import { buildPairRequest, handlePairResponse, parseDesktopAddress, parseInfoReply, phoneIdentity, setDesktopAddress, SyncError, syncErrorMessage, type DesktopIdentity } from "@/src/core/syncClient";
+import { buildPairRequest, handlePairResponse, parseDesktopAddress, parseInfoReply, pairKeyConflict, phoneIdentity, setDesktopAddress, SyncError, syncErrorMessage, type DesktopIdentity } from "@/src/core/syncClient";
 import { postSyncJson, syncFetch } from "@/src/core/syncTransport";
 import { Button, Icon, T } from "@/src/components/ui";
 import { Field } from "@/src/components/inputs";
@@ -25,6 +25,7 @@ export function PairSettings() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [keyAlert, setKeyAlert] = useState<DesktopIdentity | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const scanning = useRef(true);
   const askedCamera = useRef(false);
@@ -53,8 +54,18 @@ export function PairSettings() {
     toast(message, "alert-circle-outline");
   }
 
-  /** Shared by the camera and the typed address: seal the request, keep what the desktop answers. */
-  async function pairNow(desktop: DesktopIdentity, host: string, port: number, oneTimeCode: string) {
+  const pending = useRef<{ desktop: DesktopIdentity; host: string; port: number; code: string } | null>(null);
+
+  /** Shared by the camera and the typed address: seal the request, keep what the desktop answers.
+   *  A desktop reappearing with a different key than we pinned is refused until it is allowed again. */
+  async function pairNow(desktop: DesktopIdentity, host: string, port: number, oneTimeCode: string, force = false) {
+    if (!force && pairKeyConflict(db, desktop)) {
+      pending.current = { desktop, host, port, code: oneTimeCode };
+      setKeyAlert(desktop);
+      return;
+    }
+    setKeyAlert(null);
+    pending.current = null;
     const first = phoneIdentity(db);
     const request = buildPairRequest(first.identity, desktop, oneTimeCode);
     const reply = await postSyncJson(host, port, "/pair", request.body);
@@ -63,6 +74,13 @@ export function PairSettings() {
     if (!device) throw new SyncError("bad-response");
     update(() => setDesktopAddress(next, device.id, host, port));
     setDone(device.name);
+  }
+
+  /** The user confirms the desktop is theirs despite the new key. */
+  function repin() {
+    const held = pending.current;
+    if (!held) return;
+    void pairNow(held.desktop, held.host, held.port, held.code, true).catch(fail);
   }
 
   async function onScan(data: string) {
@@ -182,6 +200,20 @@ export function PairSettings() {
           </Section>
         </>
       )}
+
+      {keyAlert ? (
+        <Section title="Key changed" anchor="key">
+          <View style={{ padding: 12, gap: 12, alignItems: "flex-start" }} testID="pair-key-alert">
+            <T muted style={{ fontSize: 12 }}>
+              {keyAlert.name} answers with a different key than Nucleus paired with before. This also happens when the desktop was reinstalled. Pair again only if you know it is yours.
+            </T>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Button small kind="secondary" label="Not mine" testID="pair-key-cancel" onPress={() => setKeyAlert(null)} />
+              <Button small kind="danger" label="Pair anyway" icon="alert-circle-outline" testID="pair-key-overwrite" onPress={repin} />
+            </View>
+          </View>
+        </Section>
+      ) : null}
 
       {error ? (
         <View style={{ paddingHorizontal: 12 }}>

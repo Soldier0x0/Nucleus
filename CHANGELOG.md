@@ -10,6 +10,14 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.13
+
+- Added the change journal: every add, edit and delete this phone makes is kept with the rows it replaced, so a record's page shows its History (who changed what, when) and any edit can be rolled back with one tap.
+- Added restore from History: records deleted in the last 120 days show on the Timeline's "Deleted recently" strip and go back exactly as they were.
+- Fixed pairing trusting an unknown desktop: the desktop's key is pinned when you pair, and a re-pair with a different key for the same machine now asks before it replaces the pin (a pinned key change is the thing TOFU must catch).
+- Fixed phone backups and exports carrying this phone's sync private keys: the phone and desktop sync identities and the device journal are stripped from every file, cloud copy and desktop backup (v0.12's bundle kept the keys inside the encrypted settings ridealong).
+- Changed the lock policy wording in Settings to say the real backoff: five wrong PINs are free, then waiting doubles from 30 seconds up to 30 minutes (the timer already ran; now it's said).
+
 ## v0.12
 
 - Fixed quiet sync going quiet for good: a failed round now backs off up to five minutes instead of hammering LAN, the phone wakes sync when it rejoins the desktop's network, and the pill beside the Today heading shows green (synced), amber (off-network) or red (stale), and taps for a sync now. The desktop shows when the phone was last seen.
