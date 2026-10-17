@@ -126,6 +126,9 @@ export function SecuritySettings() {
               <T muted style={{ fontSize: 12 }} testID="settings-lock-policy">
                 It asks when you open the app, when the phone was locked or the screen turned off, and when you return after longer than {lockTimeoutLabel(s.lockTimeoutSec ?? 30).toLowerCase()}. Short trips to the photo picker or share sheet do not ask again.
               </T>
+              <T muted style={{ fontSize: 12, marginTop: 6 }} testID="settings-pin-backoff">
+                Wrong PINs are slower each time: five attempts are free, then waiting doubles from 30 seconds up to 30 minutes.
+              </T>
             </View>
             <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: colors.divider }}>
               <T v="label" style={{ marginBottom: 4 }}>Ask again for these modules</T>

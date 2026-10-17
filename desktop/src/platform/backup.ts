@@ -7,6 +7,7 @@
  * Import accepts both, plus a bare document produced by older builds.
  */
 import { normalizeDB } from "@core/defaults";
+import { bundleForFile } from "@core/vaultFile";
 import { countsOf } from "@core/merge";
 import type { DB } from "@core/types";
 import { decryptWithPassword, encryptWithPassword, type PasswordEnvelope } from "./crypto";
@@ -27,7 +28,9 @@ export type BackupFile = {
 
 export type PickedBackup = { kind: "plain"; file: BackupFile } | { kind: "encrypted"; env: PasswordEnvelope; exportedAt: string };
 
-export function buildBackup(db: DB): BackupFile {
+export function buildBackup(db0: DB): BackupFile {
+  // The journal and this machine's sync keys are device-private (v0.13).
+  const db = bundleForFile(db0);
   return { format: BACKUP_FORMAT, schema: 1, exportedAt: new Date().toISOString(), counts: countsOf(db), data: db };
 }
 

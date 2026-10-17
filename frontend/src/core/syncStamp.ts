@@ -1,4 +1,5 @@
 import type { DB, Tombstone } from "./types";
+import { appendJournal } from "./journal";
 
 /** Record lists that sync between devices. Each row has a stable `id`. */
 export const SYNC_COLLECTIONS = [
@@ -67,8 +68,10 @@ export function stampChanges(prev: DB, next: DB, now: string): DB {
   }
   const cutoff = new Date(Date.parse(now) - TOMBSTONE_DAYS * 86400000).toISOString();
   const kept = (out.tombstones ?? []).filter((t) => t.deletedAt >= cutoff);
-  if (!dead.length && kept.length === (out.tombstones ?? []).length) return out;
-  return { ...out, tombstones: mergeTombstones(kept, dead) };
+  const journal = appendJournal(prev, out, now);
+  const tidy = !dead.length && kept.length === (out.tombstones ?? []).length;
+  if (tidy && journal === (out.journal ?? [])) return out;
+  return { ...out, tombstones: mergeTombstones(kept, dead), journal };
 }
 
 const tKey = (t: Tombstone) => `${t.kind}:${t.id}`;

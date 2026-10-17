@@ -6,9 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { radius, useTheme } from "@/src/theme";
 import { useStore } from "@/src/core/store";
 import { deleteEntity, getEntity, SERVICE_LABEL, setTxnChannel } from "@/src/core/actions";
+import { ACT_WORDS, changedFields, journalFor, journalLabel, KIND_TO_LIST, revertEntry } from "@/src/core/journal";
 import { fuelFactsPatch, setFuelFacts } from "@/src/core/fuelCapture";
 import { pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
-import type { EntityKind, Paper } from "@/src/core/types";
+import type { DB as DBType, EntityKind, JournalEntry, Paper } from "@/src/core/types";
 import { fmtDate, money, num } from "@/src/core/format";
 import { CHANNEL_LABELS, channelLabel } from "@/src/core/merchantTable";
 import { Header } from "@/src/components/Header";
@@ -178,6 +179,10 @@ export default function RecordDetail() {
           </View>
         ) : null}
         <LinkedSection refTo={{ kind, id }} />
+        <HistorySection db={db} kind={kind} id={id} onRevert={(entry) => {
+          update((d) => revertEntry(d, entry));
+          toast("Reverted", "history");
+        }} />
       </ScrollView>
       <Sheet visible={fuelEdit && kind === "fuel"} onClose={() => setFuelEdit(false)} title="Fill details" testID="fuel-edit-sheet" footer={<Button label="Save" testID="fuel-edit-save" onPress={() => {
         update((d) => setFuelFacts(d, id, fuelFactsPatch(fuelDate, fuelStation, fuelOdo)));
@@ -212,10 +217,37 @@ export default function RecordDetail() {
         onConfirm={() => {
           if (detach === "photo") update((d) => ({ ...d, txns: d.txns.map((row) => (row.id === id ? { ...row, photo: undefined } : row)) }));
           else if (detach === "bill") update((d) => ({ ...d, services: d.services.map((row) => (row.id === id ? { ...row, billFile: undefined, billMime: undefined } : row)) }));
-          setDetach(null);
-          toast(detach === "bill" ? "Bill file removed" : "Photo removed", "delete-outline");
-        }}
-      />
+        setDetach(null);
+        toast(detach === "bill" ? "Bill file removed" : "Photo removed", "delete-outline");
+      }}
+    />
+  </View>
+);
+}
+
+/** This phone's own record of what happened to the record: newest first, with a one-click revert. */
+function HistorySection({ db, kind, id, onRevert }: { db: DBType; kind: EntityKind; id: string; onRevert: (entry: JournalEntry) => void }) {
+  const { colors } = useTheme();
+  const entries = journalFor(db, KIND_TO_LIST[kind], id).slice(0, 8);
+  if (!entries.length) return null;
+  return (
+    <View style={{ marginTop: 16 }} testID="record-history">
+      <Eyebrow style={{ marginBottom: 8 }}>History</Eyebrow>
+      <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, backgroundColor: colors.surfaceSecondary }}>
+        {entries.map((entry, i) => (
+          <View key={entry.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 52, padding: 12, borderTopWidth: i ? 1 : 0, borderTopColor: colors.divider }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <T v="label" numberOfLines={1}>{ACT_WORDS[entry.act]} · {journalLabel(entry)}</T>
+              <T muted style={{ fontSize: 12 }} numberOfLines={2}>
+                {fmtDate(entry.at.slice(0, 10))}{changedFields(entry).length ? ` · ${changedFields(entry).join(" · ")}` : ""}
+              </T>
+            </View>
+            {entry.act === "edit" && entry.before ? (
+              <Button small kind="ghost" label="Revert" testID={`record-revert-${i}`} onPress={() => onRevert(entry)} />
+            ) : null}
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
