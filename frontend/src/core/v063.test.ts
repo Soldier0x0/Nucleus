@@ -5,7 +5,7 @@ import { aboutTitle } from "./about.ts";
 import { attentionSwipeOutcome } from "./attention.ts";
 import { readiness, roomSummaries } from "./domains.ts";
 import { emptyDB } from "./defaults.ts";
-import { askToEnable, emergencyLockCard, staysEnabled } from "./featureAccess.ts";
+import { askToEnable, staysEnabled } from "./featureAccess.ts";
 import { attentionItems, serviceEstimate } from "./intelligence.ts";
 import { dismissNoticeAction, noticePresentation } from "./notices.ts";
 import { hasSampleData, withoutSampleData, withSampleData } from "./sample.ts";
@@ -29,17 +29,12 @@ const readSettings = () =>
     "../components/settings/AboutSettings.tsx",
   ].map(read).join("\n");
 
-test("the emergency card is public and high, with blood, phone, and plate, only while the switch is on", () => {
-  assert.equal(emergencyLockCard({ showOnLock: false, bloodGroup: "O+", phone: "9876543210", plate: "KA 01 AB 1234" }), null);
-  assert.equal(emergencyLockCard({ showOnLock: true, bloodGroup: "  ", phone: "", plate: "" }), null);
-  const card = emergencyLockCard({ showOnLock: true, bloodGroup: "O+", phone: "9876543210", plate: "KA 01 AB 1234" });
-  assert.ok(card);
-  assert.equal(card.title, "Emergency");
-  assert.equal(card.visibility, "public");
-  assert.equal(card.importance, "high");
-  assert.match(card.body, /O\+/);
-  assert.match(card.body, /9876543210/);
-  assert.match(card.body, /KA 01 AB 1234/);
+test("v0.12: the emergency card is gone — the lock gate only locks", () => {
+  const gate = read("../components/LockGate.tsx");
+  const settings = readSettings();
+  assert.doesNotMatch(gate, /emergencyLockCard|EmergencyStrip|lock-emergency/);
+  assert.doesNotMatch(settings, /emergency|Emergency/);
+  assert.equal(askToEnable("reminders").lockScreen, false);
 });
 
 test("sign in stores the locked file on the chosen account, and a failure is said on screen", () => {
@@ -119,27 +114,19 @@ test("the screen, the listener, and the upload say what this version does", () =
   const manifest = read("../../modules/nucleus-android/android/src/main/AndroidManifest.xml");
   const app = read("../../app.json");
   const kt = read("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt");
-  const cardStart = kt.indexOf('Function("showLockCard")');
-  const cardEnd = kt.indexOf('Function("hideLockCard")');
-  const card = kt.slice(cardStart, cardEnd);
   assert.match(settings, /notification access/i);
   assert.doesNotMatch(settings, /Allow reading texts/);
-  assert.match(settings, /emergencyLockCard/);
   assert.match(settings, /storeLockedCopy/);
   assert.match(settings, /settings-cloud-message/);
   assert.match(enable, /notification-listener/);
   assert.match(cloud, /storeLockedFile/);
   assert.doesNotMatch(cloud, /writeLockedFile/);
   assert.match(gate, /askAfterLeave/);
-  assert.match(gate, /emergencyLockCard/);
   assert.match(bank, /readBankNotices/);
   assert.doesNotMatch(bank, /readSmsInbox/);
   assert.match(manifest, /NotificationListenerService/);
   // v0.9.8: READ_SMS is gone; bank texts come from notification access only.
   assert.equal(JSON.parse(app).expo.android.permissions.includes("android.permission.READ_SMS"), false);
-  assert.match(card, /IMPORTANCE_HIGH/);
-  assert.doesNotMatch(card, /IMPORTANCE_DEFAULT/);
-  assert.match(card, /VISIBILITY_PUBLIC/);
   assert.match(kt, /storeLockedFile/);
   assert.match(kt, /getAuthToken/);
   assert.doesNotMatch(kt, /Function\("readSms"\)/);
@@ -247,18 +234,11 @@ test("a reminder dismiss clears the notice and does not open the app", () => {
     assert.equal(card.dismissClears, true);
     assert.equal(card.dismissOpensApp, false);
   }
-  const emergency = noticePresentation("emergency");
-  assert.equal(emergency.ongoing, true);
-  assert.equal(emergency.dismissClears, false);
   assert.equal(dismissNoticeAction().options.opensAppToForeground, false);
   const quiet = read("../components/QuietSync.tsx");
   assert.match(quiet, /dismissNoticeAction\(/);
   assert.match(quiet, /dismissNotificationAsync/);
   assert.match(quiet, /noticePresentation\(/);
-  const kt = read("../../modules/nucleus-android/android/src/main/java/com/nucleus/widgets/NucleusAndroidModule.kt");
-  const cardStart = kt.indexOf('Function("showLockCard")');
-  const cardEnd = kt.indexOf('Function("hideLockCard")');
-  assert.match(kt.slice(cardStart, cardEnd), /setOngoing\(true\)/);
 });
 
 test("a short attention swipe snaps back and the bedroom AC line does not say overdue", () => {

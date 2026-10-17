@@ -5,8 +5,6 @@ import android.accounts.AccountManager
 import android.accounts.OperationCanceledException
 import android.app.Activity
 import android.app.KeyguardManager
-import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -17,6 +15,8 @@ import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.drawable.Icon
+import android.net.ConnectivityManager
+import android.net.Network
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -66,17 +66,29 @@ class NucleusAndroidModule : Module() {
       }
     }
   }
+  private var networkCallback: ConnectivityManager.NetworkCallback? = null
+  private val networkWatch = object : ConnectivityManager.NetworkCallback() {
+    override fun onAvailable(network: Network) {
+      // Fired on Wi-Fi join and any default-network change — a cheap nudge for auto-sync.
+      try {
+        sendEvent("onNetwork", mapOf("type" to "available"))
+      } catch (_: Throwable) {
+      }
+    }
+  }
 
   override fun definition() = ModuleDefinition {
     Name("NucleusAndroid")
-    Events("onLan", "onBank")
+    Events("onLan", "onBank", "onNetwork")
 
     OnCreate {
       registerLockReceivers(appContext.reactContext?.applicationContext)
+      registerNetworkWatch(appContext.reactContext?.applicationContext)
     }
 
     OnActivityEntersForeground {
       registerLockReceivers(appContext.currentActivity?.applicationContext)
+      registerNetworkWatch(appContext.currentActivity?.applicationContext)
     }
 
     OnDestroy {
@@ -91,6 +103,15 @@ class NucleusAndroidModule : Module() {
         } catch (_: Exception) {
         }
       }
+      try {
+        val callback = networkCallback
+        if (callback != null) {
+          val cm = ctx?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+          cm?.unregisterNetworkCallback(callback)
+        }
+      } catch (_: Exception) {
+      }
+      networkCallback = null
       receiversRegistered = false
       appApplicationContext = null
     }
@@ -239,44 +260,6 @@ class NucleusAndroidModule : Module() {
       }
     }
 
-    Function("showLockCard") { title: String, body: String ->
-      val ctx = appContext.reactContext ?: return@Function
-      val manager = ctx.getSystemService(NotificationManager::class.java) ?: return@Function
-      if (Build.VERSION.SDK_INT >= 26) {
-        val channel = NotificationChannel(LOCK_CARD_CHANNEL, "Emergency card", NotificationManager.IMPORTANCE_HIGH)
-        channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-        channel.setSound(null, null)
-        channel.enableVibration(false)
-        manager.createNotificationChannel(channel)
-      }
-      val notification = if (Build.VERSION.SDK_INT >= 26) {
-        Notification.Builder(ctx, LOCK_CARD_CHANNEL)
-          .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-          .setContentTitle(title.take(40))
-          .setContentText(body.take(120))
-          .setVisibility(Notification.VISIBILITY_PUBLIC)
-          .setOngoing(true)
-          .setOnlyAlertOnce(true)
-          .build()
-      } else {
-        @Suppress("DEPRECATION")
-        Notification.Builder(ctx)
-          .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-          .setContentTitle(title.take(40))
-          .setContentText(body.take(120))
-          .setVisibility(Notification.VISIBILITY_PUBLIC)
-          .setPriority(Notification.PRIORITY_HIGH)
-          .setOngoing(true)
-          .build()
-      }
-      manager.notify(LOCK_CARD_ID, notification)
-    }
-
-    Function("hideLockCard") {
-      val ctx = appContext.reactContext ?: return@Function Unit
-      ctx.getSystemService(NotificationManager::class.java)?.cancel(LOCK_CARD_ID)
-    }
-
     AsyncFunction("writeLockedFile") Coroutine { path: String ->
       val ctx = appContext.reactContext ?: return@Coroutine false
       val existing = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CLOUD_FILE, null)
@@ -333,6 +316,16 @@ class NucleusAndroidModule : Module() {
       appCtx.registerReceiver(bankReceiver, bank)
     }
     receiversRegistered = true
+  }
+
+  private fun registerNetworkWatch(context: Context?) {
+    if (context == null || networkCallback != null) return
+    try {
+      val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+      cm.registerDefaultNetworkCallback(networkWatch)
+      networkCallback = networkWatch
+    } catch (_: Exception) {
+    }
   }
 
   private fun rememberIconRestart(ctx: Context) {
@@ -569,8 +562,6 @@ class NucleusAndroidModule : Module() {
   }
 }
 
-private const val LOCK_CARD_CHANNEL = "nucleus-lock-card"
-private const val LOCK_CARD_ID = 704
 private const val CLOUD_FILE = "cloud_file_uri"
 private const val ICON_RESTART = "icon_restart_unlocked"
 

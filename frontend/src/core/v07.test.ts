@@ -240,7 +240,7 @@ test("a personal vehicle shows cost per kilometer, fuel against the tank, and di
   assert.equal(vehicles.includes('"overdue"'), false);
   const care = readFileSync(new URL("../components/VehicleCare.tsx", import.meta.url), "utf8");
   assert.match(care, /costPerKmLine/);
-  assert.match(care, /fuelAgainstTank/);
+  assert.match(care, /tankCapacityLine/);
 });
 
 test("two real cycles show a typical length, and the forecast stays a guess", () => {

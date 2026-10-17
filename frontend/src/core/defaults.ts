@@ -1,4 +1,4 @@
-import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, PairedDevice, ServiceEntry, Settings, Trip, Txn, Vehicle, VehicleJourney } from "./types";
+import type { Budget, DB, FuelEntry, FuelFillKind, HomePresetId, OdometerLog, PairedDevice, ServiceEntry, Settings, Station, Trip, Txn, Vehicle, VehicleJourney } from "./types";
 import { isChannel } from "./merchantTable";
 import { isTransitKind, tripKindOf } from "./transit";
 import { emptyCycle, normalizeCycle } from "./cycle";
@@ -12,7 +12,6 @@ import { parseLayout } from "./layouts";
 import { parseTileOrder } from "./homeOrder";
 import { emptyHeadsUp, migrateHomePresetOnLoad, parseHeadsUp, parseHomePreset, parsePresetLast, parseTileSizes } from "./presets";
 import { normalizePaper } from "./paperNormalize";
-import { isContentRoute, normalizeReopenHours, REOPEN_DEFAULT_HOURS } from "./reopen";
 import { uid } from "./format";
 
 export const DB_KEY = "nucleus.db.v1";
@@ -45,23 +44,22 @@ export const defaultSettings: Settings = {
   blockScreenshots: true,
   autoLinkExpenses: true,
   modules: [
-    { id: "vehicles", enabled: true, hidden: false },
     { id: "money", enabled: true, hidden: false },
-    { id: "travel", enabled: false, hidden: true },
+    { id: "vehicles", enabled: true, hidden: false },
     { id: "home", enabled: true, hidden: false },
-    { id: "tools", enabled: true, hidden: false },
-    { id: "notes", enabled: true, hidden: false },
-    { id: "rules", enabled: true, hidden: false },
-    { id: "dev", enabled: false, hidden: false },
-    { id: "builder", enabled: true, hidden: false },
-    { id: "media", enabled: false, hidden: false },
-    { id: "lab", enabled: false, hidden: false },
-    { id: "papers", enabled: true, hidden: false },
-    { id: "kanban", enabled: true, hidden: false },
-    { id: "wiki", enabled: true, hidden: false },
-    { id: "net", enabled: false, hidden: false },
     { id: "cycle", enabled: true, hidden: false },
     { id: "health", enabled: true, hidden: false },
+    { id: "travel", enabled: false, hidden: true },
+    { id: "media", enabled: false, hidden: false },
+    { id: "papers", enabled: true, hidden: false },
+    { id: "kanban", enabled: true, hidden: false },
+    { id: "notes", enabled: true, hidden: false },
+    { id: "tools", enabled: true, hidden: false },
+    { id: "builder", enabled: true, hidden: false },
+    { id: "rules", enabled: true, hidden: false },
+    { id: "net", enabled: false, hidden: false },
+    { id: "lab", enabled: false, hidden: false },
+    { id: "dev", enabled: false, hidden: false },
   ],
   tiles: [
     { id: "attention", enabled: true },
@@ -82,7 +80,6 @@ export const defaultSettings: Settings = {
   largeTouch: false,
   reducedMotion: false,
   quietHours: { enabled: true, from: 22, to: 7 },
-  emergency: { bloodGroup: "", contactName: "", contactPhone: "", note: "", showOnLock: false },
   shortcuts: [],
   nameAsked: false,
   launcher: { family: "paper", variant: "paper" },
@@ -97,12 +94,10 @@ export const defaultSettings: Settings = {
   ownAccounts: [],
   merchantOverrides: [],
   travelFolded: true,
+  menuRegrouped: true,
   installId: "",
   pairedDevices: [],
   readOnly: false,
-  reopenHours: REOPEN_DEFAULT_HOURS,
-  lastRoute: null,
-  lastRouteAt: null,
   homePreset: "custom",
   presetLast: {},
   headsUp: emptyHeadsUp(),
@@ -154,10 +149,10 @@ export function emptyDB(): DB {
     netWorth: [],
     people: [],
     papers: [],
+    stations: [],
     parts: [],
     specs: [],
     kanban: [],
-    wiki: [],
     templates: [],
     netlog: [],
     budget: { monthly: 0, categories: {} },
@@ -197,11 +192,6 @@ export function normalizeDB(raw: any): DB {
   s.postNotificationsWarned = raw?.settings?.postNotificationsWarned === true;
   s.lockAlerts = raw?.settings?.lockAlerts === true;
   s.readOnly = raw?.settings?.readOnly === true;
-  s.reopenHours = normalizeReopenHours(raw?.settings?.reopenHours);
-  const savedRoute = raw?.settings?.lastRoute;
-  s.lastRoute = typeof savedRoute === "string" && isContentRoute(savedRoute) ? savedRoute.slice(0, 120) : null;
-  const savedRouteAt = raw?.settings?.lastRouteAt;
-  s.lastRouteAt = typeof savedRouteAt === "string" && !Number.isNaN(Date.parse(savedRouteAt)) ? savedRouteAt.slice(0, 40) : null;
   const shell = raw?.settings?.nativeModuleShell;
   if (shell === false) s.nativeModuleShell = false;
   else delete s.nativeModuleShell;
@@ -235,7 +225,6 @@ export function normalizeDB(raw: any): DB {
         .map((row: any) => ({ key: String(row.key).slice(0, 40), channel: row.channel }))
     : [];
   s.pairedDevices = parsePairedDevices(raw?.settings?.pairedDevices);
-  s.emergency = { ...base.settings.emergency, ...(raw?.settings?.emergency ?? {}) };
   const callName = typeof raw?.settings?.givenName === "string" ? cleanCallName(raw.settings.givenName) : "";
   if (callName) s.givenName = callName;
   else delete s.givenName;
@@ -263,6 +252,14 @@ export function normalizeDB(raw: any): DB {
   const markerPresent = !!rawSettings && typeof rawSettings === "object" && "travelFolded" in rawSettings;
   s.travelFolded = true;
   if (!markerPresent) s.modules = s.modules.map((m: any) => (m.id === "travel" ? { ...m, enabled: false, hidden: true } : m));
+  // v0.12: the drawer regrouped into nine sections. Old orders shuffle to the
+  // design order once; after that, reordering modules sticks.
+  const regroupPresent = !!rawSettings && typeof rawSettings === "object" && "menuRegrouped" in rawSettings;
+  if (!regroupPresent) {
+    const designOrder = base.settings.modules.map((m) => m.id);
+    s.modules = [...s.modules].sort((a: any, b: any) => designOrder.indexOf(a.id) - designOrder.indexOf(b.id));
+  }
+  s.menuRegrouped = true;
   const knownTiles = base.settings.tiles.map((t) => t.id);
   s.tiles = [
     ...(raw?.settings?.tiles ?? []).filter((t: any) => knownTiles.includes(t.id)),
@@ -290,13 +287,13 @@ export function normalizeDB(raw: any): DB {
     parts: Array.isArray(raw?.parts) ? raw.parts : [],
     specs: Array.isArray(raw?.specs) ? raw.specs : [],
     kanban: Array.isArray(raw?.kanban) ? raw.kanban : [],
-    wiki: Array.isArray(raw?.wiki) ? raw.wiki : [],
     templates: Array.isArray(raw?.templates) ? raw.templates : [],
     txns: Array.isArray(raw?.txns) ? raw.txns.map(normalizeTxn) : [],
     cycle: normalizeCycle(raw?.cycle),
     water: normalizeWater(raw?.water),
     reminders: normalizeReminders(raw?.reminders),
     medicines: normalizeMedicines(raw?.medicines),
+    stations: normalizeStations(raw?.stations),
     tombstones: Array.isArray(raw?.tombstones) ? raw.tombstones.filter((t: any) => t && typeof t.id === "string" && typeof t.kind === "string" && typeof t.deletedAt === "string") : [],
   };
 }
@@ -358,12 +355,32 @@ function parseSmsMemory(raw: unknown): Settings["smsMemory"] {
     }));
 }
 
+function normalizeStations(raw: any): Station[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((s: any) => s && typeof s.id === "string" && typeof s.name === "string" && typeof s.lat === "number" && typeof s.lon === "number")
+    .slice(0, 200)
+    .map((s: any): Station => ({
+      id: s.id.slice(0, 80),
+      name: s.name.slice(0, 80),
+      ...(typeof s.brand === "string" && s.brand ? { brand: s.brand.slice(0, 40) } : {}),
+      lat: s.lat,
+      lon: s.lon,
+      ...(s.coco === true ? { coco: true } : {}),
+      ...(s.favorite === true ? { favorite: true } : {}),
+    }));
+}
+
 function normalizeFillKind(raw: unknown): FuelFillKind {
-  return raw === "partial" ? "partial" : "full";
+  return raw === "empty" ? "empty" : raw === "partial" ? "partial" : "full";
 }
 
 function normalizeFuel(raw: FuelEntry): FuelEntry {
   const next = { ...raw, fillKind: normalizeFillKind(raw.fillKind) };
+  if (raw.levelChip === "reserve" || raw.levelChip === "quarter" || raw.levelChip === "half" || raw.levelChip === "three-quarter") next.levelChip = raw.levelChip;
+  else delete next.levelChip;
+  if (typeof raw.photo === "string" && raw.photo.trim()) next.photo = raw.photo;
+  else delete next.photo;
   if (typeof raw.loggedAt === "string" && raw.loggedAt.trim()) next.loggedAt = raw.loggedAt.trim().slice(0, 40);
   else delete next.loggedAt;
   return next;
@@ -375,6 +392,8 @@ function normalizeVehicle(raw: Vehicle): Vehicle {
   else delete next.cover;
   if (typeof raw.tankLitres === "number" && Number.isFinite(raw.tankLitres) && raw.tankLitres > 0) next.tankLitres = raw.tankLitres;
   else delete next.tankLitres;
+  if (typeof raw.usableTank === "number" && Number.isFinite(raw.usableTank) && raw.usableTank > 0) next.usableTank = raw.usableTank;
+  else delete next.usableTank;
   const checklist = Array.isArray(raw.rideChecklist)
     ? raw.rideChecklist.filter((text: unknown) => typeof text === "string" && text.trim()).map((text: string) => text.trim().slice(0, 60)).slice(0, 30)
     : [];

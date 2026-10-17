@@ -11,6 +11,7 @@ import type { Paper, Person } from "@/src/core/types";
 import { daysBetween, fmtDate, todayISO, uid } from "@/src/core/format";
 import { paperAttachmentUri } from "@/src/core/paperFiles";
 import { Header } from "@/src/components/Header";
+import { usePaperShield } from "@/src/core/paperShieldHook";
 import { Button, Card, Chip, ChipRow, EmptyState, Eyebrow, IconButton, StatusBadge, T } from "@/src/components/ui";
 import { Sheet } from "@/src/components/Sheet";
 import { ConfirmSheet } from "@/src/components/ConfirmSheet";
@@ -26,6 +27,7 @@ export default function Papers() {
   const { colors, sp } = useTheme();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  usePaperShield(true);
   const [edit, setEdit] = useState<Paper | "new" | null>(null);
   const [person, setPerson] = useState<Person | "new" | null>(null);
   const [preview, setPreview] = useState<Paper | null>(null);

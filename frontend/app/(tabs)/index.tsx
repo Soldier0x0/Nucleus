@@ -11,6 +11,7 @@ import { todayISO } from "@/src/core/format";
 import { EmptyState, Eyebrow, Icon, Press, T, Button } from "@/src/components/ui";
 import { CaptureBar } from "@/src/components/CaptureBar";
 import { AppMenu } from "@/src/components/AppMenu";
+import { SyncPill } from "@/src/components/SyncPill";
 import { useToast } from "@/src/components/Toast";
 import { BoardSheet } from "@/src/components/BoardSheet";
 import { Sheet } from "@/src/components/Sheet";
@@ -29,7 +30,6 @@ import MediaHome from "@/app/media/index";
 import LabHome from "@/app/lab/index";
 import PapersHome from "@/app/papers/index";
 import KanbanHome from "@/app/kanban/index";
-import WikiHome from "@/app/wiki/index";
 import NetHome from "@/app/net/index";
 import CycleHome from "@/app/cycle/index";
 import HealthHome from "@/app/health/index";
@@ -57,7 +57,6 @@ const MODULE_HOME: Record<ModuleId, React.ComponentType> = {
   lab: LabHome,
   papers: PapersHome,
   kanban: KanbanHome,
-  wiki: WikiHome,
   net: NetHome,
   cycle: CycleHome,
   health: HealthHome,
@@ -124,6 +123,7 @@ function TodayBoard() {
             ) : null}
             <T muted testID="today-sync-status" style={{ fontSize: 12, marginTop: 2 }}>{syncStatusLine(db.settings.lastSyncAt, new Date().toISOString())}</T>
           </View>
+          <SyncPill />
           <Press testID="today-online-toggle" accessibilityState={{ checked: db.settings.online }} onPress={() => setSettings({ online: !db.settings.online })} style={[styles.lockChip, { borderColor: db.settings.online ? colors.success : colors.border }]}>
             <Icon name={db.settings.online ? "web" : "wifi-off"} size={14} color={db.settings.online ? colors.success : colors.muted} />
             <T v="caption" muted={!db.settings.online} color={db.settings.online ? colors.success : undefined}>{db.settings.online ? "Online" : "Offline"}</T>

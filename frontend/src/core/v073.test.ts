@@ -48,8 +48,8 @@ test("holding a home tile moves it and does not change its size", () => {
   assert.equal(named.settings.tiles[0]?.id, "attention");
   assert.equal(named.settings.tileSizes.trip, "small");
 
-  const desk = reorderHomeTiles(emptyDB(), "desk", "wiki", 0);
-  assert.equal(visiblePresetItems(desk, "desk")[0]?.id, "wiki");
+  const desk = reorderHomeTiles(emptyDB(), "desk", "notes", 0);
+  assert.equal(visiblePresetItems(desk, "desk")[0]?.id, "notes");
   assert.deepEqual(
     desk.settings.tiles.map((tile) => tile.id),
     start.settings.tiles.map((tile) => tile.id),

@@ -37,19 +37,14 @@ test("biometrics wait for a locked phone or a cold start", () => {
 });
 
 test("turning a feature on asks for the permission it needs", () => {
-  const emergency = askToEnable("emergency-card");
   const alerts = askToEnable("lock-alerts");
   const sms = askToEnable("sms-inbox");
   const look = askToEnable("look");
-  assert.equal(emergency.permission, "android.permission.POST_NOTIFICATIONS");
-  assert.equal(emergency.lockScreen, true);
   assert.equal(alerts.lockScreen, true);
   assert.equal(alerts.permission, "android.permission.POST_NOTIFICATIONS");
   assert.equal(sms.permission, "notification-listener");
   assert.equal(sms.lockScreen, false);
   assert.equal(look.permission, null);
-  assert.equal(staysEnabled(emergency, false), false);
-  assert.equal(staysEnabled(emergency, true), true);
   assert.equal(staysEnabled(look, false), true);
   assert.equal(lockScreenVisibility(), "public");
 });

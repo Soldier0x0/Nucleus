@@ -7,12 +7,13 @@ import { T } from "@/src/components/ui";
 import { Row, Section, SettingsScreen, useSettingsAnchor } from "./parts";
 
 const LICENCES: { icon: string; title: string; line: string }[] = [
+  { icon: "lock-outline", title: "Nucleus", line: "Personal-use licence · © Harsha Avadhanam" },
   { icon: "code-braces", title: "Expo and React Native", line: "App framework · MIT licence" },
   { icon: "view-grid-outline", title: "Material Design Icons", line: "Icons · Apache License 2.0" },
   { icon: "web", title: "Weather by Open-Meteo.com", line: "CC BY 4.0 · no key, no account" },
 ];
 
-/** About: the build-stamped version and the licences. */
+/** About: the build-stamped version, the licence and the licences. */
 export function AboutSettings() {
   const { colors } = useTheme();
   const anchor = useSettingsAnchor();

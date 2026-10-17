@@ -135,8 +135,6 @@ function countLine(db: DB, id: ModuleId) {
         return db.customTools.length;
       case "kanban":
         return db.kanban.length;
-      case "wiki":
-        return db.wiki.length;
       case "tools":
       case "dev":
       case "lab":

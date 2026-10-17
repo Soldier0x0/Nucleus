@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mockup.css">
+<style>
+  .app { display: grid; grid-template-columns: 232px 1fr; height: 100vh; }
+  .sidebar { background: var(--bg-soft); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 12px 14px; gap: 4px; min-height: 0; }
+  .brand { display: flex; align-items: center; gap: 9px; padding: 2px 8px 12px; }
+  .logo { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #e3a45c, var(--accent-strong)); box-shadow: inset 0 0 0 2px rgba(255,255,255,.28); flex: none; }
+  .brand b { font-size: 14.5px; font-weight: 700; letter-spacing: -0.01em; }
+  .ver { font-size: 10px; color: var(--faint); border: 1px solid var(--border); padding: 1px 6px; border-radius: 999px; }
+  .search { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; height: 34px; padding: 0 10px; color: var(--faint); font-size: 12.5px; margin: 0 2px 12px; }
+  .search kbd { margin-left: auto; font: 600 10.5px var(--font); color: var(--faint); border: 1px solid var(--border); border-radius: 6px; padding: 2px 5px; background: var(--bg-soft); }
+  .slabel { font-size: 10px; font-weight: 700; letter-spacing: .09em; color: var(--faint); padding: 8px 10px 5px; }
+  .nav { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; color: var(--muted); font-size: 13px; font-weight: 500; }
+  .nav.on { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+  .nav .badge { margin-left: auto; background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 1px 6px; }
+  .sbottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+  .syncfoot { display: flex; align-items: center; gap: 9px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; }
+  .syncfoot .who { font-size: 12px; font-weight: 600; }
+  .syncfoot .when { font-size: 11px; color: var(--muted); }
+  .syncfoot .dot { margin-left: auto; box-shadow: 0 0 0 3px var(--good-soft); }
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; padding: 22px 28px 4px; gap: 12px; }
+  .caption { font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--faint); }
+  .topbar h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-top: 3px; }
+  .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; border-radius: 11px; padding: 0 14px; font: 600 13px var(--font); border: 1px solid var(--border); background: var(--card); color: var(--ink); }
+  .btn.accent { background: var(--accent); border-color: transparent; color: #fff; box-shadow: 0 6px 16px -8px rgba(190,122,46,.55); }
+  .filters { display: flex; align-items: center; gap: 8px; padding: 16px 28px 0; }
+  .filter { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .filter b { color: var(--ink); font-weight: 600; }
+  .fspace { margin-left: auto; display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; height: 32px; padding: 0 12px; width: 240px; color: var(--faint); font-size: 12.5px; }
+  .gridkpis { display: grid; grid-template-columns: repeat(12, 1fr); gap: 13px; padding: 14px 28px 0; }
+  .kpi { grid-column: span 3; padding: 14px 16px; display: flex; flex-direction: column; }
+  .kpi .lab { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .kpi .val { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; }
+  .kpi .val small { font-size: 13px; color: var(--muted); font-weight: 600; }
+  .kpi .note { font-size: 11.5px; color: var(--muted); margin-top: auto; display: flex; align-items: center; gap: 6px; }
+  .delta { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; font-size: 10.5px; font-weight: 700; border-radius: 999px; }
+  .delta.good { background: var(--good-soft); color: var(--good); }
+  .delta.bad { background: var(--warn-soft); color: var(--warn); }
+  .bar { height: 5px; border-radius: 999px; background: var(--bg-soft); margin-top: auto; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-strong)); border-radius: 999px; }
+  .tablecard { margin: 13px 28px 22px; flex: none; overflow: hidden; display: flex; flex-direction: column; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; color: var(--faint); padding: 12px 16px 10px; border-bottom: 1px solid var(--border); }
+  thead th.r, td.r { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover, tbody tr.sel { background: var(--accent-soft); }
+  td { padding: 11px 16px; }
+  td .d { color: var(--muted); font-size: 12.5px; }
+  td .t { font-weight: 600; }
+  td .m { color: var(--faint); font-size: 11.5px; }
+  .cat { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--bg-soft); font-size: 11px; font-weight: 600; color: var(--muted); }
+  .cat i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  td.r { font-weight: 700; letter-spacing: -0.01em; }
+  td.r.plus { color: var(--good); }
+  tr.overdue .stat { color: var(--bad); font-weight: 700; font-size: 11.5px; }
+  .tfoot { display: flex; align-items: center; padding: 10px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+  .tfoot .lk { margin-left: auto; color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="logo"></span><b>Nucleus</b><span class="ver">v0.11</span></div>
+    <div class="search"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>Search anything<kbd>&#8984;K</kbd></div>
+    <div class="slabel">WORKSPACE</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M3 10.8 12 4l9 6.8M5.5 9.6V20h13V9.6M9.8 20v-5.4h4.4V20"/></svg>Today</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>Attention<span class="badge">4</span></div>
+    <div class="slabel">MODULES</div>
+    <div class="nav on"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M15.5 12h5.5M12.2 12h.01"/></svg>Money</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M4.5 13.5 6.2 8.4a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.7 5.1"/><path d="M4.5 13.5h15M4.5 13.5V17h3v-1.3h9V17h3v-3.5M7.6 13.5h.01M16.4 13.5h.01"/></svg>Vehicle</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M4 11 12 5l8 6M6.5 9.8V19h11V9.8M9.6 19v-4.2h4.8V19"/></svg>Home</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M12 19s-6.6-4.2-8.4-8A4.65 4.65 0 0 1 12 7.7 4.65 4.65 0 0 1 20.4 11c-1.8 3.8-8.4 8-8.4 8Z"/></svg>Life</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M3.5 12 20 4l-2.2 16-6-6.2-7.6-1.6ZM18.6 5.4 11.8 13.8"/></svg>Travel</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 8.5h17M7.5 5.5v3M16.5 5.5v3M8 16h4"/></svg>Media</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7ZM14 3.5V8h4.5M9.5 12h5M9.5 15.5h5"/></svg>Documents</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>Notes</div>
+    <div class="nav"><svg class="icon" viewBox="0 0 24 24"><path d="M14.7 6.3a4.2 4.2 0 0 0-5.6 5L4.2 16.2a1.8 1.8 0 0 0 2.5 2.5l5-4.9a4.2 4.2 0 0 0 5-5.6l-2.4 2.4-2.5-.6-.6-2.5Z"/></svg>Tools</div>
+    <div class="sbottom">
+      <div class="nav"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.6M12 17.9v2.6M3.5 12h2.6M17.9 12h2.6M6 6l1.9 1.9M16.1 16.1 18 18M6 18l1.9-1.9M16.1 7.9 18 6"/></svg>Settings</div>
+      <div class="syncfoot">
+        <div><div class="who">Phone &#183; synced</div><div class="when">Pixel 8 Pro &#183; 2 min ago</div></div>
+        <span class="dot good"></span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <p class="caption">SYNCED WITH YOUR PHONE &#183; 2 MIN AGO</p>
+        <h1>Money</h1>
+      </div>
+      <div class="right">
+        <button class="btn"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M4 20h16"/></svg>Export</button>
+        <button class="btn accent"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add expense</button>
+      </div>
+    </header>
+
+    <div class="filters">
+      <span class="filter"><b>This month</b><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="m6 9 6 6 6-6"/></svg></span>
+      <span class="filter"><b>All categories</b><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="m6 9 6 6 6-6"/></svg></span>
+      <span class="filter"><b>All methods</b><svg class="icon" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="m6 9 6 6 6-6"/></svg></span>
+      <div class="fspace"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>Search transactions</div>
+    </div>
+
+    <div class="gridkpis">
+      <div class="kpi card">
+        <div class="lab">Spent &#183; October</div>
+        <div class="val num">&#8377;18,420</div>
+        <div class="note"><span class="delta good">&#8595; 8%</span>vs September</div>
+      </div>
+      <div class="kpi card">
+        <div class="lab">Earned</div>
+        <div class="val num">&#8377;52,000</div>
+        <div class="note">salary posted Oct 1</div>
+      </div>
+      <div class="kpi card">
+        <div class="lab">Top category</div>
+        <div class="val">Groceries <small>&#8377;4,120</small></div>
+        <div class="bar" style="margin-top:auto"><i style="width:64%"></i></div>
+      </div>
+      <div class="kpi card">
+        <div class="lab">Safe to spend</div>
+        <div class="val num">&#8377;6,580</div>
+        <div class="bar" style="margin-top:auto"><i style="width:62%"></i></div>
+        <div class="note" style="margin-top:6px">21 days left in October</div>
+      </div>
+    </div>
+
+    <div class="tablecard card">
+      <table>
+        <thead><tr><th style="width:90px">DATE</th><th>DESCRIPTION</th><th style="width:170px">CATEGORY</th><th style="width:110px">METHOD</th><th class="r" style="width:110px">AMOUNT</th></tr></thead>
+        <tbody>
+          <tr class="sel"><td><span class="d">Oct 16</span></td><td><div class="t">HP petrol bunk</div><div class="m">&#183; Activa &#183; 2.21 L &#183; partial</div></td><td><span class="cat"><i style="background:var(--accent)"></i>Fuel</span></td><td><span class="m">UPI</span></td><td class="r num">&#8377;235.42</td></tr>
+          <tr><td><span class="d">Oct 15</span></td><td><div class="t">Swiggy dinner</div></td><td><span class="cat"><i style="background:#c96f5a"></i>Eating out</span></td><td><span class="m">UPI</span></td><td class="r num">&#8377;412</td></tr>
+          <tr class="overdue"><td><span class="d">Oct 14</span></td><td><div class="t">Electricity bill</div><div class="m">&#183; BESCOM &#183; due Oct 14</div></td><td><span class="cat"><i style="background:#8a7a55"></i>Utility</span></td><td><span class="m">Net banking</span></td><td class="r num">&#8377;1,240</td></tr>
+          <tr><td><span class="d">Oct 12</span></td><td><div class="t">Reliance Digital</div></td><td><span class="cat"><i style="background:#6b7fa3"></i>Electronics</span></td><td><span class="m">Card</span></td><td class="r num">&#8377;4,999</td></tr>
+          <tr><td><span class="d">Oct 11</span></td><td><div class="t">Festival sweets</div></td><td><span class="cat"><i style="background:#4c8a57"></i>Groceries</span></td><td><span class="m">UPI</span></td><td class="r num">&#8377;780</td></tr>
+          <tr><td><span class="d">Oct 10</span></td><td><div class="t">Metro card top-up</div></td><td><span class="cat"><i style="background:#7a5fa0"></i>Commute</span></td><td><span class="m">UPI</span></td><td class="r num">&#8377;500</td></tr>
+          <tr><td><span class="d">Oct 9</span></td><td><div class="t">Bike service &#183; Activa</div><div class="m">&#183; odometer 24,180</div></td><td><span class="cat"><i style="background:var(--accent)"></i>Service</span></td><td><span class="m">Cash</span></td><td class="r num">&#8377;1,850</td></tr>
+          <tr><td><span class="d">Oct 1</span></td><td><div class="t">Salary &#183; BXT Labs</div></td><td><span class="cat"><i style="background:#4c8a57"></i>Income</span></td><td><span class="m">Bank</span></td><td class="r num plus">+&#8377;52,000</td></tr>
+          <tr><td><span class="d">Sep 29</span></td><td><div class="t">Chai with Ravi</div></td><td><span class="cat"><i style="background:#c96f5a"></i>Eating out</span></td><td><span class="m">UPI</span></td><td class="r num">&#8377;90</td></tr>
+          <tr><td><span class="d">Sep 27</span></td><td><div class="t">BigBasket weekly</div></td><td><span class="cat"><i style="background:#4c8a57"></i>Groceries</span></td><td><span class="m">UPI</span></td><td class="r num">&#8377;1,892</td></tr>
+          <tr><td><span class="d">Sep 25</span></td><td><div class="t">BookMyshow &#183; Diwali release</div></td><td><span class="cat"><i style="background:#7a5fa0"></i>Fun</span></td><td><span class="m">Card</span></td><td class="r num">&#8377;480</td></tr>
+        </tbody>
+      </table>
+      <div class="tfoot">11 of 214 entries<span class="lk">View everything &#8250;</span></div>
+    </div>
+  </main>
+</div>
+<script>if (location.hash === "#dark") document.body.classList.add("dark");</script>
+</body>
+</html>

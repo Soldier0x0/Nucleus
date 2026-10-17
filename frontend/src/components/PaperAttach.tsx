@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { radius, useTheme } from "@/src/theme";
 import { paperAttachSizeHint, paperTooBigToast, pickPaperDocument, pickPaperPhoto } from "@/src/core/paperFiles";
 import { paperBadge } from "@/src/core/paperNormalize";
+import { usePaperShield } from "@/src/core/paperShieldHook";
 import type { Paper } from "@/src/core/types";
 import { Button, T } from "./ui";
 import { useToast } from "./Toast";
@@ -23,6 +24,7 @@ export function PaperAttach({
   const { colors } = useTheme();
   const toast = useToast();
   const badge = uri ? (mime === "application/pdf" ? "PDF" : "Image") : null;
+  usePaperShield(uri !== undefined);
   const attach = async (mode: "photo" | "document") => {
     const next = mode === "photo" ? await pickPaperPhoto() : await pickPaperDocument();
     if (next === "too-big") return toast(paperTooBigToast(), "file-alert-outline");

@@ -32,26 +32,26 @@ test("v0.9.8: the Money, Vehicle and Desk chips are gone; Favourites is the land
   assert.match(readFileSync(new URL("../../app/index.tsx", import.meta.url), "utf8"), /FAVORITES_ROUTE/);
 });
 
-test("the tabs layout grows a hidden Favourites tab and nothing else moves", () => {
+test("v0.12: the tab bar is Favourites, Today, Attention, Settings — no hidden tabs", () => {
   const tabs = readFileSync(new URL("../../app/(tabs)/_layout.tsx", import.meta.url), "utf8");
+  assert.match(tabs, /tab-favorites/);
   assert.match(tabs, /tab-today/);
   assert.match(tabs, /tab-attention/);
   assert.match(tabs, /tab-settings/);
-  assert.match(tabs, /name="favorites" options=\{\{ href: null \}\}/);
+  assert.doesNotMatch(tabs, /href: null/);
   assert.doesNotMatch(tabs, /name="modules"/);
   const home = readFileSync(new URL("../../app/(tabs)/index.tsx", import.meta.url), "utf8");
   assert.match(home, /nativeModuleShellId\(db\.settings\)/);
   assert.match(home, /MODULE_HOME\[shell\]/);
 });
 
-test("the boot route waits for the lock and the recorder remembers content routes", () => {
+test("v0.12: the boot route waits for the lock and lands on Favourites; reopen is gone", () => {
   const boot = readFileSync(new URL("../../app/index.tsx", import.meta.url), "utf8");
   assert.match(boot, /useLockSignal\(\)/);
-  assert.match(boot, /reopenTarget\(/);
   assert.match(boot, /FAVORITES_ROUTE/);
-  const recorder = readFileSync(new URL("../components/RouteRecorder.tsx", import.meta.url), "utf8");
-  assert.match(recorder, /recordRoute\(/);
-  assert.match(recorder, /isContentRoute\(path\)/);
+  assert.doesNotMatch(boot, /reopenTarget|pendingReopen|takePendingReopen/);
+  const layout = readFileSync(new URL("../../app/(tabs)/_layout.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(layout, /takePendingReopen|ReopenOnce/);
   const gate = readFileSync(new URL("../components/LockGate.tsx", import.meta.url), "utf8");
   assert.match(gate, /publishLockState\(locked\)/);
 });

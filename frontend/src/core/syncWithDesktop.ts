@@ -10,6 +10,7 @@
 import type { DB, PairedDevice } from "./types";
 import { applySyncResponse, buildSyncRequest, buildVaultUpload, desktopAddress, SyncError, type SyncSummary } from "./syncClient";
 import { postSyncJson } from "./syncTransport";
+import { noteSyncFailed, noteSyncFinished, noteSyncStarted } from "./syncSignal";
 
 export type SyncRound = { db: DB; summary: SyncSummary };
 
@@ -35,17 +36,24 @@ async function runRound(db: DB, device: PairedDevice, options: SyncRoundOptions)
   const address = desktopAddress(db, device.id);
   if (!address) throw new SyncError("bad-address");
   lastAttemptAt = Date.now();
+  noteSyncStarted();
   const progress = options.silent ? () => {} : (options.onProgress ?? (() => {}));
   progress("Syncing…");
-  const first = await postSyncJson(address.host, address.port, "/sync", buildSyncRequest(db, device));
-  const round = applySyncResponse(db, device, first.body);
-  let merged = round.db;
-  if (round.needFromPhone.length) {
-    progress("Sending files…");
-    const follow = await postSyncJson(address.host, address.port, "/sync", buildVaultUpload(merged, device, round.needFromPhone));
-    merged = applySyncResponse(merged, device, follow.body).db;
+  try {
+    const first = await postSyncJson(address.host, address.port, "/sync", buildSyncRequest(db, device));
+    const round = applySyncResponse(db, device, first.body);
+    let merged = round.db;
+    if (round.needFromPhone.length) {
+      progress("Sending files…");
+      const follow = await postSyncJson(address.host, address.port, "/sync", buildVaultUpload(merged, device, round.needFromPhone));
+      merged = applySyncResponse(merged, device, follow.body).db;
+    }
+    noteSyncFinished();
+    return { db: merged, summary: round.summary };
+  } catch (error) {
+    noteSyncFailed();
+    throw error;
   }
-  return { db: merged, summary: round.summary };
 }
 
 /** Run one round, or join the round already running. */

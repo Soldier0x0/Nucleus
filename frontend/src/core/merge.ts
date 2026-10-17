@@ -20,7 +20,6 @@ export const countsOf = (db: DB) => ({
   rules: db.rules?.length ?? 0,
   tools: db.customTools?.length ?? 0,
   kanban: db.kanban?.length ?? 0,
-  wiki: db.wiki?.length ?? 0,
   templates: db.templates?.length ?? 0,
 });
 

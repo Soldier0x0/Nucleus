@@ -30,7 +30,6 @@ const RECORD_KEYS = [
   "parts",
   "specs",
   "kanban",
-  "wiki",
   "templates",
   "netlog",
   "budget",

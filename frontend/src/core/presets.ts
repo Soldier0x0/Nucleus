@@ -62,7 +62,6 @@ const HEALTH: PresetItem[] = [
 
 const DESK: PresetItem[] = [
   { id: "kanban", size: "large" },
-  { id: "wiki", size: "small" },
   { id: "notes", size: "small" },
   { id: "media", size: "small" },
   { id: "rules", size: "small" },
@@ -274,8 +273,6 @@ export function presetItemHasData(db: DB, id: string): boolean {
       return db.utilities.length > 0;
     case "kanban":
       return db.kanban.length > 0;
-    case "wiki":
-      return db.wiki.length > 0;
     case "media":
       return db.media.length > 0;
     case "rules":
@@ -372,7 +369,6 @@ const ITEM_MODULE: Record<string, ModuleId> = {
   "vdoc-rsa": "vehicles",
   notes: "notes",
   kanban: "kanban",
-  wiki: "wiki",
   media: "media",
   rules: "rules",
   tools: "tools",
@@ -569,8 +565,6 @@ export function presetTileTitle(id: string): string {
       return "Utilities";
     case "kanban":
       return "Kanban";
-    case "wiki":
-      return "Wiki";
     case "media":
       return "Media";
     case "rules":

@@ -16,14 +16,6 @@ import { useToast } from "@/src/components/Toast";
 import { Button, Chip, ChipRow, Icon, Press, Segmented, T } from "@/src/components/ui";
 import { Row, Section, SettingsScreen, settingsStyles, useSettingsAnchor, useSwitchColors } from "./parts";
 
-const REOPEN_CHOICES: { hours: number; label: string }[] = [
-  { hours: 0, label: "Off" },
-  { hours: 1, label: "1 hour" },
-  { hours: 3, label: "3 hours" },
-  { hours: 12, label: "12 hours" },
-  { hours: 24, label: "24 hours" },
-];
-
 /** Display: appearance, You, defaults, online, home tiles and accessibility. */
 export function DisplaySettings() {
   const { db, setSettings, update, session } = useStore();
@@ -129,14 +121,6 @@ export function DisplaySettings() {
           <T muted style={{ fontSize: 12 }}>Distance, fuel volume, temperature and time are what your records use. Length, weight, cooking measures, speed, area, data, pressure and energy are in Tools.</T>
         </View>
         <Row icon="link-variant" label="Auto-link vehicle costs to Money" sub="Fuel & service costs create linked expenses" right={<Switch testID="settings-autolink-switch" value={s.autoLinkExpenses} onValueChange={(v) => setSettings({ autoLinkExpenses: v })} {...sw} />} />
-        <Row icon="restore" label="Reopen last screen" sub="Hours a cold start may come back to where you were. Off always lands on Favourites." />
-        <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-          <ChipRow testID="settings-reopen-hours">
-            {REOPEN_CHOICES.map((choice) => (
-              <Chip key={choice.hours} label={choice.label} selected={(s.reopenHours ?? 0) === choice.hours} testID={`settings-reopen-${choice.hours}`} onPress={() => setSettings({ reopenHours: choice.hours })} />
-            ))}
-          </ChipRow>
-        </View>
       </Section>
 
       <Section title="Home screen" anchor="home">

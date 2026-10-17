@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEBOUNCE_MS, hasPendingLocalChange, RETRY_MS, shouldSyncNow, type AutoSyncInput } from "./autoSync.ts";
+import { DEBOUNCE_MS, hasPendingLocalChange, RETRY_MS, RETRY_MAX_MS, backoffMs, retryDue, shouldSyncNow, type AutoSyncInput } from "./autoSync.ts";
 
 const START = 1_000_000;
 
@@ -35,6 +35,20 @@ test("with no local change the retry fires at exactly 120 seconds, or right away
   assert.equal(shouldSyncNow({ ...base(START + RETRY_MS - 1), lastAttemptAt: START }), false);
   assert.equal(shouldSyncNow({ ...base(START + RETRY_MS), lastAttemptAt: START }), true);
   assert.equal(shouldSyncNow({ ...base(START), lastAttemptAt: null }), true);
+});
+
+test("silent failures widen the retry window up to the cap, a due change always wins", () => {
+  assert.equal(backoffMs(0), RETRY_MS);
+  assert.equal(backoffMs(1), RETRY_MS);
+  assert.equal(backoffMs(2), RETRY_MS * 2);
+  assert.equal(backoffMs(3), RETRY_MAX_MS);
+  assert.equal(backoffMs(4), RETRY_MAX_MS);
+  assert.equal(backoffMs(9), RETRY_MAX_MS);
+  assert.equal(retryDue({ ...base(START + RETRY_MS * 2 - 1), consecutiveFailures: 2 }), false);
+  assert.equal(retryDue({ ...base(START + RETRY_MS * 2), consecutiveFailures: 2 }), true);
+  assert.equal(retryDue({ ...base(START), lastAttemptAt: null, consecutiveFailures: 5 }), true);
+  // A pending local change ignores the widened clock entirely.
+  assert.equal(shouldSyncNow({ ...base(START + 60_000), lastLocalChangeAt: START, lastAttemptAt: START, consecutiveFailures: 3 }), true);
 });
 
 test("background, locked, unpaired and in-flight all stop every sync", () => {

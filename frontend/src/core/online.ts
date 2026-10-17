@@ -5,7 +5,8 @@
  */
 import { Platform } from "react-native";
 import { loadSecureDoc, saveSecureDoc } from "./crypto";
-import type { DB, NetLogEntry, Place } from "./types";
+import { aroundQuery, parseStations } from "./stations";
+import type { DB, NetLogEntry, Place, Station } from "./types";
 import { uid } from "./format";
 
 const CACHE_KEY = "nucleus.netcache.v1";
@@ -87,6 +88,14 @@ export async function rates(online: boolean, log: Logger, base: string): Promise
 export async function holidays(online: boolean, log: Logger, year: number, cc: string): Promise<{ date: string; name: string }[]> {
   const r = await onlineFetch<any>(online, log, "Nager.Date holidays", `${year}/${cc}`, `https://date.nager.at/api/v3/PublicHolidays/${year}/${cc.toUpperCase()}`, 60 * 24 * 7);
   return (r?.data ?? []).map((h: any) => ({ date: h.date, name: h.localName || h.name }));
+}
+
+/** v0.12 station finder: one Overpass call per city area, cached for months. */
+export async function fuelStations(online: boolean, log: Logger, lat: number, lon: number): Promise<{ list: Station[]; at: string; stale: boolean } | null> {
+  const { query, bql } = aroundQuery(lat, lon);
+  const r = await onlineFetch<any>(online, log, "OpenStreetMap fuel", query, `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(bql)}`, 60 * 24 * 90);
+  if (!r) return null;
+  return { list: parseStations(r.data, lat, lon), at: r.at, stale: r.stale };
 }
 
 export async function countryFacts(online: boolean, log: Logger, cc: string) {

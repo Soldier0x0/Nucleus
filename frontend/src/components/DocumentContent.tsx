@@ -12,6 +12,7 @@ import {
   toPdfSourcePath,
   viewerUriForAttachment,
 } from "@/src/core/paperViewerUri";
+import { usePaperShield } from "@/src/core/paperShieldHook";
 import type { Paper } from "@/src/core/types";
 import { EmptyState } from "./ui";
 import { ZoomableImage } from "./ZoomableImage";
@@ -29,6 +30,7 @@ export function DocumentContent({ paper, testID }: { paper: Paper; testID?: stri
   const [failed, setFailed] = useState(false);
   const [failBody, setFailBody] = useState(DEFAULT_FAIL_BODY);
   const [pdfVaultFallback, setPdfVaultFallback] = useState(false);
+  usePaperShield(Boolean(uri));
 
   useEffect(() => {
     let alive = true;

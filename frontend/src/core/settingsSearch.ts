@@ -30,8 +30,8 @@ const MIN_TERM = 2;
 
 export const SETTINGS_INDEX: readonly SettingsEntry[] = [
   // Hub groups themselves.
-  { id: "group-display", title: "Display", group: "Display", route: "/settings/display", anchor: "", terms: "appearance theme accent density look launcher you name defaults units currency reopen home screen accessibility online weather tiles widgets packs" },
-  { id: "group-security", title: "Security and privacy", group: "Security and privacy", route: "/settings/security", anchor: "", terms: "lock fingerprint pin biometrics profiles decoy clipboard privacy screenshots screen sharing emergency card" },
+  { id: "group-display", title: "Display", group: "Display", route: "/settings/display", anchor: "", terms: "appearance theme accent density look launcher you name defaults units currency home screen accessibility online weather tiles widgets packs" },
+  { id: "group-security", title: "Security and privacy", group: "Security and privacy", route: "/settings/security", anchor: "", terms: "lock fingerprint pin biometrics profiles decoy clipboard privacy screenshots screen sharing" },
   { id: "group-notifications", title: "Notifications", group: "Notifications", route: "/settings/notifications", anchor: "", terms: "reminders quiet hours channels sounds bank texts sms lock screen permission" },
   { id: "group-modules", title: "Modules", group: "Modules", route: "/modules", anchor: "", terms: "enable disable reorder menu order turn on off" },
   { id: "group-data", title: "Data and backup", group: "Data and backup", route: "/settings/data", anchor: "", terms: "your data locked file cloud backup export restore sample logs erase" },
@@ -47,7 +47,6 @@ export const SETTINGS_INDEX: readonly SettingsEntry[] = [
   { id: "currency", title: "Currency", group: "Display", route: "/settings/display", anchor: "defaults", terms: "currency rupee dollar euro money symbol" },
   { id: "units", title: "Units", group: "Display", route: "/settings/display", anchor: "defaults", terms: "units distance km miles volume litres gallons temperature celsius fahrenheit time 12 24 hour" },
   { id: "autolink", title: "Auto-link vehicle costs", group: "Display", route: "/settings/display", anchor: "defaults", terms: "auto link fuel service expenses money vehicle costs spending" },
-  { id: "reopen", title: "Reopen last screen", group: "Display", route: "/settings/display", anchor: "defaults", terms: "reopen last screen hours resume restore continue away" },
   { id: "online", title: "Online features", group: "Display", route: "/settings/display", anchor: "online", terms: "online network requests internet rates weather holidays offline" },
   { id: "home-city", title: "Home city (weather)", group: "Display", route: "/settings/display", anchor: "online", terms: "home city weather forecast location place" },
   { id: "netlog", title: "Network log", group: "Display", route: "/settings/display", anchor: "online", terms: "network log requests online history" },
@@ -69,9 +68,6 @@ export const SETTINGS_INDEX: readonly SettingsEntry[] = [
   { id: "privacy-mode", title: "Privacy mode", group: "Security and privacy", route: "/settings/security", anchor: "security", terms: "privacy mode mask amounts hide blur" },
   { id: "privacy-usage", title: "Privacy and usage", group: "Security and privacy", route: "/settings/security", anchor: "security", terms: "privacy usage permissions what stays data" },
   { id: "screenshots", title: "Allow screen sharing", group: "Security and privacy", route: "/settings/security", anchor: "security", terms: "screenshots screen sharing screen capture discord whatsapp demo" },
-  { id: "emergency-card", title: "Emergency card", group: "Security and privacy", route: "/settings/security", anchor: "emergency", terms: "emergency blood group contact phone lock screen card plate" },
-  { id: "emergency-show", title: "Show on the lock screen", group: "Security and privacy", route: "/settings/security", anchor: "emergency", terms: "emergency show lock screen card before unlock" },
-  { id: "emergency-details", title: "Emergency contact details", group: "Security and privacy", route: "/settings/security", anchor: "emergency", terms: "emergency blood contact name phone note allergy" },
 
   // Notifications.
   { id: "reminders", title: "Reminders", group: "Notifications", route: "/settings/notifications", anchor: "reminders", terms: "reminders alarms schedule rules notify" },

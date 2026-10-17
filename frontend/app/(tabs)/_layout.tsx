@@ -1,8 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { Animated, Platform, Pressable, type GestureResponderEvent } from "react-native";
-import { useRouter } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
-import { takePendingReopen } from "@/app/index";
 import { tabRipple } from "@/src/core/tabRipple";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import type { SFSymbolIcon } from "expo-router/unstable-native-tabs";
@@ -35,20 +33,9 @@ function TabButton({ onPressIn, children, ...rest }: { onPressIn?: ((event: Gest
 }
 
 /**
- * Pushes the screen a cold start remembered, once, on top of the tabs. The
- * small delay lets the tab bar settle so Back lands here instead of exiting.
+ * The four tabs (v0.12): Favourites, Today, Attention, Settings. Favourites is
+ * first, so a cold start through the boot route lands there.
  */
-function ReopenOnce() {
-  const router = useRouter();
-  const done = useRef(false);
-  useEffect(() => {
-    if (done.current) return;
-    done.current = true;
-    const route = takePendingReopen();
-    if (route) setTimeout(() => router.push(route as never), 80);
-  }, [router]);
-  return null;
-}
 
 /** SF symbols for the module home when the native tab bar is in use. Unknown ids keep the Today glyph. */
 type NativeTabSymbol = NonNullable<SFSymbolIcon["sf"]>;
@@ -60,7 +47,6 @@ const NATIVE_SF: Partial<Record<ModuleId, NativeTabSymbol>> = {
   tools: "hammer.fill",
   notes: "note.text",
   papers: "doc.text.fill",
-  wiki: "book.fill",
   net: "wifi",
   cycle: "calendar",
   health: "drop.fill",
@@ -76,9 +62,12 @@ export default function TabsLayout() {
   if (usesNativeTabs) {
     return (
       <>
-        <ReopenOnce />
         <AutoSync />
         <NativeTabs>
+          <NativeTabs.Trigger name="favorites">
+            <NativeTabs.Trigger.Icon sf="star.fill" />
+            <NativeTabs.Trigger.Label>Favourites</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
           <NativeTabs.Trigger name="index">
             <NativeTabs.Trigger.Icon sf={(shell && NATIVE_SF[shell]) ?? "square.grid.2x2.fill"} />
             <NativeTabs.Trigger.Label>{shellTab?.label ?? "Today"}</NativeTabs.Trigger.Label>
@@ -98,7 +87,6 @@ export default function TabsLayout() {
 
   return (
     <>
-      <ReopenOnce />
       <AutoSync />
       <Tabs
         screenOptions={{
@@ -111,6 +99,7 @@ export default function TabsLayout() {
           tabBarButton: (props) => <TabButton {...props} />,
         }}
       >
+        <Tabs.Screen name="favorites" options={{ title: "Favourites", tabBarButtonTestID: "tab-favorites", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "star" : "star-outline"} color={color as string} size={24} /> }} />
         <Tabs.Screen name="index" options={{ title: shellTab?.label ?? "Today", tabBarButtonTestID: "tab-today", tabBarIcon: ({ color, focused }) => <Icon name={shellTab ? shellTab.icon : focused ? "view-dashboard" : "view-dashboard-outline"} color={color as string} size={24} /> }} />
         <Tabs.Screen
           name="attention"
@@ -123,7 +112,6 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen name="settings" options={{ title: "Settings", tabBarButtonTestID: "tab-settings", tabBarIcon: ({ color, focused }) => <Icon name={focused ? "cog" : "cog-outline"} color={color as string} size={24} /> }} />
-        <Tabs.Screen name="favorites" options={{ href: null }} />
       </Tabs>
     </>
   );

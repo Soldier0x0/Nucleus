@@ -111,16 +111,6 @@ export function search(db: DB, q: string): SearchGroup[] {
     if (cards.length) groups.push({ title: "Kanban", summary: `${cards.length} card${cards.length === 1 ? "" : "s"}`, items: cards.slice(0, 6) });
   }
 
-  if (on("wiki")) {
-    const pages = db.wiki.filter((p) => has(p.title, p.body));
-    if (pages.length)
-      groups.push({
-        title: "Wiki",
-        summary: `${pages.length} page${pages.length === 1 ? "" : "s"}`,
-        items: pages.slice(0, 6).map((p) => ({ id: p.id, title: p.title || "Untitled", subtitle: p.body.slice(0, 60) || "Page", icon: "book-open-variant", route: "/wiki" })),
-      });
-  }
-
   if (on("rules")) {
     const rs = db.rules.filter((r) => has(r.name, r.trigger.kind));
     if (rs.length)
