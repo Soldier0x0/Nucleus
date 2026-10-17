@@ -4,16 +4,18 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@core/defaults";
 import { categorySplit, monthFlow } from "@core/moneyDesk";
 import { monthSeries } from "@core/intelligence";
 import { money, monthKey, todayISO, uid } from "@core/format";
-import type { Txn } from "@core/types";
+import type { Settings, Txn } from "@core/types";
 import { Bars, Donut, PALETTE } from "../components/Charts";
+import { readViews, type SavedView } from "../platform/savedViews";
 
 const blank = { type: "expense" as Txn["type"], amount: "", category: "Food", date: todayISO(), note: "" };
 
 export function Money() {
-  const { db, update } = useStore();
+  const { db, update, setSettings } = useStore();
   const [month, setMonth] = useState(monthKey(todayISO()));
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState(blank);
+  const views = useMemo(() => readViews(db).filter((v) => v.section === "money"), [db]);
 
   const flow = monthFlow(db.txns, month);
   const split = useMemo(() => categorySplit(db.txns, month), [db.txns, month]);
@@ -41,6 +43,20 @@ export function Money() {
 
   const remove = (id: string) => update((d) => ({ ...d, txns: d.txns.filter((t) => t.id !== id) }));
 
+  const writeViews = (views: SavedView[]) => setSettings({ ...db.settings, desktopViews: [...readViews(db).filter((v) => v.section !== "money"), ...views] } as Partial<Settings>);
+  const saveView = () => {
+    if (!query.trim() && !month) return;
+    const name = window.prompt("Name this view");
+    if (!name?.trim()) return;
+    const view: SavedView = { id: uid(), name: name.trim(), section: "money", payload: { month, query: query.trim() } };
+    writeViews([...readViews(db).filter((v) => v.section === "money"), view]);
+  };
+  const dropView = (id: string) => writeViews(readViews(db).filter((v) => v.section === "money" && v.id !== id));
+  const applyView = (view: SavedView) => {
+    setMonth(view.payload.month ?? monthKey(todayISO()));
+    setQuery(view.payload.query);
+  };
+
   return (
     <div className="stack">
       <div className="toolbar card">
@@ -52,7 +68,20 @@ export function Money() {
           <span>Search</span>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="category, item or note" />
         </label>
+        <button className="small-btn no-print" onClick={saveView}>Save view</button>
+        <button className="small-btn no-print" onClick={() => window.print()}>Print</button>
       </div>
+
+      {views.length ? (
+        <div className="row saved-view-row no-print" data-testid="money-views">
+          {views.map((v) => (
+            <span key={v.id} className="chip-view">
+              <button className="chip" onClick={() => applyView(v)}>{v.name}</button>
+              <button className="link danger" title="Remove view" onClick={() => dropView(v.id)}>✕</button>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       <div className="stat-row">
         <div className="stat card"><span className="muted small">In</span><strong>{money(flow.in, currency)}</strong></div>
@@ -64,7 +93,7 @@ export function Money() {
       <div className="money-grid">
         <section className="card">
           <h2>Transactions</h2>
-          <div className="add-row">
+          <div className="add-row no-print">
             <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as Txn["type"] })}>
               <option value="expense">Expense</option>
               <option value="income">Income</option>

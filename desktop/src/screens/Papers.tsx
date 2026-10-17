@@ -7,7 +7,9 @@ import { vault } from "../platform/storage";
 import { dataUriBase64Payload, paperAttachmentUri, paperBadge, paperIsPdf, paperMime, stripDataUriBase64 } from "@core/paperNormalize";
 import { PAPER_TAGS, effectivePaperTags, paperTagsFromKind } from "@core/paperTags";
 import { fmtDate, todayISO, uid } from "@core/format";
-import type { Paper, PaperKind, PaperTag } from "@core/types";
+import type { Paper, PaperKind, PaperTag, Settings } from "@core/types";
+import { PdfPane } from "../components/PdfPane";
+import { readViews, type SavedView } from "../platform/savedViews";
 
 const KIND_LABEL: Record<PaperKind, string> = {
   licence: "Licence",
@@ -42,12 +44,34 @@ function extFor(mime: string, fileName: string): string {
   return m ? m[1].toLowerCase() : "bin";
 }
 
-export function Papers() {
-  const { db, update } = useStore();
+export function Papers({ focusId }: { focusId?: string }) {
+  const { db, update, setSettings } = useStore();
   const [selectedId, setSelectedId] = useState<string | null>(db.papers[0]?.id ?? null);
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<PaperTag | "All">("All");
   const paper = db.papers.find((p) => p.id === selectedId) ?? db.papers[0] ?? null;
+
+  useEffect(() => {
+    if (focusId && db.papers.some((p) => p.id === focusId)) setSelectedId(focusId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
+  const views = readViews(db).filter((v) => v.section === "papers");
+
+  const writeViews = (views: SavedView[]) =>
+    setSettings({ ...db.settings, desktopViews: [...readViews(db).filter((v) => v.section !== "papers"), ...views] } as Partial<Settings>);
+  const saveView = () => {
+    if (!query.trim() && tag === "All") return;
+    const name = window.prompt("Name this view");
+    if (!name?.trim()) return;
+    const view: SavedView = { id: uid(), name: name.trim(), section: "papers", payload: { tag: tag === "All" ? undefined : tag, query: query.trim() } };
+    writeViews([...readViews(db).filter((v) => v.section === "papers"), view]);
+  };
+  const dropView = (id: string) => writeViews(readViews(db).filter((v) => v.section === "papers" && v.id !== id));
+  const applyView = (view: SavedView) => {
+    if (view.payload.tag && ALL_TAGS.includes(view.payload.tag as PaperTag)) setTag(view.payload.tag as PaperTag);
+    else setTag("All");
+    setQuery(view.payload.query);
+  };
 
   const rows = db.papers
     .map((p) => ({ paper: p, tags: effectivePaperTags(p) }))
@@ -82,7 +106,16 @@ export function Papers() {
           <button className="small-btn" onClick={addPaper}>New</button>
         </div>
         <input placeholder="Search title, number, note" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="tag-row">
+        <div className="row saved-view-row no-print">
+          <button className="small-btn" onClick={saveView}>Save view</button>
+          {views.map((v) => (
+            <span key={v.id} className="chip-view">
+              <button className="chip" onClick={() => applyView(v)}>{v.name}</button>
+              <button className="link danger" title="Remove view" onClick={() => dropView(v.id)}>✕</button>
+            </span>
+          ))}
+        </div>
+        <div className="tag-row no-print">
           {(["All", ...ALL_TAGS] as const).map((t) => (
             <button key={t} className={tag === t ? "chip on" : "chip"} onClick={() => setTag(t)}>{t}</button>
           ))}
@@ -102,6 +135,7 @@ export function Papers() {
         </div>
       </aside>
       <div className="stack">
+        <button className="small-btn no-print self-end" onClick={() => window.print()}>Print</button>
         {paper ? <PaperDetail paper={paper} onPatch={(c) => patch(paper, c)} onDelete={() => removePaper(paper)} /> : <section className="card"><p className="muted">Pick a paper, or create one.</p></section>}
       </div>
     </div>
@@ -112,37 +146,53 @@ function PaperDetail({ paper, onPatch, onDelete }: { paper: Paper; onPatch: (c: 
   const fileInput = useRef<HTMLInputElement | null>(null);
   const [viewerNote, setViewerNote] = useState("");
   const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
   const [opening, setOpening] = useState(false);
   const kind = attachmentKind(paper);
   const uri = paperAttachmentUri(paper);
   const tags = effectivePaperTags(paper);
 
   useEffect(() => {
-    let revoke: string | null = null;
     let alive = true;
     setViewerNote("");
+    let revoke: string | null = null;
     (async () => {
       if (kind !== "image") {
         setImgUrl(null);
-        return;
-      }
-      if (uri?.startsWith("data:")) {
+      } else if (uri?.startsWith("data:")) {
         setImgUrl(uri);
+      } else if (uri?.startsWith("vault:")) {
+        const bytes = await vault.read(uri.slice("vault:".length));
+        if (!bytes || !alive) {
+          setImgUrl(null);
+        } else {
+          const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: paperMime(paper) ?? "application/octet-stream" }));
+          revoke = url;
+          if (alive) setImgUrl(url);
+        }
+      } else {
+        setImgUrl(null);
+      }
+      if (kind !== "pdf") {
+        setPdfBytes(null);
         return;
       }
       if (uri?.startsWith("vault:")) {
         const bytes = await vault.read(uri.slice("vault:".length));
-        if (!bytes) {
-          if (alive) setImgUrl(null);
-          return;
-        }
-        const url = URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: paperMime(paper) ?? "application/octet-stream" }));
-        revoke = url;
-        if (alive) setImgUrl(url);
+        if (alive) setPdfBytes(bytes ? new Uint8Array(bytes) : null);
         return;
       }
-      setImgUrl(null);
-    })().catch(() => alive && setImgUrl(null));
+      if (uri?.startsWith("data:")) {
+        if (alive) setPdfBytes(fromB64(stripDataUriBase64(dataUriBase64Payload(uri))));
+        return;
+      }
+      if (alive) setPdfBytes(null);
+    })().catch(() => {
+      if (alive) {
+        setImgUrl(null);
+        setPdfBytes(null);
+      }
+    });
     return () => {
       alive = false;
       if (revoke) URL.revokeObjectURL(revoke);
@@ -277,9 +327,10 @@ function PaperDetail({ paper, onPatch, onDelete }: { paper: Paper; onPatch: (c: 
         />
         {viewerNote ? <p className="error">{viewerNote}</p> : null}
         {kind === "image" && imgUrl ? <img className="paper-photo" src={imgUrl} alt={paper.title} /> : null}
+        {kind === "pdf" && pdfBytes ? <PdfPane data={pdfBytes} title={paper.title} /> : null}
         {kind === "pdf" ? (
-          <p className="muted">
-            PDF stored {uri?.startsWith("data:") ? "inside the document" : "in the vault folder"}. Use the system viewer — the webview cannot render PDFs on every Linux setup.
+          <p className="muted small">
+            PDF {uri?.startsWith("data:") ? "stored inside the document" : "stored in the vault folder"} · {uri?.startsWith("data:") ? "synced with the phone" : "shared with sync"}
           </p>
         ) : null}
         {kind === "elsewhere" ? <p className="muted">Attachment path: {uri}</p> : null}

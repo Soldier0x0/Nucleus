@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "../store";
 import { uid } from "@core/format";
 import type { KanbanBoard, KanbanCard, Note } from "@core/types";
 
 type Tab = "notes" | "kanban";
 
-export function NotesKanban() {
+export function NotesKanban({ focusId }: { focusId?: string }) {
   const [tab, setTab] = useState<Tab>("notes");
   return (
     <div className="stack">
@@ -16,18 +16,25 @@ export function NotesKanban() {
           </button>
         ))}
       </div>
-      {tab === "notes" ? <Notes /> : null}
+      {tab === "notes" ? <Notes focusId={focusId} /> : null}
       {tab === "kanban" ? <Board /> : null}
     </div>
   );
 }
 
-function Notes() {
+function Notes({ focusId }: { focusId?: string }) {
   const { db, update } = useStore();
   const [selectedId, setSelectedId] = useState<string | null>(db.notes[0]?.id ?? null);
   const [itemDraft, setItemDraft] = useState("");
   const note = db.notes.find((n) => n.id === selectedId) ?? db.notes[0] ?? null;
   const now = () => new Date().toISOString();
+
+  useEffect(() => {
+    if (focusId && db.notes.some((n) => n.id === focusId)) {
+      setSelectedId(focusId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
 
   const sorted = [...db.notes].sort((a, b) => Number(b.pinned ?? false) - Number(a.pinned ?? false) || b.updatedAt.localeCompare(a.updatedAt));
   const patch = (n: Note, changes: Partial<Note>) => update((d) => ({ ...d, notes: d.notes.map((x) => (x.id === n.id ? { ...x, ...changes, updatedAt: now() } : x)) }));

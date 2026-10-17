@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "../store";
 import { PART_LABEL, serviceSchedule } from "@core/serviceCatalog";
 import { vehicleStats } from "@core/intelligence";
@@ -7,10 +7,15 @@ import { odometerEstimate, odometerEstimateLabel } from "@core/fuelCapture";
 import { fmtDate, money, num, todayISO, uid } from "@core/format";
 import type { FuelEntry, FuelFillKind, OdometerLog, Vehicle } from "@core/types";
 
-export function Vehicles() {
+export function Vehicles({ focusId }: { focusId?: string }) {
   const { db, update } = useStore();
   const [selectedId, setSelectedId] = useState<string | null>(db.vehicles[0]?.id ?? null);
   const vehicle = db.vehicles.find((v) => v.id === selectedId) ?? db.vehicles[0] ?? null;
+
+  useEffect(() => {
+    if (focusId && db.vehicles.some((v) => v.id === focusId)) setSelectedId(focusId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
 
   return (
     <div className="vehicles-grid">
