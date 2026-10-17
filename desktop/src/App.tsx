@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { syncStatusLine } from "@core/syncStatus";
+import { lastSeenLine } from "@core/syncStatus";
 import { StoreProvider, useStore } from "./store";
 import { LockScreen } from "./LockScreen";
 import { SyncBridge } from "./sync/SyncBridge";
@@ -8,7 +8,7 @@ import { Today } from "./screens/Today";
 import { Money } from "./screens/Money";
 import { Vehicles } from "./screens/Vehicles";
 import { Papers } from "./screens/Papers";
-import { NotesWikiKanban } from "./screens/NotesWikiKanban";
+import { NotesKanban } from "./screens/NotesKanban";
 import { Settings } from "./screens/Settings";
 
 type SectionId = "today" | "money" | "vehicles" | "papers" | "notes" | "settings";
@@ -124,7 +124,7 @@ function Shell() {
           </button>
         ))}
         <div className="side-foot">
-          <div className="sync" data-testid="sidebar-sync-status">{syncStatusLine(lastDeviceSync, new Date().toISOString())}</div>
+          <div className="sync" data-testid="sidebar-sync-status">{lastSeenLine(lastDeviceSync, new Date().toISOString())}</div>
           <p className="muted small">Your data stays on this computer.</p>
         </div>
       </nav>
@@ -133,7 +133,7 @@ function Shell() {
         {section === "money" ? <Money /> : null}
         {section === "vehicles" ? <Vehicles /> : null}
         {section === "papers" ? <Papers /> : null}
-        {section === "notes" ? <NotesWikiKanban /> : null}
+        {section === "notes" ? <NotesKanban /> : null}
         {section === "settings" ? <Settings /> : null}
       </main>
     </div>

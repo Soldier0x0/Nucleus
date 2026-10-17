@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Platform } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
 import { useStore } from "@/src/core/store";
+import { copyTemporary } from "@/src/core/clipboard";
 import { exportBounds, moneyCsv, type ExportSpan } from "@/src/core/moneyWords";
 import { yearlyMoneyCsv } from "@/src/core/moneyDesk";
 import { todayISO } from "@/src/core/format";
@@ -32,8 +32,8 @@ export function MoneyExport({ visible, onClose }: { visible: boolean; onClose: (
     const bounds = span === "year" ? { from: `${today.slice(0, 4)}-01-01`, to: `${today.slice(0, 4)}-12-31` } : exportBounds(today, span, from, to);
     const csv = span === "year" ? yearlyMoneyCsv(db.txns, db.settings.currency, today.slice(0, 4)) : moneyCsv(db.txns, db.settings.currency, bounds.from, bounds.to);
     if (Platform.OS === "web") {
-      await Clipboard.setStringAsync(csv);
-      toast("Spreadsheet copied", "content-copy");
+      await copyTemporary(csv);
+      toast("Spreadsheet copied · clears in 1 min", "content-copy");
       onClose();
       return;
     }
@@ -44,8 +44,8 @@ export function MoneyExport({ visible, onClose }: { visible: boolean; onClose: (
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(file.uri, { mimeType: "text/csv", dialogTitle: "Spending spreadsheet" });
     } else {
-      await Clipboard.setStringAsync(csv);
-      toast("CSV copied", "content-copy");
+      await copyTemporary(csv);
+      toast("CSV copied · clears in 1 min", "content-copy");
     }
     onClose();
   };

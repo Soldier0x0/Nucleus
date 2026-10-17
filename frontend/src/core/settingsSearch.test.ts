@@ -83,11 +83,9 @@ test("the hub links every group the index can send people to", () => {
   }
 });
 
-test("Display carries the reopen-hours row the index promises", () => {
+test("v0.12: the reopen row is gone from Display and the search index", () => {
   const display = readFileSync(new URL("../components/settings/DisplaySettings.tsx", import.meta.url), "utf8");
-  assert.match(display, /settings-reopen-hours/);
-  assert.match(display, /reopenHours/);
-  const search = searchSettings("reopen");
-  assert.equal(search[0]?.route, "/settings/display");
-  assert.equal(search[0]?.anchor, "defaults");
+  assert.doesNotMatch(display, /settings-reopen-hours/);
+  assert.doesNotMatch(display, /reopenHours/);
+  assert.equal(searchSettings("reopen").length, 0);
 });

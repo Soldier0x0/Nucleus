@@ -10,7 +10,7 @@ import { paperIsPdf } from "./paperNormalize.ts";
 import { buildDeveloperLog, scrubStack } from "./devLogs.ts";
 import type { FuelEntry } from "./types.ts";
 
-test("fuel mileage uses full-to-full chain and ignores partial top-ups", () => {
+test("v0.12: partial litres join the full-to-full cycle instead of vanishing", () => {
   const entries: FuelEntry[] = [
     { id: "1", vehicleId: "v", date: "2026-04-01", odometer: 1000, litres: 5, price: 100, total: 500, fillKind: "full" },
     { id: "2", vehicleId: "v", date: "2026-04-05", odometer: 1100, litres: 2, price: 100, total: 200, fillKind: "partial" },
@@ -18,7 +18,7 @@ test("fuel mileage uses full-to-full chain and ignores partial top-ups", () => {
   ];
   const points = fuelMileagePoints(entries);
   assert.equal(points.length, 1);
-  assert.equal(points[0]?.value, 40);
+  assert.ok(Math.abs(points[0].value - 200 / 7) < 0.01);
 });
 
 test("motor policy badges stay on one tile — no RSA board tile", () => {

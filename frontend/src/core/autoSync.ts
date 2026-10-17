@@ -10,6 +10,8 @@
 
 export const DEBOUNCE_MS = 5000;
 export const RETRY_MS = 120000;
+/** Backoff cap: a silent failure may not wake the timer more often than this. */
+export const RETRY_MAX_MS = 5 * 60_000;
 
 export type PendingChangeInput = {
   now: number;
@@ -26,6 +28,25 @@ export function hasPendingLocalChange(input: PendingChangeInput): boolean {
   return input.now - input.lastLocalChangeAt >= DEBOUNCE_MS;
 }
 
+/**
+ * Silent-failure backoff: the round still retries in the usual cadence, but
+ * each consecutive miss doubles the wait (2/4/5/5... minutes, capped). A
+ * success or a manual sync resets the ladder.
+ */
+export function backoffMs(consecutiveFailures: number): number {
+  const step = 2 ** Math.max(0, consecutiveFailures - 1);
+  return Math.min(RETRY_MS * step, RETRY_MAX_MS);
+}
+
+/**
+ * True when the next retry is due: the base retry clock, widened by the
+ * current failure streak. A due local change always wins.
+ */
+export function retryDue(input: AutoSyncInput & { consecutiveFailures: number }): boolean {
+  if (input.lastAttemptAt === null) return true;
+  return input.now - input.lastAttemptAt >= backoffMs(input.consecutiveFailures);
+}
+
 export type AutoSyncInput = PendingChangeInput & {
   appActive: boolean;
   unlocked: boolean;
@@ -36,8 +57,8 @@ export type AutoSyncInput = PendingChangeInput & {
 };
 
 /** True only when the app and vault are open, a desktop is paired, and there is work or a retry is due. */
-export function shouldSyncNow(input: AutoSyncInput): boolean {
+export function shouldSyncNow(input: AutoSyncInput & { consecutiveFailures?: number }): boolean {
   if (!input.appActive || !input.unlocked || input.pairedCount <= 0 || input.inFlight) return false;
   if (hasPendingLocalChange(input)) return true;
-  return input.lastAttemptAt === null || input.now - input.lastAttemptAt >= RETRY_MS;
+  return retryDue({ ...input, consecutiveFailures: input.consecutiveFailures ?? 0 });
 }

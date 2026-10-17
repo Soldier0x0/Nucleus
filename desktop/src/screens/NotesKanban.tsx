@@ -1,24 +1,22 @@
 import { useState } from "react";
 import { useStore } from "../store";
-import { backlinks, linkedTitles } from "@core/wiki";
-import { todayISO, uid } from "@core/format";
-import type { KanbanBoard, KanbanCard, Note, WikiPage } from "@core/types";
+import { uid } from "@core/format";
+import type { KanbanBoard, KanbanCard, Note } from "@core/types";
 
-type Tab = "notes" | "wiki" | "kanban";
+type Tab = "notes" | "kanban";
 
-export function NotesWikiKanban() {
+export function NotesKanban() {
   const [tab, setTab] = useState<Tab>("notes");
   return (
     <div className="stack">
       <div className="tabs">
-        {(["notes", "wiki", "kanban"] as Tab[]).map((t) => (
+        {(["notes", "kanban"] as Tab[]).map((t) => (
           <button key={t} className={tab === t ? "tab on" : "tab"} onClick={() => setTab(t)}>
-            {t === "notes" ? "Notes" : t === "wiki" ? "Wiki" : "Kanban"}
+            {t === "notes" ? "Notes" : "Kanban"}
           </button>
         ))}
       </div>
       {tab === "notes" ? <Notes /> : null}
-      {tab === "wiki" ? <Wiki /> : null}
       {tab === "kanban" ? <Board /> : null}
     </div>
   );
@@ -94,81 +92,6 @@ function Notes() {
           </section>
         ) : (
           <section className="card"><p className="muted">Pick a note, or create one.</p></section>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Wiki() {
-  const { db, update } = useStore();
-  const [selectedId, setSelectedId] = useState<string | null>(db.wiki[0]?.id ?? null);
-  const page = db.wiki.find((p) => p.id === selectedId) ?? db.wiki[0] ?? null;
-  const sorted = [...db.wiki].sort((a, b) => a.title.localeCompare(b.title));
-  const now = () => new Date().toISOString();
-  const patch = (p: WikiPage, changes: Partial<WikiPage>) => update((d) => ({ ...d, wiki: d.wiki.map((x) => (x.id === p.id ? { ...x, ...changes, updatedAt: now() } : x)) }));
-
-  const addPage = () => {
-    const row: WikiPage = { id: uid(), title: "New page", body: "", createdAt: now(), updatedAt: now() };
-    update((d) => ({ ...d, wiki: [row, ...d.wiki] }));
-    setSelectedId(row.id);
-  };
-
-  const removePage = (p: WikiPage) => {
-    if (!window.confirm(`Delete page "${p.title}"?`)) return;
-    update((d) => ({ ...d, wiki: d.wiki.filter((x) => x.id !== p.id) }));
-    setSelectedId(null);
-  };
-
-  const links = page ? linkedTitles(page.body) : [];
-  const backs = page ? backlinks(db.wiki, page.title) : [];
-
-  const goTo = (title: string) => {
-    const target = db.wiki.find((p) => p.title === title);
-    if (target) {
-      setSelectedId(target.id);
-      return;
-    }
-    const row: WikiPage = { id: uid(), title, body: "", createdAt: now(), updatedAt: now() };
-    update((d) => ({ ...d, wiki: [row, ...d.wiki] }));
-    setSelectedId(row.id);
-  };
-
-  return (
-    <div className="notes-grid">
-      <aside className="card p-list">
-        <div className="row spread"><h2>Wiki</h2><button className="small-btn" onClick={addPage}>New</button></div>
-        <div className="doc-list">
-          {sorted.map((p) => (
-            <button key={p.id} className={p.id === page?.id ? "doc on" : "doc"} onClick={() => setSelectedId(p.id)}>
-              <span className="doc-title">{p.title}</span>
-              <span className="muted small">{p.body.slice(0, 60) || "empty"}</span>
-            </button>
-          ))}
-          {sorted.length === 0 ? <p className="muted">No pages yet.</p> : null}
-        </div>
-      </aside>
-      <div className="stack">
-        {page ? (
-          <section className="card">
-            <div className="row spread">
-              <input className="title-input" value={page.title} onChange={(e) => patch(page, { title: e.target.value })} />
-              <button className="link danger" onClick={() => removePage(page)}>Delete</button>
-            </div>
-            <textarea rows={14} value={page.body} onChange={(e) => patch(page, { body: e.target.value })} placeholder="Write with [[Page name]] links…" />
-            {links.length ? (
-              <p className="muted small">
-                Links: {links.map((l) => (
-                  <button key={l} className="link" onClick={() => goTo(l)}>
-                    {l}
-                  </button>
-                ))}
-              </p>
-            ) : null}
-            <p className="muted small">Backlinks: {backs.length ? backs.map((b) => b.title).join(", ") : "none"}</p>
-          </section>
-        ) : (
-          <section className="card"><p className="muted">Pick a page, or create one.</p></section>
         )}
       </div>
     </div>

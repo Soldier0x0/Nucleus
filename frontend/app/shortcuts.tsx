@@ -12,7 +12,6 @@ const FIXED: HomeShortcut[] = [
   { id: "tools", label: "Tools", url: "nucleus://open?path=/tools" },
   { id: "notes", label: "Notes", url: "nucleus://open?path=/notes" },
   { id: "kanban", label: "Kanban", url: "nucleus://open?path=/kanban" },
-  { id: "wiki", label: "Wiki", url: "nucleus://open?path=/wiki" },
   { id: "travel", label: "Travel", url: "nucleus://open?path=/travel" },
   { id: "vehicles", label: "Vehicles", url: "nucleus://open?path=/vehicles" },
   { id: "calendar", label: "Calendar", url: "nucleus://open?path=/calendar" },

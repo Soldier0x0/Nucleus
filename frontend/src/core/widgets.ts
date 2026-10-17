@@ -1,16 +1,20 @@
 /**
  * The small snapshot a home-screen widget is allowed to show.
- * Amounts follow privacy mode. Notes, papers and the emergency card are not included.
+ * Amounts follow privacy mode. Notes and papers are not included.
  */
 import type { DB } from "./types";
 import { addMonths, daysBetween, money, todayISO } from "./format";
 import { calendarEvents, dueDayLabel } from "./life";
+import { fuelMileagePoints } from "./vehicleMath";
+import { visibleAttention } from "./attention";
 
 export type WidgetSnapshot = {
   countdown: { title: string; days: number; date: string } | null;
   budget: { label: string; value: string };
   trip: { title: string; days: number; when: string } | null;
   maintenance: { title: string; subtitle: string } | null;
+  attention: { count: number; top: { title: string; subtitle: string; daysLine: string } | null };
+  fuel: { cycleLine: string; priceLine: string } | null;
   privacy: boolean;
   updated: string;
 };
@@ -60,7 +64,41 @@ export function widgetSnapshot(db: DB, today = todayISO(), updated = ""): Widget
     budget,
     trip: trip ? { title: trip.name, days: tripDays, when: tripDays > 0 ? `Starts in ${tripDays} days` : tripDays === 0 ? "Starts today" : "On the trip" } : null,
     maintenance: maint ? { title: maint.title, subtitle: maint.days < 0 ? dueDayLabel(maint.days) : maint.days === 0 ? "Due today" : `Due in ${maint.days} days` } : null,
+    attention: attentionWidgetCard(db, today),
+    fuel: fuelWidgetCard(db),
     privacy: hide,
     updated,
+  };
+}
+
+/** The 2×2 Attention card: how many, and the loudest one. Marks (done/snoozed) respected. */
+export function attentionWidgetCard(db: DB, today = todayISO()): WidgetSnapshot["attention"] {
+  const open = visibleAttention(db, today);
+  const count = open.length == 0 ? 0 : open.length;
+  const top = open[0];
+  if (!top) return { count: 0, top: null };
+  const days = top.due ? daysBetween(today, top.due) : null;
+  return {
+    count,
+    top: { title: top.title, subtitle: top.subtitle, daysLine: days == null ? "" : dueDayLabel(days) },
+  };
+}
+
+/** The 4×2 partner card: the current fuel cycle stats for the newest-filled ride. ₹/L respects privacy mode. */
+export function fuelWidgetCard(db: DB): WidgetSnapshot["fuel"] {
+  const fuel = db.fuel;
+  if (!fuel.length) return null;
+  const ride = [...fuel].sort((a, b) => a.date.localeCompare(b.date))[fuel.length - 1].vehicleId;
+  const mine = fuel.filter((row) => row.vehicleId === ride);
+  const points = fuelMileagePoints(mine);
+  const km = points.length ? points[points.length - 1].value : null;
+  const rt = mine.slice(-6).filter((row) => row.price > 0);
+  const avg = rt.length ? rt.reduce((sum, row) => sum + row.price, 0) / rt.length : null;
+  if (km == null && avg == null) return null;
+  const unit = db.settings.distanceUnit;
+  const cur = db.settings.currency;
+  return {
+    cycleLine: km != null ? `${Math.round(km)} ${unit}/${db.settings.volumeUnit}` : "No stretch yet",
+    priceLine: db.settings.privacyMode ? "Hidden" : avg != null ? `${money(avg, cur)} / ${db.settings.volumeUnit}` : "—",
   };
 }

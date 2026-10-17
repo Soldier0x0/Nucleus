@@ -50,8 +50,8 @@ test("the installed app registers fuel, expense and service action widgets that 
     assert.match(kt, new RegExp(`class ${cls} : NucleusWidget\\(\\)[\\s\\S]*?override val kind = "${kind}"`));
     assert.match(manifest, new RegExp(`android:name="com\\.nucleus\\.widgets\\.${cls}"`));
   }
-  assert.match(kt, /nucleus:\/\/open\?path=\$\{card\.path\}/);
-  assert.match(kt, /&action=\$\{card\.action\}/);
+  assert.match(kt, /nucleus:\/\/open\?path=\$path\$actionText/);
+  assert.match(kt, /&action=\$action/);
   assert.doesNotMatch(kt, /nucleus\.db/);
   assert.match(manifest, /android.appwidget.action.APPWIDGET_UPDATE/);
 });

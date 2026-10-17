@@ -78,7 +78,6 @@ export function shellSettings(from: Settings): Settings {
     largeTouch: from.largeTouch,
     reducedMotion: from.reducedMotion,
     quietHours: { ...from.quietHours },
-    emergency: { ...from.emergency },
     launcher: { ...from.launcher },
     homePreset: parseHomePreset(from.homePreset),
     nameAsked: true,

@@ -6,7 +6,7 @@ import { vehicleOwnership } from "@/src/core/life";
 import type { Vehicle, WearPart } from "@/src/core/types";
 import { fmtDate, money, num, parseNum, uid } from "@/src/core/format";
 import { currentOdometer } from "@/src/core/intelligence";
-import { costPerKmLine, fuelAgainstTank } from "@/src/core/vehicleMath";
+import { costPerKmLine, tankCapacityLine } from "@/src/core/vehicleMath";
 import { Button, Card, Chip, Eyebrow, T } from "./ui";
 import { Sheet } from "./Sheet";
 import { DateField, Field } from "./inputs";
@@ -31,8 +31,8 @@ export function VehicleCare({ vehicle }: { vehicle: Vehicle }) {
   const unit = db.settings.distanceUnit;
   const cur = db.settings.currency;
   const perKmLine = own ? costPerKmLine(own.perKm, unit) : null;
-  const lastFill = db.fuel.filter((row) => row.vehicleId === vehicle.id).sort((a, b) => b.date.localeCompare(a.date) || b.odometer - a.odometer)[0];
-  const tankLine = vehicle.tankLitres && lastFill ? fuelAgainstTank(lastFill.litres, vehicle.tankLitres).line : "";
+  const mine = db.fuel.filter((row) => row.vehicleId === vehicle.id);
+  const tankLine = mine.length ? tankCapacityLine(mine, vehicle.usableTank ?? vehicle.tankLitres) : "";
 
   return (
     <>

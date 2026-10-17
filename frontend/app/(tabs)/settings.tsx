@@ -12,7 +12,7 @@ import { Row, Section } from "@/src/components/settings/parts";
 
 const GROUPS: { route: string; icon: string; label: string; sub: string; testID: string }[] = [
   { route: "/settings/display", icon: "contrast-circle", label: "Display", sub: "Appearance, You, defaults, units, online, home tiles and accessibility", testID: "settings-group-display" },
-  { route: "/settings/security", icon: "shield-account-outline", label: "Security and privacy", sub: "App lock, profiles, screenshots, clipboard, privacy mode and emergency card", testID: "settings-group-security" },
+  { route: "/settings/security", icon: "shield-account-outline", label: "Security and privacy", sub: "App lock, profiles, screenshots, clipboard and privacy mode", testID: "settings-group-security" },
   { route: "/settings/notifications", icon: "bell-outline", label: "Notifications", sub: "Reminders, quiet hours, channels, bank texts and the lock screen", testID: "settings-group-notifications" },
   { route: "/modules", icon: "view-grid-outline", label: "Modules", sub: "Turn on or off and set the menu order", testID: "settings-modules-button" },
   { route: "/settings/data", icon: "database-outline", label: "Data and backup", sub: "Your data, locked file, cloud, sample data and developer logs", testID: "settings-group-data" },

@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
   <application>
     <receiver
       android:name="com.nucleus.widgets.CountdownWidget"
@@ -107,6 +108,28 @@
       <meta-data
         android:name="android.appwidget.provider"
         android:resource="@xml/widget_info" />
+    </receiver>
+    <receiver
+      android:name="com.nucleus.widgets.AttentionWidget"
+      android:exported="true"
+      android:label="Attention">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_attention_info" />
+    </receiver>
+    <receiver
+      android:name="com.nucleus.widgets.AttentionFuelWidget"
+      android:exported="true"
+      android:label="Attention + Fuel">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+      </intent-filter>
+      <meta-data
+        android:name="android.appwidget.provider"
+        android:resource="@xml/widget_attention_fuel_info" />
     </receiver>
   </application>
 </manifest>

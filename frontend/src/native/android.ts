@@ -23,8 +23,6 @@ type Native = {
   readBattery(): string;
   notificationAccess(): boolean;
   openNotificationListener(): string;
-  showLockCard(title: string, body: string): void;
-  hideLockCard(): void;
   installedVersion(): string;
   publishCycle(json: string): void;
   writeLockedFile(path: string): Promise<boolean>;
@@ -32,6 +30,7 @@ type Native = {
   forgetCloudFile(): void;
   addListener(event: "onLan", listener: (event: LanEvent) => void): { remove: () => void };
   addListener(event: "onBank", listener: () => void): { remove: () => void };
+  addListener(event: "onNetwork", listener: (event: { type?: string }) => void): { remove: () => void };
 };
 
 function bridge(): Native | null {
@@ -166,22 +165,6 @@ export function installedVersion(): string {
   return Constants.expoConfig?.version?.trim() ?? "";
 }
 
-export function showLockCard(title: string, body: string) {
-  try {
-    bridge()?.showLockCard(title, body);
-  } catch {
-    /* The installed app posts the lock-screen card. */
-  }
-}
-
-export function hideLockCard() {
-  try {
-    bridge()?.hideLockCard();
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Signs in to the chosen account and uploads the locked file. A failure carries a message. */
 export async function storeLockedFile(provider: "drive" | "onedrive", path: string): Promise<{ ok: boolean; message: string }> {
   const mod = bridge();
@@ -240,4 +223,16 @@ export function subscribeLan(fn: (event: LanEvent) => void) {
   if (!mod) return () => {};
   const sub = mod.addListener("onLan", fn);
   return () => sub.remove();
+}
+
+/** Fires when the default network changes (Wi-Fi join, reconnect) — the auto-sync nudge. */
+export function subscribeNetworkWake(fn: () => void) {
+  const mod = bridge();
+  if (!mod) return () => {};
+  try {
+    const sub = mod.addListener("onNetwork", () => fn());
+    return () => sub.remove();
+  } catch {
+    return () => {};
+  }
 }

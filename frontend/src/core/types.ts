@@ -109,6 +109,8 @@ export type Vehicle = {
   initialOdometer: number;
   serviceIntervalKm: number;
   tankLitres?: number;
+  /** Usable tank learned from level-chip fills. Beats machine tankLitres when known. */
+  usableTank?: number;
   /** Gallery cover image (data URI or local file). */
   cover?: string;
   insuranceExpiry?: string; // YYYY-MM-DD
@@ -124,7 +126,21 @@ export type Vehicle = {
   createdAt: string;
 };
 
-export type FuelFillKind = "full" | "partial";
+/** A fuel station the person tagged or picked. Fetched OSM ones live in the net cache; only these stay in the records. */
+export type Station = {
+  id: string;
+  name: string;
+  brand?: string;
+  lat: number;
+  lon: number;
+  /** Company-owned pump marked by the person; OSM does not expose this. */
+  coco?: boolean;
+  favorite?: boolean;
+};
+
+export type FuelFillKind = "full" | "empty" | "partial";
+/** Where the tank sat before a partial fill (Reserve coin etc.). Teaches the usable tank size. */
+export type FuelLevel = "reserve" | "quarter" | "half" | "three-quarter";
 
 export type FuelEntry = {
   id: string;
@@ -132,8 +148,10 @@ export type FuelEntry = {
   date: string;
   /** When the fill was logged (ISO). Date-only rows omit this. */
   loggedAt?: string;
-  /** Full tank vs partial top-up. Older rows default to full in normalize. */
+  /** To-brim, burned-to-empty, or a top-up. Older rows default to full in normalize. */
   fillKind?: FuelFillKind;
+  /** Level chip for partial fills, where the tank sat before the pump ran. */
+  levelChip?: FuelLevel;
   odometer: number;
   /** True until a typed reading replaces the estimate. */
   odometerEstimated?: boolean;
@@ -141,6 +159,7 @@ export type FuelEntry = {
   litres: number;
   price: number;
   total: number;
+  photo?: string;
   note?: string;
 };
 
@@ -225,7 +244,7 @@ export type Tombstone = { kind: string; id: string; deletedAt: string };
 
 export type AttentionMark = { status: "done" | "dismissed" | "snoozed"; until?: string };
 
-export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "wiki" | "net" | "cycle" | "health";
+export type ModuleId = "vehicles" | "money" | "travel" | "home" | "tools" | "rules" | "notes" | "dev" | "builder" | "media" | "lab" | "papers" | "kanban" | "net" | "cycle" | "health";
 export type ModuleState = { id: ModuleId; enabled: boolean; hidden: boolean };
 export type TileId = "attention" | "weather" | "trip" | "budget" | "vehicle" | "home" | "subscriptions" | "tools" | "notes";
 export type Board = { id: string; name: string; icon: string; tiles: TileId[] };
@@ -316,8 +335,6 @@ export type Settings = {
   lastSyncAt?: string;
   /** The one-time backup reminder has been dismissed or satisfied. */
   backupNudged?: boolean;
-  /** Lock-screen card. Empty fields stay hidden. The plate comes from the default vehicle. */
-  emergency: { bloodGroup: string; contactName: string; contactPhone: string; note: string; showOnLock: boolean };
   /** Long-press shortcuts on the Android icon. At most four. */
   shortcuts: HomeShortcut[];
   /** What the greeting calls you. Lives in this document, never in the profile index. */
@@ -336,7 +353,7 @@ export type Settings = {
   bankTextsOff: boolean;
   /** POST_NOTIFICATIONS denied warning already shown once. */
   postNotificationsWarned: boolean;
-  /** Reminders and the emergency card may show on the lock screen. */
+  /** Reminders may show on the lock screen. */
   lockAlerts: boolean;
   /** Categories you named. Unused ones can be removed. */
   moneyNames: string[];
@@ -348,18 +365,14 @@ export type Settings = {
   merchantOverrides: TxnChannelOverride[];
   /** v0.9.8: the travel module was folded into Money once at load. The person may turn it back on. */
   travelFolded: boolean;
+  /** v0.12: the drawer regrouped once into nine sections; later reorders stick. */
+  menuRegrouped: boolean;
   /** This phone's id. A file from another phone opens read-only. */
   installId: string;
   /** Desktops paired to this device. Device-only: never merged during sync. */
   pairedDevices: PairedDevice[];
   /** A file from another phone. Looking is allowed. Editing is not. */
   readOnly: boolean;
-  /** v0.9.8: hours a cold start may reopen the last screen. 0 or null turns reopen off. */
-  reopenHours: number | null;
-  /** v0.9.8: last content route that was on screen. */
-  lastRoute: string | null;
-  /** v0.9.8: ISO time lastRoute was recorded. */
-  lastRouteAt: string | null;
   /** v0.9.8: single-module shell. Unset keeps it on; false turns it off. */
   nativeModuleShell?: boolean;
   /** Which home arrangement is on screen. Records stay where they are. */
@@ -379,8 +392,6 @@ export type HomeShortcut = { id: string; label: string; url: string };
 export type KanbanColumn = { id: string; name: string; order: number };
 export type KanbanCard = { id: string; columnId: string; title: string; note?: string; order: number };
 export type KanbanBoard = { id: string; name: string; columns: KanbanColumn[]; cards: KanbanCard[]; createdAt: string };
-
-export type WikiPage = { id: string; title: string; body: string; createdAt: string; updatedAt: string };
 
 export type PackingTemplate = { id: string; name: string; groups: { category: string; items: string[] }[] };
 
@@ -496,10 +507,10 @@ export type DB = {
   netWorth: NetWorthSnapshot[];
   people: Person[];
   papers: Paper[];
+  stations: Station[];
   parts: WearPart[];
   specs: HomeSpec[];
   kanban: KanbanBoard[];
-  wiki: WikiPage[];
   templates: PackingTemplate[];
   netlog: NetLogEntry[];
   budget: Budget;

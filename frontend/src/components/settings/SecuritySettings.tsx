@@ -7,10 +7,6 @@ import { biometricAvailable, clearFailures, clearPin, hasDecoyPin, setDecoyPin, 
 import { LOCK_TIMEOUT_OPTIONS, lockTimeoutLabel, unlockSettingsForNewLock } from "@/src/core/lockSettings";
 import { MODULES } from "@/src/core/modules";
 import { shownInDecoy } from "@/src/core/profiles";
-import { emergencyLockCard } from "@/src/core/featureAccess";
-import { enableFeature } from "@/src/native/enableFeature";
-import { allowLockScreenChannel } from "@/src/core/notify";
-import { hideLockCard, showLockCard } from "@/src/native/android";
 import { useRouter } from "expo-router";
 import { Button, Chip, Icon, Segmented, T } from "@/src/components/ui";
 import { ConfirmSheet } from "@/src/components/ConfirmSheet";
@@ -19,7 +15,7 @@ import { Sheet } from "@/src/components/Sheet";
 import { useToast } from "@/src/components/Toast";
 import { Row, Section, SettingsScreen, useSettingsAnchor, useSwitchColors } from "./parts";
 
-/** Security and privacy: lock, profiles, screenshots, clipboard, privacy mode and the emergency card. */
+/** Security and privacy: lock, profiles, screenshots, clipboard and privacy mode. */
 export function SecuritySettings() {
   const { db, setSettings, session, profiles, activeProfileId, addProfile, switchProfile, renameProfile, deleteProfile, prepareDecoy } = useStore();
   const s = db.settings;
@@ -214,30 +210,6 @@ export function SecuritySettings() {
           </View>
         </Section>
       ) : null}
-
-      <Section title="Emergency card" anchor="emergency">
-        <View style={{ padding: 12, gap: 8 }}>
-          <T muted style={{ fontSize: 12 }}>Blood group and one phone number. The plate of your default vehicle is added on the lock screen. Leave the switch off and none of this shows before the PIN.</T>
-          <TextInput testID="emergency-blood" value={s.emergency.bloodGroup} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, bloodGroup: t } })} placeholder="Blood group" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
-          <TextInput testID="emergency-name" value={s.emergency.contactName} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, contactName: t } })} placeholder="Contact name" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
-          <TextInput testID="emergency-phone" value={s.emergency.contactPhone} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, contactPhone: t } })} placeholder="Phone" placeholderTextColor={colors.muted} keyboardType="phone-pad" style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
-          <TextInput testID="emergency-note" value={s.emergency.note} onChangeText={(t) => setSettings({ emergency: { ...s.emergency, note: t } })} placeholder="Note, such as an allergy" placeholderTextColor={colors.muted} style={{ height: 44, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 8, paddingHorizontal: 12, color: colors.onSurface }} />
-        </View>
-        <Row icon="card-account-details-outline" label="Show on the lock screen" sub="Asks for notification permission, then the card can show before unlock" right={<Switch testID="emergency-lock-switch" value={s.emergency.showOnLock} onValueChange={async (v) => {
-          if (!v) {
-            setSettings({ emergency: { ...s.emergency, showOnLock: false } });
-            hideLockCard();
-            return;
-          }
-          if (!(await enableFeature("emergency-card"))) return toast("Allow notifications so the card can show on the lock screen", "alert-circle-outline");
-          await allowLockScreenChannel();
-          const plate = (db.vehicles.find((vehicle) => vehicle.id === s.defaultVehicleId) ?? db.vehicles[0])?.plate ?? "";
-          const card = emergencyLockCard({ showOnLock: true, bloodGroup: s.emergency.bloodGroup, phone: s.emergency.contactPhone, plate });
-          setSettings({ emergency: { ...s.emergency, showOnLock: true }, lockAlerts: true });
-          if (card) showLockCard(card.title, card.body);
-          else hideLockCard();
-        }} {...sw} />} />
-      </Section>
 
       <Sheet visible={!!pinFlow} onClose={() => setPinFlow(null)} title={pinFlow === "confirm" ? "Confirm PIN" : "Choose a 4-digit PIN"} testID="settings-pin-sheet">
         <PinPad

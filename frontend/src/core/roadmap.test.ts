@@ -4,9 +4,8 @@ import { emptyDB } from "./defaults.ts";
 import { mergeDB } from "./merge.ts";
 import { applyPack, buildPack, packChoices, parsePack } from "./packs.ts";
 import { looksLikeReceipt, parseReceipt } from "./receipt.ts";
-import { backlinks, linkedTitles } from "./wiki.ts";
 import { widgetSnapshot } from "./widgets.ts";
-import type { Rule, WikiPage } from "./types.ts";
+import type { Rule } from "./types.ts";
 
 test("receipt text keeps the total, the date and the first shop line", () => {
   const read = parseReceipt("Cafe Roma\n02/10/2026\nCoffee 120\nTotal 450.00\n");
@@ -15,16 +14,6 @@ test("receipt text keeps the total, the date and the first shop line", () => {
   assert.equal(read.date, "2026-10-02");
   assert.equal(looksLikeReceipt("Cafe Roma\nTotal 450"), true);
   assert.equal(looksLikeReceipt("450 food lunch"), false);
-});
-
-test("wiki links and backlinks use the title inside brackets", () => {
-  const pages: WikiPage[] = [
-    { id: "a", title: "Activa", body: "Service notes. See [[Workshop]].", createdAt: "", updatedAt: "" },
-    { id: "b", title: "Workshop", body: "Call before noon.", createdAt: "", updatedAt: "" },
-  ];
-  assert.deepEqual(linkedTitles(pages[0].body), ["Workshop"]);
-  assert.deepEqual(backlinks(pages, "Workshop").map((p) => p.title), ["Activa"]);
-  assert.equal(backlinks(pages, "Activa").length, 0);
 });
 
 test("a pack adds only the approved rows and skips a name you already have", () => {
@@ -59,14 +48,14 @@ test("widgets hide an amount in privacy mode and count a future date", () => {
   assert.equal(hidden.privacy, true);
 });
 
-test("a file from another phone keeps both wiki pages", () => {
+test("a file from another phone keeps both notes", () => {
   const mine = emptyDB();
   const theirs = emptyDB();
-  mine.wiki.push({ id: "a", title: "Home", body: "", createdAt: "", updatedAt: "" });
-  theirs.wiki.push({ id: "b", title: "Workshop", body: "[[Home]]", createdAt: "", updatedAt: "" });
+  mine.notes.push({ id: "a", title: "Home", body: "", checklist: [], createdAt: "", updatedAt: "" });
+  theirs.notes.push({ id: "b", title: "Workshop", body: "List", checklist: [], createdAt: "", updatedAt: "" });
   theirs.rules.push({ id: "r", name: "Renewals", trigger: { kind: "renewal", value: 3 }, actions: ["attention"], enabled: true, createdAt: "" });
   const merged = mergeDB(mine, theirs);
-  assert.deepEqual(merged.wiki.map((p) => p.title).sort(), ["Home", "Workshop"]);
+  assert.deepEqual(merged.notes.map((p) => p.title).sort(), ["Home", "Workshop"]);
   assert.equal(merged.rules.length, 1);
   assert.equal(merged.settings.currency, mine.settings.currency);
 });

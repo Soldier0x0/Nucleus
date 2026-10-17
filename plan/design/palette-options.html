@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --font:'Inter',system-ui,sans-serif; }
+  * { margin:0; box-sizing:border-box; }
+  body { font-family:var(--font); background:#eee7db; color:#262019; padding:34px 40px; height:100vh; display:flex; flex-direction:column; }
+  .head { display:flex; align-items:baseline; gap:14px; margin-bottom:22px; }
+  .head h1 { font-size:24px; font-weight:800; letter-spacing:-0.02em; }
+  .head p { font-size:13px; color:#6d6154; }
+  .choices { display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; flex:1; min-height:0; align-content:center; }
+  .opt { background:#fffdf8; border:1px solid #e7dfd0; border-radius:20px; padding:20px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+  .opt .rib { position:absolute; top:18px; right:18px; background:#b57a26; color:#fff; font-size:10.5px; font-weight:800; letter-spacing:.06em; padding:5px 10px; border-radius:999px; }
+  .oname { font-size:17px; font-weight:700; letter-spacing:-0.01em; }
+  .otag { font-size:12.5px; color:#6d6154; margin:5px 0 16px; }
+  .sw { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+  .sw b { grid-row:1; height:34px; border-radius:9px; border:1px solid rgba(38,32,25,.08); display:block; }
+  .sw span { grid-row:2; display:block; font-size:8.5px; font-weight:600; color:#9b8f7f; letter-spacing:.04em; margin-top:6px; text-align:center; }
+  .mini { margin-top:16px; border-radius:14px; border:1px solid rgba(0,0,0,.07); padding:14px 16px; display:flex; align-items:center; gap:12px; }
+  .mini .gr { width:34px; height:34px; border-radius:50%; }
+  .mini .ti { font-size:11px; font-weight:700; letter-spacing:.06em; }
+  .mini .va { font-size:21px; font-weight:800; letter-spacing:-0.02em; }
+  .mini .bt { margin-left:auto; font-size:11.5px; font-weight:700; padding:8px 13px; border-radius:10px; border:none; color:#fff; }
+  .darkstrip { margin-top:10px; border-radius:13px; padding:11px 14px; display:flex; align-items:center; gap:9px; }
+  .darkstrip .dot { width:9px; height:9px; border-radius:50%; }
+  .darkstrip b { font-size:11.5px; font-weight:600; }
+  .darkstrip span { margin-left:auto; font-size:10.5px; opacity:.65; }
+  .foot { margin-top:18px; display:flex; align-items:center; gap:10px; background:#fffdf8; border:1px solid #e7dfd0; border-radius:14px; padding:12px 18px; font-size:12.5px; color:#6d6154; }
+  .foot b { color:#262019; }
+</style>
+</head>
+<body>
+  <div class="head"><h1>Three surface philosophies</h1><p>Brand accent stays warm amber in all three — pick how light behaves</p></div>
+  <div class="choices">
+
+    <div class="opt">
+      <span class="rib">RECOMMENDED</span>
+      <div class="oname">1 &#183; Warm Paper</div>
+      <p class="otag">Current system. Cream surfaces, warm brown ink, paper-like. Calm, distinctive, never sterile. Ages gracefully with dark = warm charcoal.</p>
+      <div class="sw">
+        <b style="background:#f6f1e7"></b><span>BG</span>
+        <b style="background:#fffdf8"></b><span>SURFACE</span>
+        <b style="background:#262019"></b><span>INK</span>
+        <b style="background:#6d6154"></b><span>MUTED</span>
+        <b style="background:#c98f37"></b><span>ACCENT</span>
+        <b style="background:#3e8e58"></b><span>GOOD</span>
+      </div>
+      <div class="mini" style="background:#fffdf8">
+        <span class="gr" style="background:radial-gradient(circle at 32% 28%,#e3a45c,#b57a26)"></span>
+        <div><div class="ti" style="color:#6d6154">SPENT &#183; OCTOBER</div><div class="va" style="color:#262019">&#8377;18,420</div></div>
+        <button class="bt" style="background:#c98f37">Sync now</button>
+      </div>
+      <div class="darkstrip" style="background:#171412;color:#efe7db"><span class="dot" style="background:#4c8a58"></span><b>Warm charcoal night</b><span>paper under lamp</span></div>
+    </div>
+
+    <div class="opt">
+      <div class="oname">2 &#183; Graphite &amp; Amber</div>
+      <p class="otag">Linear/Arc-style cool grays with the same amber accent. Crisper, more &#8220;tool&#8221; than &#8220;journal&#8221;. Night = true dark slate.</p>
+      <div class="sw">
+        <b style="background:#f1f2f4"></b><span>BG</span>
+        <b style="background:#ffffff"></b><span>SURFACE</span>
+        <b style="background:#1b1d21"></b><span>INK</span>
+        <b style="background:#5f646d"></b><span>MUTED</span>
+        <b style="background:#c98f37"></b><span>ACCENT</span>
+        <b style="background:#2f9e63"></b><span>GOOD</span>
+      </div>
+      <div class="mini" style="background:#fff;border:none;box-shadow:0 1px 2px rgba(20,22,26,.06)">
+        <span class="gr" style="background:radial-gradient(circle at 32% 28%,#e3a45c,#b57a26)"></span>
+        <div><div class="ti" style="color:#5f646d">SPENT &#183; OCTOBER</div><div class="va" style="color:#1b1d21">&#8377;18,420</div></div>
+        <button class="bt" style="background:#c98f37">Sync now</button>
+      </div>
+      <div class="darkstrip" style="background:#14161a;color:#e8eaee"><span class="dot" style="background:#2f9e63"></span><b>Slate night</b><span>tool cabinet</span></div>
+    </div>
+
+    <div class="opt">
+      <div class="oname">3 &#183; Clay &amp; Sand</div>
+      <p class="otag">Terracotta instead of amber, sand instead of cream. Earthier, Southwest, very human. Strongest personality, closest to stationery brands.</p>
+      <div class="sw">
+        <b style="background:#f6efe6"></b><span>BG</span>
+        <b style="background:#fffcf7"></b><span>SURFACE</span>
+        <b style="background:#2a211b"></b><span>INK</span>
+        <b style="background:#776a5c"></b><span>MUTED</span>
+        <b style="background:#c05f3c"></b><span>ACCENT</span>
+        <b style="background:#45805a"></b><span>GOOD</span>
+      </div>
+      <div class="mini" style="background:#fffcf7">
+        <span class="gr" style="background:radial-gradient(circle at 32% 28%,#d98a63,#b34f2e)"></span>
+        <div><div class="ti" style="color:#776a5c">SPENT &#183; OCTOBER</div><div class="va" style="color:#2a211b">&#8377;18,420</div></div>
+        <button class="bt" style="background:#c05f3c">Sync now</button>
+      </div>
+      <div class="darkstrip" style="background:#181310;color:#f1e9de"><span class="dot" style="background:#45805a"></span><b>Clay night</b><span>terracotta lamp</span></div>
+    </div>
+  </div>
+
+  <div class="foot">&#8594; <b>Recommendation: keep Warm Paper.</b> It&#8217;s already shipped, it&#8217;s what your phone tests were run on, and it separates Nucleus from every gray tool. Graphite is the runner-up if you want to feel more &#8220;office&#8221;. Whichever wins, dark modes stay consistent per-surface.</div>
+</body>
+</html>

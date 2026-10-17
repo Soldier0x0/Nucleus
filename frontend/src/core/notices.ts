@@ -1,4 +1,4 @@
-export type NoticeKind = "bill" | "fuel" | "service" | "backup" | "emergency";
+export type NoticeKind = "bill" | "fuel" | "service" | "backup";
 
 export type NoticePresentation = {
   ongoing: boolean;
@@ -7,11 +7,8 @@ export type NoticePresentation = {
   dismissOpensApp: boolean;
 };
 
-/** Ordinary reminders can be dismissed. The emergency card stays while its switch is on. */
 export function noticePresentation(kind: NoticeKind): NoticePresentation {
   switch (kind) {
-    case "emergency":
-      return { ongoing: true, sticky: true, dismissClears: false, dismissOpensApp: false };
     case "bill":
     case "fuel":
     case "service":
@@ -24,7 +21,7 @@ export function noticePresentation(kind: NoticeKind): NoticePresentation {
   }
 }
 
-export function noticeKindFromId(id: string): Exclude<NoticeKind, "emergency"> | null {
+export function noticeKindFromId(id: string): NoticeKind | null {
   if (id.startsWith("bill:")) return "bill";
   if (id.startsWith("fuel:") || id.startsWith("ask:fuel:")) return "fuel";
   if (id.startsWith("service:")) return "service";

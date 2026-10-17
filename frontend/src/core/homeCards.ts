@@ -67,7 +67,6 @@ const ICONS: Record<string, string> = {
   warranties: "shield-check-outline",
   utilities: "flash-outline",
   kanban: "view-column-outline",
-  wiki: "book-open-variant",
   media: "image-outline",
   rules: "lightning-bolt-outline",
   tools: "calculator-variant-outline",
@@ -260,8 +259,6 @@ export function homeCard(db: DB, id: string, forecast?: HomeForecast | null): Ho
       return card("Utilities", id, [String(db.utilities.length)], "/home");
     case "kanban":
       return card("Kanban", id, [db.kanban[0]?.name ?? String(db.kanban.length)], "/kanban");
-    case "wiki":
-      return card("Wiki", id, [db.wiki[0]?.title ?? String(db.wiki.length)], "/wiki");
     case "media":
       return card("Media", id, [db.media[0]?.title ?? String(db.media.length)], "/media");
     case "rules":

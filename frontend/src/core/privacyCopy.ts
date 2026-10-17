@@ -6,7 +6,7 @@ export const PRIVACY_CONNECTION = "A connection is used for online weather, a lo
 
 export const PRIVACY_PERMISSIONS: { name: string; line: string }[] = [
   { name: "Fingerprint or face", line: "Unlocks this app. The phone keeps the print or the face." },
-  { name: "Notifications", line: "Reminders you asked for, and the emergency card while that switch is on." },
+  { name: "Notifications", line: "Reminders you asked for." },
   { name: "Notification access", line: "Reads bank lines from Google Pay, PhonePe, and bank notifications once you turn access on. Codes are dropped. Nucleus does not turn the permission on." },
   { name: "Photos", line: "A picture you choose for a receipt, a bill, or a cover. The picture stays in the file on this phone." },
   { name: "Location", line: "One reading for weather, then it stops. Nucleus cannot turn the phone's location switch on or off." },

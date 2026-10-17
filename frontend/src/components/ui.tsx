@@ -31,9 +31,9 @@ function variantStyle(v: Variant, look: ReturnType<typeof useTheme>["look"]): Te
   const size = (n: number) => (poster === 1 ? n : Math.round(n * poster));
   switch (v) {
     case "display":
-      return { fontFamily: plain ? fonts.textBold : fonts.monoBold, fontSize: size(t["3xl"]), letterSpacing: plain ? 0 : -0.5 };
+      return { fontFamily: plain ? fonts.textBold : fonts.monoBold, fontSize: size(t["3xl"]), letterSpacing: plain ? 0 : -0.5, fontVariant: ["tabular-nums"] };
     case "title":
-      return { fontFamily: plain ? fonts.textSemi : fonts.textBold, fontSize: size(t["2xl"]), letterSpacing: plain ? 0 : -0.3 };
+      return { fontFamily: plain ? fonts.textSemi : fonts.textBold, fontSize: size(t["2xl"]), letterSpacing: plain ? 0 : -0.3, fontVariant: ["tabular-nums"] };
     case "h2":
       return { fontFamily: plain ? fonts.text : fonts.textSemi, fontSize: t.lg };
     case "body":
@@ -43,11 +43,11 @@ function variantStyle(v: Variant, look: ReturnType<typeof useTheme>["look"]): Te
     case "caption":
       return { fontFamily: plain ? fonts.text : fonts.textMedium, fontSize: t.sm, letterSpacing: plain ? 0 : 0.2 };
     case "mono":
-      return { fontFamily: plain ? fonts.textMedium : fonts.monoMedium, fontSize: t.base };
+      return { fontFamily: plain ? fonts.textMedium : fonts.monoMedium, fontSize: t.base, fontVariant: ["tabular-nums"] };
     case "monoLg":
-      return { fontFamily: plain ? fonts.textSemi : fonts.monoBold, fontSize: t.xl };
+      return { fontFamily: plain ? fonts.textSemi : fonts.monoBold, fontSize: t.xl, fontVariant: ["tabular-nums"] };
     case "monoXl":
-      return { fontFamily: plain ? fonts.textBold : fonts.monoBold, fontSize: size(t["2xl"]), letterSpacing: plain ? 0 : -0.5 };
+      return { fontFamily: plain ? fonts.textBold : fonts.monoBold, fontSize: size(t["2xl"]), letterSpacing: plain ? 0 : -0.5, fontVariant: ["tabular-nums"] };
     default: {
       const unknown: never = v;
       return unknown;

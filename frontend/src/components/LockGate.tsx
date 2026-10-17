@@ -10,10 +10,9 @@ import { PinPad } from "./PinPad";
 import { Mark } from "./Mark";
 import { NameAsk } from "./NameAsk";
 import { resolveLauncher } from "@/src/core/launcher";
-import { emergencyLockCard } from "@/src/core/featureAccess";
 import { askAfterLeave } from "@/src/core/lockPolicy";
 import { externalActivityActive, pulseExternalActivity } from "@/src/core/externalActivity";
-import { hideLockCard, readPhoneLock, showLockCard } from "@/src/native/android";
+import { readPhoneLock } from "@/src/native/android";
 import { Button, Eyebrow, Icon, T } from "./ui";
 import { Sheet } from "./Sheet";
 
@@ -41,20 +40,8 @@ export function LockGate() {
 
   // Boot screens and the route recorder wait for this before doing anything.
   useEffect(() => {
-    publishLockState(locked);
-  }, [locked]);
-
-  useEffect(() => {
-    const plate = (db.vehicles.find((v) => v.id === s.defaultVehicleId) ?? db.vehicles[0])?.plate ?? "";
-    const card = emergencyLockCard({
-      showOnLock: s.emergency?.showOnLock === true,
-      bloodGroup: s.emergency?.bloodGroup ?? "",
-      phone: s.emergency?.contactPhone ?? "",
-      plate,
-    });
-    if (card) showLockCard(card.title, card.body);
-    else hideLockCard();
-  }, [s.emergency, s.defaultVehicleId, db.vehicles]);
+     publishLockState(locked);
+   }, [locked]);
 
   // Screenshot / recents protection (Android FLAG_SECURE; iOS screen-record blur).
   useEffect(() => {
@@ -201,7 +188,6 @@ export function LockGate() {
           }}
         />
       )}
-      <EmergencyStrip />
       <View style={{ alignItems: "center", marginTop: 8 }}>
       <Button kind="ghost" small label="Forgot PIN?" testID="lock-forgot-button" onPress={() => setForgot(true)} />
       </View>
@@ -219,26 +205,6 @@ export function LockGate() {
           }}
         />
       </Sheet>
-    </View>
-  );
-}
-
-function EmergencyStrip() {
-  const { db } = useStore();
-  const { colors } = useTheme();
-  const card = db.settings.emergency;
-  const plate = (db.vehicles.find((v) => v.id === db.settings.defaultVehicleId) ?? db.vehicles[0])?.plate ?? "";
-  const shown = emergencyLockCard({
-    showOnLock: card?.showOnLock === true,
-    bloodGroup: card?.bloodGroup ?? "",
-    phone: card?.contactPhone ?? "",
-    plate,
-  });
-  if (!shown) return null;
-  return (
-    <View testID="lock-emergency" style={{ marginTop: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, alignItems: "center" }}>
-      <Eyebrow>{shown.title}</Eyebrow>
-      <T v="label" style={{ marginTop: 4, textAlign: "center" }}>{shown.body}</T>
     </View>
   );
 }

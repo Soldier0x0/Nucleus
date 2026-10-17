@@ -6,6 +6,7 @@ import { useStore } from "@/src/core/store";
 import { removePaper } from "@/src/core/actions";
 import { Header } from "@/src/components/Header";
 import { DocumentContent } from "@/src/components/DocumentContent";
+import { usePaperShield } from "@/src/core/paperShieldHook";
 import { PaperSheet } from "@/src/components/PaperSheet";
 import { EmptyState, IconButton } from "@/src/components/ui";
 import { ConfirmSheet } from "@/src/components/ConfirmSheet";
@@ -17,6 +18,7 @@ export default function PaperViewScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const toast = useToast();
+  usePaperShield(true);
   const [edit, setEdit] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const paper = db.papers.find((row) => row.id === id);

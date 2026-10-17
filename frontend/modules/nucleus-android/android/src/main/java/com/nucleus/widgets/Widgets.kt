@@ -25,16 +25,15 @@ internal fun readSnapshot(context: Context): JSONObject? {
 
 internal object WidgetRender {
   fun bind(context: Context, kind: String): RemoteViews {
-    val views = RemoteViews(context.packageName, R.layout.widget_card)
     val snap = readSnapshot(context)
+    if (kind == "attention") return attentionCard(context, snap)
+    if (kind == "attention_fuel") return attentionFuelCard(context, snap)
+    val views = RemoteViews(context.packageName, R.layout.widget_card)
     val card = cardFor(context, kind, snap)
     views.setTextViewText(R.id.kicker, card.kicker)
     views.setTextViewText(R.id.value, card.value)
     views.setTextViewText(R.id.subtitle, card.subtitle)
-    val action = if (card.action == null) "" else "&action=${card.action}"
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("nucleus://open?path=${card.path}$action")).setPackage(context.packageName)
-    val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    views.setOnClickPendingIntent(R.id.root, PendingIntent.getActivity(context, kind.hashCode(), intent, flags))
+    views.setOnClickPendingIntent(R.id.root, openIntent(context, card.path, card.action, kind.hashCode()))
     return views
   }
 
@@ -50,6 +49,8 @@ internal object WidgetRender {
       FuelWidget::class.java to "fuel",
       ExpenseWidget::class.java to "expense",
       ServiceWidget::class.java to "service",
+      AttentionWidget::class.java to "attention",
+      AttentionFuelWidget::class.java to "attention_fuel",
     ).forEach { (cls, kind) ->
       val ids = manager.getAppWidgetIds(ComponentName(context, cls))
       for (id in ids) manager.updateAppWidget(id, bind(context, kind))
@@ -57,6 +58,72 @@ internal object WidgetRender {
   }
 
   private data class Card(val kicker: String, val value: String, val subtitle: String, val path: String, val action: String? = null)
+
+  /** 2×2 — how many things want you, and the loudest one. Tap = Attention tab. */
+  private fun attentionCard(context: Context, snap: JSONObject?): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.widget_attention)
+    val o = snap?.optJSONObject("attention")
+    if (o == null) {
+      views.setTextViewText(R.id.attention_kicker, "Attention")
+      views.setTextViewText(R.id.attention_value, "Open Nucleus")
+      views.setTextViewText(R.id.attention_top, "Open the app once to fill this")
+    } else {
+      val top = o.optJSONObject("top")
+      views.setTextViewText(R.id.attention_kicker, "Attention")
+      views.setTextViewText(R.id.attention_value, if (o.optInt("count", 0) == 0) "Nothing wants you" else "${o.optInt("count", 0)} want you")
+      val line = if (top == null) "Go live your life" else {
+        val days = top.optString("daysLine").orEmpty().trim()
+        if (days.isBlank()) top.optString("title").orEmpty().trim() else "${top.optString("title").trim()} · $days"
+      }
+      views.setTextViewText(R.id.attention_top, line)
+    }
+    views.setOnClickPendingIntent(R.id.root_attention, openIntent(context, "/attention", null, "attention".hashCode()))
+    return views
+  }
+
+  /** 4×2 — Attention next to this cycle's fuel stretch and pump average. */
+  private fun attentionFuelCard(context: Context, snap: JSONObject?): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.widget_attention_fuel)
+    val at = snap?.optJSONObject("attention")
+    val fuel = snap?.optJSONObject("fuel")
+    views.setTextViewText(R.id.af_attention_kicker, "Attention")
+    when {
+      at == null -> {
+        views.setTextViewText(R.id.af_attention_value, "Open Nucleus")
+        views.setTextViewText(R.id.af_attention_top, "Open the app once to fill this")
+      }
+      at.optJSONObject("top") == null -> {
+        views.setTextViewText(R.id.af_attention_value, "Nothing wants you")
+        views.setTextViewText(R.id.af_attention_top, "Go live your life")
+      }
+      else -> {
+        val top = at.optJSONObject("top")!!
+        views.setTextViewText(R.id.af_attention_value, "${at.optInt("count", 0)} want you")
+        views.setTextViewText(R.id.af_attention_top, top.optString("title"))
+      }
+    }
+    when {
+      fuel == null -> {
+        views.setTextViewText(R.id.af_fuel_kicker, "Fuel")
+        views.setTextViewText(R.id.af_fuel_value, "No fills yet")
+        views.setTextViewText(R.id.af_fuel_price, "Log one to see the stretch")
+      }
+      else -> {
+        views.setTextViewText(R.id.af_fuel_kicker, "Fuel cycle")
+        views.setTextViewText(R.id.af_fuel_value, fuel.optString("cycleLine").ifBlank { "—" })
+        views.setTextViewText(R.id.af_fuel_price, fuel.optString("priceLine").ifBlank { "—" })
+      }
+    }
+    views.setOnClickPendingIntent(R.id.root_attention_fuel, openIntent(context, "/attention", null, "attention_fuel".hashCode()))
+    return views
+  }
+
+  private fun openIntent(context: Context, path: String, action: String?, seed: Int): PendingIntent {
+    val actionText = if (action == null) "" else "&action=$action"
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("nucleus://open?path=$path$actionText")).setPackage(context.packageName)
+    val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    return PendingIntent.getActivity(context, seed, intent, flags)
+  }
 
   private fun cardFor(context: Context, kind: String, snap: JSONObject?): Card {
     if (kind == "battery") return battery(context)
@@ -169,4 +236,12 @@ class ExpenseWidget : NucleusWidget() {
 
 class ServiceWidget : NucleusWidget() {
   override val kind = "service"
+}
+
+class AttentionWidget : NucleusWidget() {
+  override val kind = "attention"
+}
+
+class AttentionFuelWidget : NucleusWidget() {
+  override val kind = "attention_fuel"
 }

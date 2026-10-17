@@ -12,7 +12,7 @@ import { isTauri } from "../platform/env";
 import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
 
-const DESKTOP_MODULES: ModuleId[] = ["vehicles", "money", "papers", "notes", "kanban", "wiki"];
+const DESKTOP_MODULES: ModuleId[] = ["vehicles", "money", "papers", "notes", "kanban"];
 const PHONE_ONLY: ModuleId[] = ["lab", "net", "cycle", "health"];
 
 export function Settings() {
@@ -205,7 +205,7 @@ export function Settings() {
           <h2>Roadmap</h2>
           <table className="table">
             <tbody>
-              <tr><td><span className="chip on">D1 · now</span></td><td>Encrypted desktop editor: PIN lock, phone-format crypto, import and export, Today, Money, Vehicles, Papers, Notes/Wiki/Kanban, Settings.</td></tr>
+              <tr><td><span className="chip on">D1 · now</span></td><td>Encrypted desktop editor: PIN lock, phone-format crypto, import and export, Today, Money, Vehicles, Papers, Notes/Kanban, Settings.</td></tr>
               <tr><td><span className="chip">D2</span></td><td>Sync with the phone in both directions, with the same merge rules the phone already uses.</td></tr>
               <tr><td><span className="chip">D3</span></td><td>Files and photos: vault sync, gallery, receipts.</td></tr>
               <tr><td><span className="chip">D4</span></td><td>Packaging and polish: updates, first-run tour, performance pass.</td></tr>

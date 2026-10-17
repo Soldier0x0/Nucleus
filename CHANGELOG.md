@@ -10,6 +10,18 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.12
+
+- Fixed quiet sync going quiet for good: a failed round now backs off up to five minutes instead of hammering LAN, the phone wakes sync when it rejoins the desktop's network, and the pill beside the Today heading shows green (synced), amber (off-network) or red (stale), and taps for a sync now. The desktop shows when the phone was last seen.
+- Changed the app to start on Favorites: a public first tab with the cards you pinned, and the reopen-last-screen machinery is gone (cold start is Favorites; Attention stays one tab away).
+- Changed the drawer into nine groups (Money, Vehicle, Home, Life, Health, Travel, Media, Documents & Notes, Tools) and deleted the Wiki module — its pages move into Notes.
+- Changed the lock screen back to only the lock: the emergency card and its Settings controls are gone.
+- Added the fuel rework: three tank states (To my usual full / Was empty before this / Partial with Reserve–¾ level chips), any two of ₹ + litres + ₹/L with a mismatch check, odometer optional under the receipt photo, +1 L cans, level chips that learn your usable tank, and a "Missed a fill?" hint when the cycle ladder lies. Partial litres now count toward the cycle; distance still only counts across landmarks.
+- Added a fuel-station finder: OpenStreetMap pumps per city area, your favorites and user-tagged company pumps first, cached offline, and Google Maps opens a route preview to the pin.
+- Added two Android widgets: Attention 2×2 ("3 want you · Water bill past due") and Attention + Fuel 4×2 with the current cycle's mileage and average ₹/L (hidden when privacy mode is on).
+- Fixed paper screens never being capture-protected on their own: every paper surface now blurs in recents, media-permission asks are refused outright, phone backups are turned off, and a copied CSV clears itself after a minute.
+- Changed the About screen to state the personal-use licence for Nucleus next to the unchanged third-party notices, and the repo LICENSE now says the same.
+
 ## v0.11.1
 
 - Fixed the camera permission silently vanishing from the built app: a leftover photo-picker setting marked it for removal when the manifest was merged, so the QR pairing scan never had a camera to ask for.

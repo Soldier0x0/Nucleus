@@ -4,6 +4,7 @@ import { useStore } from "@/src/core/store";
 import { getLockSignal, useLockSignal } from "@/src/core/lockSignal";
 import { DEBOUNCE_MS, shouldSyncNow } from "@/src/core/autoSync";
 import { syncInFlight, syncLastAttemptAt, syncWithDesktop } from "@/src/core/syncWithDesktop";
+import { subscribeNetworkWake } from "@/src/native/android";
 
 const TICK_MS = 15000;
 const DEBOUNCE_SLACK_MS = 250;
@@ -22,6 +23,7 @@ export function AutoSync() {
   const [appActive, setAppActive] = useState(() => AppState.currentState === "active");
   const [tick, setTick] = useState(0);
   const running = useRef(false);
+  const failures = useRef(0);
   const coveredChange = useRef<number | null>(null);
   const dbRef = useRef(db);
   dbRef.current = db;
@@ -30,6 +32,8 @@ export function AutoSync() {
     const sub = AppState.addEventListener("change", (state: AppStateStatus) => setAppActive(state === "active"));
     return () => sub.remove();
   }, []);
+
+  useEffect(() => subscribeNetworkWake(() => setTick((n) => n + 1)), []);
 
   useEffect(() => {
     if (!appActive) return;
@@ -56,6 +60,7 @@ export function AutoSync() {
         lastLocalChangeAt: localChangeAt,
         lastAttemptAt: syncLastAttemptAt(),
         selfAppliedRevisionMarker: coveredChange.current,
+        consecutiveFailures: failures.current,
       })
     )
       return;
@@ -63,19 +68,24 @@ export function AutoSync() {
     const marker = localChangeAt;
     running.current = true;
     void (async () => {
+      let succeeded = false;
+      let attempted = false;
       try {
         for (const device of dbRef.current.settings.pairedDevices ?? []) {
           if (getLockSignal() !== "unlocked" || AppState.currentState !== "active") return;
           try {
+            attempted = true;
             const result = await syncWithDesktop(dbRef.current, device, { silent: true });
             applySync(() => result.db);
             coveredChange.current = marker;
+            succeeded = true;
             return;
           } catch {
             // Silent by design: try the next paired desktop.
           }
         }
       } finally {
+        if (succeeded || attempted) failures.current = succeeded ? 0 : failures.current + 1;
         running.current = false;
       }
     })();

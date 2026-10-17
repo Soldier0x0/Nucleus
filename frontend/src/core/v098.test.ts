@@ -80,21 +80,32 @@ test("a medicine needs a name and a time; taken does not delete the series", () 
   assert.equal(removeMedicine(db, med.id).medicines.length, 0);
 });
 
-test("menu hides modules that are off, drops empty sections, and follows the module order", () => {
+test("v0.12: menu keeps the nine groups, hides empty ones, and follows the module order", () => {
   const db = emptyDB();
   const ids = menuSections(db).map((s) => s.id);
-  assert.ok(ids.includes("vehicle") && ids.includes("money") && ids.includes("reminders"));
-  const off = { ...db, settings: { ...db.settings, modules: db.settings.modules.map((m) => (m.id === "papers" ? { ...m, enabled: false } : m)) } };
-  assert.equal(menuSections(off).some((s) => s.id === "documents"), false);
+  assert.ok(ids.includes("vehicle") && ids.includes("money") && ids.includes("life"));
+  const off = { ...db, settings: { ...db.settings, modules: db.settings.modules.map((m) => (["papers", "kanban", "notes"].includes(m.id) ? { ...m, enabled: false } : m)) } };
+  assert.equal(menuSections(off).some((s) => s.id === "docnotes"), false);
   const devOff = { ...db, settings: { ...db.settings, modules: db.settings.modules.map((m) => (["tools", "builder", "rules", "net", "lab", "dev"].includes(m.id) ? { ...m, enabled: false } : m)) } };
-  assert.equal(menuSections(devOff).some((s) => s.id === "devlab"), false);
+  assert.equal(menuSections(devOff).some((s) => s.id === "tools"), false);
   const moneyFirst = { ...db, settings: { ...db.settings, modules: [db.settings.modules.find((m) => m.id === "money")!, ...db.settings.modules.filter((m) => m.id !== "money")] } };
   assert.equal(menuSections(moneyFirst)[0]?.id, "money");
 });
 
-test("bottom bar is Today, Attention and Settings; Modules moved to its own screen", () => {
+test("v0.12: Life hangs just after Home, and the wiki link is gone", () => {
+  const ids = menuSections(emptyDB()).map((s) => s.id);
+  const home = ids.indexOf("home");
+  assert.equal(ids[home + 1], "life");
+  assert.equal(ids.includes("devlab"), false);
+  const source = readFileSync(new URL("./menu.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /\/wiki/);
+});
+
+test("v0.12: bottom bar is Favourites, Today, Attention and Settings; Modules keeps its own screen", () => {
   const tabs = read("../../app/(tabs)/_layout.tsx");
   assert.doesNotMatch(tabs, /name="modules"/);
+  assert.doesNotMatch(tabs, /takePendingReopen|ReopenOnce/);
+  assert.match(tabs, /tab-favorites/);
   assert.match(tabs, /tab-today/);
   assert.match(tabs, /tab-attention/);
   assert.match(tabs, /tab-settings/);
