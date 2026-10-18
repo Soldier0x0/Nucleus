@@ -44,6 +44,13 @@ export async function resolve(specifier, context, nextResolve) {
   if ((specifier.startsWith("./") || specifier.startsWith("../")) && !specifier.endsWith(".ts") && !specifier.endsWith(".js") && !specifier.endsWith(".mjs")) {
     return nextResolve(specifier + ".ts", context);
   }
+  // desktop/tsconfig maps "@core/*" to the phone core; node tests need the
+  // same mapping with the extension hint when the loader pulls desktop
+  // modules that import @core.
+  if (specifier.startsWith("@core/")) {
+    const base = frontendRoot + "src/core/" + specifier.slice("@core/".length);
+    return nextResolve(/\.(ts|js|mjs)$/.test(base) ? base : base + ".ts", context);
+  }
   // desktop/src files import @noble/* directly. CI's phone job installs only
   // frontend packages, so desktop imports resolve against the frontend copy.
   if (context.parentURL?.includes("/desktop/") && !specifier.startsWith(".") && !specifier.startsWith("/") && !specifier.startsWith("@/")) {

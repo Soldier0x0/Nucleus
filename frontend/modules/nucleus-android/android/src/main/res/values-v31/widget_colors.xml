@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: Material-You dynamic palette from wallpaper. -->
+<resources>
+  <color name="widget_bg">@android:color/system_accent1_50</color>
+  <color name="widget_ink">@android:color/system_accent1_900</color>
+  <color name="widget_sub">@android:color/system_accent3_500</color>
+  <color name="widget_accent">@android:color/system_accent1_400</color>
+</resources>

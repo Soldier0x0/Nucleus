@@ -8,8 +8,10 @@ import { applyThemePref, storedThemePref, THEME_KEY } from "../platform/theme";
 import { autostartEnabled, autostartSet } from "../platform/autostart";
 import { localPrefs } from "../platform/storage";
 import { backupFileName, decryptBackup, exportBackup, parseBackup, type BackupFile, type PickedBackup } from "../platform/backup";
+import { EXPORT_KINDS, exportFileName, exportKindFile } from "../platform/exporters";
 import { passwordStrength } from "../platform/crypto";
 import { isTauri } from "../platform/env";
+import { APP_VERSION } from "../App";
 import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
 
@@ -27,6 +29,8 @@ export function Settings() {
   const [importPw, setImportPw] = useState("");
   const [startWithPc, setStartWithPc] = useState(false);
   const [startMsg, setStartMsg] = useState("");
+  const [updMsg, setUpdMsg] = useState("");
+  const [updBusy, setUpdBusy] = useState(false);
   const importInput = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -49,6 +53,25 @@ export function Settings() {
     }
   };
 
+  const checkForUpdate = async () => {
+    setUpdBusy(true);
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
+      if (!update) {
+        setUpdMsg("You are on the newest release.");
+        return;
+      }
+      setUpdMsg(`Downloading v${update.version}…`);
+      await update.downloadAndInstall();
+      setUpdMsg("Installed. Reopen Nucleus when ready.");
+    } catch (err) {
+      setUpdMsg(err instanceof Error ? err.message : "The update check failed.");
+    } finally {
+      setUpdBusy(false);
+    }
+  };
+
   const changePin = async () => {
     setPinMsg("");
     if (!isValidPin(pinDraft.next)) return setPinMsg("The new PIN needs at least 4 digits.");
@@ -67,6 +90,16 @@ export function Settings() {
     if (withPassword && exportPw.length < 6) return setDataMsg("Use at least 6 characters for the backup password.");
     try {
       const name = await exportBackup(db, withPassword ? exportPw : undefined);
+      setDataMsg(name ? `Saved ${name}.` : "Export cancelled.");
+    } catch (err) {
+      setDataMsg(err instanceof Error ? err.message : "Export failed.");
+    }
+  };
+
+  const exportOne = async (kind: (typeof EXPORT_KINDS)[number]["kind"]) => {
+    setDataMsg("");
+    try {
+      const name = await exportKindFile(db, kind);
       setDataMsg(name ? `Saved ${name}.` : "Export cancelled.");
     } catch (err) {
       setDataMsg(err instanceof Error ? err.message : "Export failed.");
@@ -117,130 +150,158 @@ export function Settings() {
   };
 
   return (
-    <div className="stack">
-      <div className="settings-grid">
-        <section className="card">
-          <h2>General</h2>
-          <label className="switch">
-            <input type="checkbox" checked={startWithPc} disabled={!isTauri()} onChange={(e) => void toggleAutostart(e.target.checked)} />
-            <span>Start with this computer</span>
-          </label>
-          {startMsg ? <p className="muted small" data-testid="autostart-note">{startMsg}</p> : null}
-          {!isTauri() ? <p className="muted small">Available in the installed app.</p> : null}
-        </section>
+    <>
+      <header className="topbar">
+        <div>
+          <p className="caption">Everything the desktop keeps lives here · v{APP_VERSION}</p>
+          <h1>Settings</h1>
+        </div>
+      </header>
+      <div className="workcol">
+        <div className="settings-grid">
+          <section className="card st-general">
+            <h2>General</h2>
+            <label className="switch">
+              <input type="checkbox" checked={startWithPc} disabled={!isTauri()} onChange={(e) => void toggleAutostart(e.target.checked)} />
+              <span>Start with this computer</span>
+            </label>
+            {startMsg ? <p className="muted small" data-testid="autostart-note">{startMsg}</p> : null}
+            {!isTauri() ? <p className="muted small">Available in the installed app.</p> : null}
+          </section>
 
-        <section className="card">
-          <h2>Security</h2>
-          <p className="muted">The PIN opens the key store on this computer. The document is always encrypted with that key.</p>
-          <label className="field"><span>Current PIN</span><input type="password" inputMode="numeric" value={pinDraft.current} onChange={(e) => setPinDraft({ ...pinDraft, current: e.target.value.replace(/\D+/g, "") })} /></label>
-          <label className="field"><span>New PIN</span><input type="password" inputMode="numeric" value={pinDraft.next} onChange={(e) => setPinDraft({ ...pinDraft, next: e.target.value.replace(/\D+/g, "") })} /></label>
-          <label className="field"><span>Repeat new PIN</span><input type="password" inputMode="numeric" value={pinDraft.again} onChange={(e) => setPinDraft({ ...pinDraft, again: e.target.value.replace(/\D+/g, "") })} /></label>
-          {pinMsg ? <p className={pinMsg === "PIN changed." ? "ok-text" : "error"}>{pinMsg}</p> : null}
-          <div className="row">
-            <button className="primary" onClick={changePin} disabled={!pinDraft.current || !pinDraft.next}>Change PIN</button>
-            <button className="small-btn" onClick={() => { lockSecure(); window.location.reload(); }}>Lock now</button>
-          </div>
-        </section>
+          <section className="card st-look">
+            <h2>Look</h2>
+            <label className="field"><span>Theme</span>
+              <select value={theme} onChange={(e) => setTheme(e.target.value)}>
+                <option value="system">Follow the system</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </label>
+            <label className="field"><span>Distance unit</span>
+              <select value={db.settings.distanceUnit} onChange={(e) => setSettings({ distanceUnit: e.target.value as "km" | "mi" })}>
+                <option value="km">Kilometres</option>
+                <option value="mi">Miles</option>
+              </select>
+            </label>
+          </section>
 
-        <section className="card">
-          <h2>Look</h2>
-          <label className="field"><span>Theme</span>
-            <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">Follow the system</option>
-            </select>
-          </label>
-          <label className="field"><span>Distance unit</span>
-            <select value={db.settings.distanceUnit} onChange={(e) => setSettings({ distanceUnit: e.target.value as "km" | "mi" })}>
-              <option value="km">Kilometres</option>
-              <option value="mi">Miles</option>
-            </select>
-          </label>
-        </section>
-
-        <section className="card">
-          <h2>Backup</h2>
-          <p className="muted">Files match the phone format, so a phone backup opens here and this export opens on the phone.</p>
-          <div className="row">
-            <button className="primary" onClick={() => doExport(false)}>Export backup</button>
-            <input type="password" placeholder="Password (min 6)" value={exportPw} onChange={(e) => setExportPw(e.target.value)} />
-            <button className="small-btn" onClick={() => doExport(true)} disabled={exportPw.length < 6}>Export encrypted</button>
-          </div>
-          {exportPw ? <p className="muted small">{passwordStrength(exportPw).label} — {passwordStrength(exportPw).hint}</p> : null}
-          <hr />
-          <div className="row">
-            <button className="primary" onClick={() => importInput.current?.click()}>Import backup…</button>
-            <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void pickImport(f); }} />
-          </div>
-          {pending ? (
+          <section className="card st-security">
+            <h2>Security</h2>
+            <p className="muted">The PIN opens the key store on this computer. The document is always encrypted with that key.</p>
+            <label className="field"><span>Current PIN</span><input type="password" inputMode="numeric" value={pinDraft.current} onChange={(e) => setPinDraft({ ...pinDraft, current: e.target.value.replace(/\D+/g, "") })} /></label>
+            <label className="field"><span>New PIN</span><input type="password" inputMode="numeric" value={pinDraft.next} onChange={(e) => setPinDraft({ ...pinDraft, next: e.target.value.replace(/\D+/g, "") })} /></label>
+            <label className="field"><span>Repeat new PIN</span><input type="password" inputMode="numeric" value={pinDraft.again} onChange={(e) => setPinDraft({ ...pinDraft, again: e.target.value.replace(/\D+/g, "") })} /></label>
+            {pinMsg ? <p className={pinMsg === "PIN changed." ? "ok-text" : "error"}>{pinMsg}</p> : null}
             <div className="row">
-              <input type="password" placeholder={`Password for ${pending.name}`} value={importPw} onChange={(e) => setImportPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && unlockImport()} />
-              <button className="primary" onClick={unlockImport} disabled={!importPw}>Unlock backup</button>
+              <button className="primary" onClick={changePin} disabled={!pinDraft.current || !pinDraft.next}>Change PIN</button>
+              <button className="small-btn" onClick={() => { lockSecure(); window.location.reload(); }}>Lock now</button>
             </div>
-          ) : null}
-          {dataMsg ? <p className={dataMsg.startsWith("Imported") || dataMsg.startsWith("Saved") ? "ok-text" : "error"}>{dataMsg}</p> : null}
-          <details className="why">
-            <summary>Document info</summary>
-            <table className="facts">
+          </section>
+
+          <div className="st-devices">
+            <Pairing />
+          </div>
+
+          <section className="card st-backup">
+            <h2>Backup</h2>
+            <p className="muted">Files match the phone format, so a phone backup opens here and this export opens on the phone.</p>
+            <div className="row">
+              <button className="primary" onClick={() => doExport(false)}>Export backup</button>
+              <input type="password" placeholder="Password (min 6)" value={exportPw} onChange={(e) => setExportPw(e.target.value)} />
+              <button className="small-btn" onClick={() => doExport(true)} disabled={exportPw.length < 6}>Export encrypted</button>
+            </div>
+            {exportPw ? <p className="muted small">{passwordStrength(exportPw).label} — {passwordStrength(exportPw).hint}</p> : null}
+            <hr />
+            <div className="row">
+              <button className="primary" onClick={() => importInput.current?.click()}>Import backup…</button>
+              <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void pickImport(f); }} />
+            </div>
+            {pending ? (
+              <div className="row">
+                <input type="password" placeholder={`Password for ${pending.name}`} value={importPw} onChange={(e) => setImportPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && unlockImport()} />
+                <button className="primary" onClick={unlockImport} disabled={!importPw}>Unlock backup</button>
+              </div>
+            ) : null}
+            {dataMsg ? <p className={dataMsg.startsWith("Imported") || dataMsg.startsWith("Saved") ? "ok-text" : "error"}>{dataMsg}</p> : null}
+            <details className="why">
+              <summary>Document info</summary>
+              <table className="facts">
+                <tbody>
+                  {Object.entries(countsOf(db)).filter(([, n]) => n > 0).map(([k, n]) => (
+                    <tr key={k}><td>{k}</td><td>{n}</td></tr>
+                  ))}
+                  <tr><td>Install id</td><td>{db.settings.installId ?? "—"}</td></tr>
+                  <tr><td>Saved by</td><td>{isTauri() ? "this computer" : "browser preview"}</td></tr>
+                  <tr><td>Backup file name</td><td>{backupFileName()}</td></tr>
+                </tbody>
+              </table>
+            </details>
+          </section>
+
+          <section className="card st-exports" data-testid="settings-exports">
+            <h2>Spreadsheet exports</h2>
+            <p className="muted">Same columns as the phone exports — open them in a spreadsheet or Numbers.</p>
+            <div className="row">
+              {EXPORT_KINDS.map(({ kind, label, ext }) => (
+                <button key={kind} className="small-btn" onClick={() => void exportOne(kind)} title={exportFileName(kind)}>
+                  {label} ({ext})
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="card st-sections">
+            <h2>Sections</h2>
+            <p className="muted">Modules are shared with the phone. Phone-only modules never appear on the desktop.</p>
+            <table className="table">
               <tbody>
-                {Object.entries(countsOf(db)).filter(([, n]) => n > 0).map(([k, n]) => (
-                  <tr key={k}><td>{k}</td><td>{n}</td></tr>
-                ))}
-                <tr><td>Install id</td><td>{db.settings.installId ?? "—"}</td></tr>
-                <tr><td>Saved by</td><td>{isTauri() ? "this computer" : "browser preview"}</td></tr>
-                <tr><td>Backup file name</td><td>{backupFileName()}</td></tr>
+                {MODULES.map((m) => {
+                  const id = m.id as ModuleId;
+                  const state = db.settings.modules.find((x) => x.id === id);
+                  const desktop = DESKTOP_MODULES.includes(id);
+                  const phoneOnly = PHONE_ONLY.includes(id);
+                  return (
+                    <tr key={m.id} className={desktop ? "" : "muted"}>
+                      <td>{m.name}</td>
+                      <td className="right">
+                        {phoneOnly ? (
+                          <span className="chip">Phone only</span>
+                        ) : desktop ? (
+                          <label className="switch">
+                            <input type="checkbox" checked={state?.enabled ?? true} onChange={(e) => toggleModule(id, e.target.checked)} />
+                            <span>On desktop</span>
+                          </label>
+                        ) : (
+                          <span className="chip">Later phase</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </details>
-        </section>
+          </section>
 
-        <Pairing />
-
-        <section className="card">
-          <h2>Sections</h2>
-          <p className="muted">Modules are shared with the phone. Phone-only modules never appear on the desktop.</p>
-          <table className="table">
-            <tbody>
-              {MODULES.map((m) => {
-                const id = m.id as ModuleId;
-                const state = db.settings.modules.find((x) => x.id === id);
-                const desktop = DESKTOP_MODULES.includes(id);
-                const phoneOnly = PHONE_ONLY.includes(id);
-                return (
-                  <tr key={m.id} className={desktop ? "" : "muted"}>
-                    <td>{m.name}</td>
-                    <td className="right">
-                      {phoneOnly ? (
-                        <span className="chip">Phone only</span>
-                      ) : desktop ? (
-                        <label className="switch">
-                          <input type="checkbox" checked={state?.enabled ?? true} onChange={(e) => toggleModule(id, e.target.checked)} />
-                          <span>On desktop</span>
-                        </label>
-                      ) : (
-                        <span className="chip">Later phase</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="card">
-          <h2>Roadmap</h2>
-          <table className="table">
-            <tbody>
-              <tr><td><span className="chip on">D1 · now</span></td><td>Encrypted desktop editor: PIN lock, phone-format crypto, import and export, Today, Money, Vehicles, Papers, Notes/Kanban, Settings.</td></tr>
-              <tr><td><span className="chip">D2</span></td><td>Sync with the phone in both directions, with the same merge rules the phone already uses.</td></tr>
-              <tr><td><span className="chip">D3</span></td><td>Files and photos: vault sync, gallery, receipts.</td></tr>
-              <tr><td><span className="chip">D4</span></td><td>Packaging and polish: updates, first-run tour, performance pass.</td></tr>
-            </tbody>
-          </table>
-        </section>
+          <section className="card st-about">
+            <h2>About</h2>
+            <ul className="aboutlist">
+              <li><span className="logo" style={{ width: 20, height: 20 }}></span><b>Nucleus v{APP_VERSION}</b> — the desktop of your phone vault.</li>
+              <li>Everything lives in one encrypted file saved as you edit. No account, no cloud, no ads.</li>
+              <li>Sync runs peer-to-peer with the phone over your own Wi-Fi.</li>
+              <li>Desktop today: Today, Attention, Money, Vehicles, Health, Home, Travel, Papers, Notes, Media, Settings, Dev Lab (Ctrl+Alt+D).</li>
+            </ul>
+            {isTauri() ? (
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="small-btn" onClick={() => void checkForUpdate()} disabled={updBusy} data-testid="settings-check-update">
+                  {updBusy ? "Checking…" : "Check for updates"}
+                </button>
+                {updMsg ? <span className="muted small" data-testid="settings-update-msg">{updMsg}</span> : null}
+              </div>
+            ) : null}
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

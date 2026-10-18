@@ -22,8 +22,12 @@ export function LockScreen({ mode, onUnlocked }: { mode: "create" | "unlock"; on
     let timer: ReturnType<typeof setInterval> | null = null;
     readBackoff().then((b) => setWaitMs(backoffRemainingMs(b))).catch(() => {});
     timer = setInterval(async () => {
-      const remaining = backoffRemainingMs(await readBackoff());
-      setWaitMs(remaining);
+      try {
+        const remaining = backoffRemainingMs(await readBackoff());
+        setWaitMs(remaining);
+      } catch {
+        /* keep ticking */
+      }
     }, 1000);
     return () => {
       if (timer) clearInterval(timer);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { readFile } from "@tauri-apps/plugin-fs";
+import { join } from "@tauri-apps/api/path";
+import { readDir, readFile } from "@tauri-apps/plugin-fs";
 import { useStore } from "../store";
 import { isTauri } from "../platform/env";
 import { parseBackup } from "../platform/backup";
@@ -10,11 +11,15 @@ import { todayISO, uid } from "@core/format";
 import type { Paper } from "@core/types";
 
 const MAX_FILE = 20 * 1024 * 1024;
+const MAX_DROP_FILES = 40;
+
+type Dropped = { path: string; name: string };
 
 /**
  * Drag-drop import (v0.14): a backup JSON dropped anywhere replaces the
- * document after a confirm; images and PDFs are attached as new papers.
- * Browser preview has no drop events, so this layer only mounts in Tauri.
+ * document after a confirm; images and PDFs attach as new papers; folders
+ * recurse (v0.15) and every PDF/image inside comes along. Browser preview
+ * has no drop events, so this layer only mounts in Tauri.
  */
 export function DropLayer() {
   const { update, replace } = useStore();
@@ -52,20 +57,70 @@ export function DropLayer() {
     return () => clearTimeout(t);
   }, [note]);
 
+  /** Depth-limited folder walk. */
+  const walkDir = async (dir: string, out: Dropped[], cap: number, depth: number) => {
+    if (depth > 3 || out.length >= cap) return;
+    let entries: Awaited<ReturnType<typeof readDir>>;
+    try {
+      entries = await readDir(dir);
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (out.length >= cap) return;
+      const child = await join(dir, e.name);
+      if (e.isDirectory) await walkDir(child, out, cap, depth + 1);
+      else if (e.name && !e.name.startsWith(".")) out.push({ path: child, name: e.name });
+    }
+  };
+
+  /** Dropped folders unfold; nested folders walk down too. */
+  const collectFiles = async (paths: string[], cap: number): Promise<Dropped[]> => {
+    const out: Dropped[] = [];
+    for (const path of paths) {
+      if (out.length >= cap) break;
+      let isDir = false;
+      try {
+        const entries = await readDir(path);
+        isDir = true;
+        for (const e of entries) {
+          if (out.length >= cap) break;
+          const child = await join(path, e.name);
+          if (e.isDirectory) await walkDir(child, out, cap, 1);
+          else if (!e.name.startsWith(".")) out.push({ path: child, name: e.name });
+        }
+      } catch {
+        isDir = false;
+      }
+      if (isDir) continue;
+      const name = path.split(/[\\/]/).pop() ?? "file";
+      if (name && !name.startsWith(".")) out.push({ path, name });
+    }
+    return out;
+  };
+
   const handleDrop = async (paths: string[]) => {
     setNote("");
-    for (const path of paths.slice(0, 5)) {
-      const name = path.split(/[\\/]/).pop() ?? "file";
+    const files = await collectFiles(paths, MAX_DROP_FILES);
+    let attached = 0;
+    let backupName = "";
+    let firstError = "";
+    for (const { path, name } of files.slice(0, MAX_DROP_FILES)) {
       try {
         if (/\.json$/i.test(name)) {
           await importBackup(path, name);
+          backupName = name;
           continue;
         }
         await attachPaper(path, name);
+        attached++;
       } catch (err) {
-        setNote(`${name}: ${err instanceof Error ? err.message : "could not be imported"}`);
+        firstError = `${name}: ${err instanceof Error ? err.message : "could not be imported"}`;
       }
     }
+    if (backupName) setNote(`Imported ${backupName}.`);
+    else if (attached) setNote(`Attached ${attached} file${attached === 1 ? "" : "s"} to Papers.`);
+    else if (firstError) setNote(firstError);
   };
 
   const importBackup = async (path: string, name: string) => {

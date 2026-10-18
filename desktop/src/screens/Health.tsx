@@ -5,7 +5,7 @@ import type { CycleDay, CycleFlow, Medicine, WaterTime } from "@core/types";
 
 const FLOWS: CycleFlow[] = ["light", "medium", "heavy"];
 
-/** Health module on desktop (v0.14): cycle sits under Health per the IA decision. */
+/** Health module on desktop: cycle sits under Health per the IA decision (v0.14). */
 export function Health() {
   const { db, update } = useStore();
   const today = todayISO();
@@ -48,81 +48,91 @@ export function Health() {
   };
 
   return (
-    <div className="two-stack">
-      <section className="card">
-        <div className="row spread">
-          <h2>Cycle</h2>
-          <button className="print-btn small-btn no-print" onClick={() => window.print()}>Print</button>
+    <>
+      <header className="topbar">
+        <div>
+          <p className="caption">{db.cycle.days.length} cycle days · {medicines.length} medicines · {db.water.times.length} water times</p>
+          <h1>Health</h1>
         </div>
-        {loggedToday ? (
-          <p className="muted small no-print">Today is already logged as {loggedToday.flow ?? loggedToday.bleeding ?? "noted"}.</p>
-        ) : (
-          <div className="add-row no-print">
-            <select value={flow} onChange={(e) => setFlow(e.target.value as CycleFlow)}>
-              {FLOWS.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-            <button className="primary" onClick={logToday}>Log flow today</button>
-          </div>
-        )}
-        <table className="table wide">
-          <tbody>
-            {days.map((d) => (
-              <tr key={d.id}>
-                <td>{fmtDate(d.date)}</td>
-                <td>{d.bleeding === "flow" ? (d.flow ?? "flow") : d.bleeding === "spotting" ? "spotting" : "—"}</td>
-                {d.symptom ? <td className="muted small">{d.symptoms?.join(", ") || d.symptom}</td> : <td className="muted small">{d.ended && !d.bleeding ? "ended" : ""}</td>}
-                <td className="right"><button className="link danger" onClick={() => update((s) => ({ ...s, cycle: { ...s.cycle, days: s.cycle.days.filter((x) => x.id !== d.id) } }))}>✕</button></td>
-              </tr>
-            ))}
-            {days.length === 0 ? <tr><td colSpan={4} className="muted">No cycle days yet.</td></tr> : null}
-          </tbody>
-        </table>
-      </section>
+        <div className="right no-print">
+          <button className="small-btn" onClick={() => window.print()}>Print</button>
+        </div>
+      </header>
+      <div className="workcol">
+        <div className="two-stack">
+          <section className="card">
+            <h2>Cycle</h2>
+            {loggedToday ? (
+              <p className="muted small no-print">Today is already logged as {loggedToday.flow ?? loggedToday.bleeding ?? "noted"}.</p>
+            ) : (
+              <div className="add-row no-print">
+                <select value={flow} onChange={(e) => setFlow(e.target.value as CycleFlow)}>
+                  {FLOWS.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+                <button className="primary" onClick={logToday}>Log flow today</button>
+              </div>
+            )}
+            <table className="table wide">
+              <tbody>
+                {days.map((d) => (
+                  <tr key={d.id}>
+                    <td>{fmtDate(d.date)}</td>
+                    <td>{d.bleeding === "flow" ? (d.flow ?? "flow") : d.bleeding === "spotting" ? "spotting" : "—"}</td>
+                    {d.symptom ? <td className="muted small">{d.symptoms?.join(", ") || d.symptom}</td> : <td className="muted small">{d.ended && !d.bleeding ? "ended" : ""}</td>}
+                    <td className="right no-print"><button className="link danger" onClick={() => update((s) => ({ ...s, cycle: { ...s.cycle, days: s.cycle.days.filter((x) => x.id !== d.id) } }))}>✕</button></td>
+                  </tr>
+                ))}
+                {days.length === 0 ? <tr><td colSpan={4} className="muted">No cycle days yet.</td></tr> : null}
+              </tbody>
+            </table>
+          </section>
 
-      <section className="card">
-        <h2>Medicines</h2>
-        <div className="add-row no-print">
-          <input className="grow" placeholder="Medicine name" value={medName} onChange={(e) => setMedName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMedicine()} />
-          <input className="grow" placeholder="Dose (optional)" value={medDose} onChange={(e) => setMedDose(e.target.value)} />
-          <button className="primary" onClick={addMedicine}>Add</button>
-        </div>
-        <table className="table wide">
-          <tbody>
-            {medicines.map((m) => (
-              <tr key={m.id} className={m.active ? "" : "muted"}>
-                <td>{m.name}</td>
-                <td className="muted small">{m.dose ?? "—"} · {m.times.length}× daily</td>
-                <td className="right">
-                  <button className="small-btn" onClick={() => update((d) => ({ ...d, medicines: d.medicines.map((x) => (x.id === m.id ? { ...x, active: !x.active } : x)) }))}>{m.active ? "Pause" : "Resume"}</button>
-                  <button className="link danger" onClick={() => update((d) => ({ ...d, medicines: d.medicines.filter((x) => x.id !== m.id) }))}>✕</button>
-                </td>
-              </tr>
-            ))}
-            {medicines.length === 0 ? <tr><td colSpan={3} className="muted">No medicines yet.</td></tr> : null}
-          </tbody>
-        </table>
-      </section>
+          <section className="card">
+            <h2>Medicines</h2>
+            <div className="add-row no-print">
+              <input className="grow filter" placeholder="Medicine name" value={medName} onChange={(e) => setMedName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMedicine()} />
+              <input className="grow filter" placeholder="Dose (optional)" value={medDose} onChange={(e) => setMedDose(e.target.value)} />
+              <button className="primary" onClick={addMedicine}>Add</button>
+            </div>
+            <table className="table wide">
+              <tbody>
+                {medicines.map((m) => (
+                  <tr key={m.id} className={m.active ? "" : "muted"}>
+                    <td>{m.name}</td>
+                    <td className="muted small">{m.dose ?? "—"} · {m.times.length}× daily</td>
+                    <td className="right no-print">
+                      <button className="small-btn" onClick={() => update((d) => ({ ...d, medicines: d.medicines.map((x) => (x.id === m.id ? { ...x, active: !x.active } : x)) }))}>{m.active ? "Pause" : "Resume"}</button>
+                      <button className="link danger" onClick={() => update((d) => ({ ...d, medicines: d.medicines.filter((x) => x.id !== m.id) }))}>✕</button>
+                    </td>
+                  </tr>
+                ))}
+                {medicines.length === 0 ? <tr><td colSpan={3} className="muted">No medicines yet.</td></tr> : null}
+              </tbody>
+            </table>
+          </section>
 
-      <section className="card">
-        <h2>Water</h2>
-        <div className="add-row no-print">
-          <input type="number" min={0} max={23} className="w-amount" value={waterHour} onChange={(e) => setWaterHour(e.target.value)} />
-          <span className="muted">:</span>
-          <input type="number" min={0} max={59} className="w-amount" value={waterMinute} onChange={(e) => setWaterMinute(e.target.value)} />
-          <button className="primary" onClick={addWaterTime}>Add reminder time</button>
+          <section className="card">
+            <h2>Water</h2>
+            <div className="add-row no-print">
+              <input type="number" min={0} max={23} className="w-amount filter" value={waterHour} onChange={(e) => setWaterHour(e.target.value)} />
+              <span className="muted">:</span>
+              <input type="number" min={0} max={59} className="w-amount filter" value={waterMinute} onChange={(e) => setWaterMinute(e.target.value)} />
+              <button className="primary" onClick={addWaterTime}>Add reminder time</button>
+            </div>
+            <table className="table wide">
+              <tbody>
+                {db.water.times.map((t) => (
+                  <tr key={t.id}>
+                    <td>{String(t.hour).padStart(2, "0")}:{String(t.minute).padStart(2, "0")}</td>
+                    <td className="right no-print"><button className="link danger" onClick={() => update((d) => ({ ...d, water: { ...d.water, times: d.water.times.filter((x) => x.id !== t.id) } }))}>✕</button></td>
+                  </tr>
+                ))}
+                {db.water.times.length === 0 ? <tr><td className="muted">No water reminder times yet.</td></tr> : null}
+              </tbody>
+            </table>
+          </section>
         </div>
-        <table className="table wide">
-          <tbody>
-            {db.water.times.map((t) => (
-              <tr key={t.id}>
-                <td>{String(t.hour).padStart(2, "0")}:{String(t.minute).padStart(2, "0")}</td>
-                <td className="right"><button className="link danger" onClick={() => update((d) => ({ ...d, water: { ...d.water, times: d.water.times.filter((x) => x.id !== t.id) } }))}>✕</button></td>
-              </tr>
-            ))}
-            {db.water.times.length === 0 ? <tr><td className="muted">No water reminder times yet.</td></tr> : null}
-          </tbody>
-        </table>
-      </section>
-    </div>
+      </div>
+    </>
   );
 }

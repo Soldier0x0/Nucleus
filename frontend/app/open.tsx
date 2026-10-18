@@ -6,7 +6,7 @@ import { parseWidgetAction, type WidgetAction } from "@/src/core/widgets";
 import { FuelSheet, ServiceSheet } from "@/src/components/VehicleForms";
 import { TxnSheet } from "@/src/components/MoneyForms";
 
-const ALLOWED = ["/money", "/tools", "/notes", "/rules", "/builder", "/dev", "/lab", "/net", "/kanban", "/papers", "/calendar", "/travel", "/home", "/vehicles", "/packs", "/shortcuts", "/attention", "/(tabs)"];
+const ALLOWED = ["/money", "/tools", "/notes", "/rules", "/builder", "/dev", "/lab", "/net", "/kanban", "/papers", "/calendar", "/travel", "/home", "/vehicles", "/packs", "/shortcuts", "/attention", "/cycle", "/(tabs)"];
 
 const ACTION_FALLBACK: Record<WidgetAction, string> = { fuel: "/vehicles", expense: "/money", service: "/vehicles" };
 

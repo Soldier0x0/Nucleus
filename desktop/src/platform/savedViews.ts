@@ -1,5 +1,6 @@
 /**
- * Saved views (v0.14): named filter sets for Money and Papers.
+ * Saved views (v0.14, generalized in v0.15): named filter sets for Money,
+ * Papers, Travel and Media.
  *
  * Stored on the document's settings under a desktop-only key that is written
  * with a cast, the same pattern as `settings.desktopSync`: extra settings keys
@@ -11,8 +12,8 @@
 export type SavedView = {
   id: string;
   name: string;
-  section: "money" | "papers";
-  /** Month (money) or tag (papers) alongside the free-text query. */
+  section: "money" | "papers" | "travel" | "media";
+  /** Month (money), tag (papers/media) or free-text query. */
   payload: { month?: string; tag?: string; query: string };
 };
 
@@ -36,10 +37,12 @@ export function normalizeViews(raw: unknown): SavedView[] {
     const tag = typeof nested.tag === "string" ? nested.tag : typeof v.tag === "string" ? v.tag : "";
     if (tag) payload.tag = tag;
     keyed[id] = name;
-    out.push({ id, name, section: v.section === "papers" ? "papers" : "money", payload });
+    out.push({ id, name, section: SECTION_KEYS.has(v.section as string) ? (v.section as SavedView["section"]) : "money", payload });
   }
   return out.slice(0, 20);
 }
+
+const SECTION_KEYS = new Set(["money", "papers", "travel", "media"]);
 
 export const VIEWS_KEY = "desktopViews";
 
