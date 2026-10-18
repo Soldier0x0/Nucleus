@@ -13,7 +13,7 @@
     android:layout_height="wrap_content"
     android:letterSpacing="0.08"
     android:textAllCaps="true"
-    android:textColor="#D68E42"
+    android:textColor="@color/widget_accent"
     android:textSize="11sp" />
 
   <TextView
@@ -21,7 +21,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="2dp"
-    android:textColor="#F4F1EA"
+    android:textColor="@color/widget_ink"
     android:textSize="22sp"
     android:textStyle="bold" />
 
@@ -30,6 +30,6 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="2dp"
-    android:textColor="#C8C2B4"
+    android:textColor="@color/widget_sub"
     android:textSize="13sp" />
 </LinearLayout>

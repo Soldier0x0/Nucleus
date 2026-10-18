@@ -50,7 +50,8 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
 
     for (const id of Object.keys(SECTION_LABEL) as SectionId[]) {
       if (id === "devlab" && !includeDev) continue;
-      push(`section:${id}`, SECTION_LABEL[id], q ? "Section" : `Open — Ctrl+${Math.min(9, of(id) + 1)}`, () => onJump(id));
+      const n = of(id);
+      push(`section:${id}`, SECTION_LABEL[id], n < 9 ? `Open — Ctrl+${n + 1}` : "Open", () => onJump(id));
     }
 
     for (const item of visibleAttention(db, todayDb())) {

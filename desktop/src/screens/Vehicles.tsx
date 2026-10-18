@@ -6,6 +6,7 @@ import { fuelMileagePoints, serviceLeftLine } from "@core/vehicleMath";
 import { odometerEstimate, odometerEstimateLabel } from "@core/fuelCapture";
 import { fmtDate, money, num, todayISO, uid } from "@core/format";
 import type { FuelEntry, FuelFillKind, OdometerLog, Vehicle } from "@core/types";
+import { StationFinder } from "../components/StationFinder";
 
 export function Vehicles({ focusId }: { focusId?: string }) {
   const { db, update } = useStore();
@@ -18,19 +19,32 @@ export function Vehicles({ focusId }: { focusId?: string }) {
   }, [focusId]);
 
   return (
-    <div className="vehicles-grid">
-      <aside className="card v-list">
-        <h2>Vehicles</h2>
-        {db.vehicles.length === 0 ? <p className="muted">No vehicles yet. Import a phone backup to see them.</p> : null}
-        {db.vehicles.map((v) => (
-          <button key={v.id} className={v.id === vehicle?.id ? "nav on" : "nav"} onClick={() => setSelectedId(v.id)}>
-            {v.name}
-            <span className="muted small"> {v.plate ? `· ${v.plate}` : ""}</span>
-          </button>
-        ))}
-      </aside>
-      <div className="stack">{vehicle ? <VehicleDetail vehicle={vehicle} /> : null}</div>
-    </div>
+    <>
+      <header className="topbar">
+        <div>
+          <p className="caption">{db.fuel.length} fills logged · {db.services.length} services · {db.settings.distanceUnit}</p>
+          <h1>Vehicles</h1>
+        </div>
+      </header>
+      <div className="workcol" style={{ padding: "18px 28px 40px" }}>
+        <div className="vehicles-grid">
+          <aside className="card v-list">
+            <h2>Garage</h2>
+            {db.vehicles.length === 0 ? <p className="muted">No vehicles yet. Import a phone backup to see them.</p> : null}
+            {db.vehicles.map((v) => (
+              <button key={v.id} className={v.id === vehicle?.id ? "nav on" : "nav"} onClick={() => setSelectedId(v.id)}>
+                {v.name}
+                <span className="muted small"> {v.plate ? `· ${v.plate}` : ""}</span>
+              </button>
+            ))}
+          </aside>
+          <div className="stack">
+            {vehicle ? <VehicleDetail vehicle={vehicle} /> : null}
+            <StationFinder />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -51,7 +65,7 @@ function VehicleDetail({ vehicle }: { vehicle: Vehicle }) {
     const litres = Number.parseFloat(fuelDraft.litres.replace(/,/g, ""));
     const rate = Number.parseFloat(fuelDraft.rate.replace(/,/g, ""));
     const odometer = Number.parseFloat(fuelDraft.odometer.replace(/,/g, ""));
-    if (!Number.isFinite(litres) && !Number.isFinite(rate)) return;
+    if (!Number.isFinite(litres) && !Number.isFinite(rate) && !Number.isFinite(odometer)) return;
     const price = Number.isFinite(rate) ? rate : 0;
     const volume = Number.isFinite(litres) ? litres : 0;
     const row: FuelEntry = {

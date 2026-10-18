@@ -109,10 +109,13 @@ test("the repository changelog records published versions and the cycle calendar
   assert.equal(prepareRelease({ changelog, tag: "v0.14" }).publish, true);
   assert.match(readReleaseNotes("v0.14", changelogPath), /command palette/);
   assert.match(readReleaseNotes("v0.14", changelogPath), /in-app PDF viewer/);
+  assert.equal(prepareRelease({ changelog, tag: "v0.15" }).publish, true);
+  assert.match(readReleaseNotes("v0.15", changelogPath), /station finder/);
+  assert.match(readReleaseNotes("v0.15", changelogPath), /Warm Paper/);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.5" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.1" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.4" }), { publish: false, reason: "missing" });
-  assert.deepEqual(prepareRelease({ changelog, tag: "v0.15" }), { publish: false, reason: "missing" });
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.16" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.11.2" }), { publish: false, reason: "missing" });
   assert.match(readReleaseNotes("v0.9.3", changelogPath), /document viewer hang/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /Activa · 5\.6 L/);
@@ -194,8 +197,8 @@ test("the repository changelog records published versions and the cycle calendar
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.14",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9", "v0.9.1", "v0.9.2", "v0.9.3", "v0.9.4", "v0.9.5", "v0.9.6", "v0.9.7", "v0.9.8", "v0.9.9", "v0.10", "v0.11", "v0.11.1", "v0.12", "v0.13"],
+      tag: "v0.15",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9", "v0.9.1", "v0.9.2", "v0.9.3", "v0.9.4", "v0.9.5", "v0.9.6", "v0.9.7", "v0.9.8", "v0.9.9", "v0.10", "v0.11", "v0.11.1", "v0.12", "v0.13", "v0.14"],
     }),
   );
 });

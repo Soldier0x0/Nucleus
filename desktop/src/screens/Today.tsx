@@ -2,12 +2,15 @@ import { useStore } from "../store";
 import { monthTotals, serviceEstimate } from "@core/intelligence";
 import { serviceLeftLine } from "@core/vehicleMath";
 import { odometerEstimate } from "@core/fuelCapture";
+import { visibleAttention } from "@core/attention";
+import { lastSeenLine } from "@core/syncStatus";
 import { ACT_WORDS, journalKind, journalLabel } from "@core/journal";
 import { daysBetween, fmtDate, money, monthKey, num, relDays, todayISO } from "@core/format";
-import { Ring } from "../components/Charts";
 
-/** Today as a bento dashboard (v0.14); Attention moved to its own section. */
-export function Today() {
+const SEV_WORD = { urgent: "Urgent", upcoming: "Upcoming", info: "Info" } as const;
+
+/** Today as the 12-column bento from the design boards; Attention moved to its own section (v0.14). */
+export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | "settings" | "money" | "vehicles", id?: string) => void }) {
   const { db } = useStore();
   const today = todayISO();
   const month = monthKey(today);
@@ -16,115 +19,187 @@ export function Today() {
   const services = db.vehicles.map((v) => ({ vehicle: v, est: serviceEstimate(db, v), odo: odometerEstimate(db, v, today) }));
   const dueServices = services.filter((s) => s.est.remaining <= Math.max(300, s.est.interval * 0.1));
   const renewals = [...db.subscriptions.filter((s) => s.active)].sort((a, b) => a.nextRenewal.localeCompare(b.nextRenewal)).slice(0, 4);
-
+  const wants = visibleAttention(db, today);
   const recent = (db.journal ?? []).slice(-6).reverse();
   const pickup = recent[0];
+  const lastFill = [...db.fuel].sort((a, b) => b.date.localeCompare(a.date))[0];
+  const fillVehicle = lastFill ? db.vehicles.find((v) => v.id === lastFill.vehicleId) : undefined;
+  const recentPapers = [...db.papers].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")).slice(0, 4);
+  const seen = lastSeenLine((db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt, new Date().toISOString());
+  const budgetPct = db.budget.monthly > 0 ? Math.min(100, Math.round((totals.spent / db.budget.monthly) * 100)) : null;
 
   return (
-    <div className="stack">
-      <div className="stat-row">
-        <div className="stat card">
-          <span className="muted small">Spent in {month}</span>
-          <strong>{money(totals.spent, db.settings.currency)}</strong>
-          <span className="muted small">of {db.budget.monthly > 0 ? money(db.budget.monthly, db.settings.currency) : "no budget set"}</span>
+    <>
+      <header className="topbar">
+        <div>
+          <p className="caption">{wants.length} things want you · {fmtDate(today)}</p>
+          <h1>Today</h1>
         </div>
-        <div className="stat card">
-          <span className="muted small">Income in {month}</span>
-          <strong>{money(totals.income, db.settings.currency)}</strong>
-          <span className="muted small">{num(totals.spent - totals.income, 0)} net spend</span>
-        </div>
-        <div className="stat card">
-          <span className="muted small">Service due</span>
-          <strong>{dueServices.length}</strong>
-          <span className="muted small">{dueServices.length === 1 ? "vehicle needs attention" : "vehicles need attention"}</span>
-        </div>
-        <div className="stat card">
-          <span className="muted small">Recently changed</span>
-          <strong>{(db.journal ?? []).length}</strong>
-          <span className="muted small">changes in 120 days</span>
-        </div>
-      </div>
+        <div className="right"></div>
+      </header>
+      <div className="workcol">
+        <div className="bento">
+          <section className="card tile s3" data-testid="today-spent">
+            <span className="tile-lab">Spent this month</span>
+            <div className="tile-val num">{money(totals.spent, db.settings.currency)}</div>
+            <div className="tile-note">
+              {budgetPct === null ? (
+                <span>No budget set yet.</span>
+              ) : (
+                <>
+                  <span className="prog grow"><i style={{ width: `${budgetPct}%` }} /></span>
+                  <span>{budgetPct}% of {money(db.budget.monthly, db.settings.currency)}</span>
+                </>
+              )}
+            </div>
+          </section>
 
-      <div className="bento">
-        <section className="card center b2">
-          <h2>Monthly budget</h2>
-          {db.budget.monthly > 0 ? (
-            <Ring
-              value={totals.spent}
-              max={db.budget.monthly}
-              label={`${num((totals.spent / db.budget.monthly) * 100, 0)}%`}
-              sub={`${money(totals.spent, db.settings.currency)} of ${money(db.budget.monthly, db.settings.currency)}`}
-            />
-          ) : (
-            <p className="muted">Set a monthly budget in Settings later — the ring fills as you spend.</p>
-          )}
-        </section>
+          <section className="card tile s3" data-testid="today-income">
+            <span className="tile-lab">Income this month</span>
+            <div className="tile-val num">{money(totals.income, db.settings.currency)}</div>
+            <div className="tile-note">
+              <span className={`delta ${totals.income - totals.spent >= 0 ? "good" : "bad"}`}>
+                {totals.income - totals.spent >= 0 ? "Comfortable" : "Over"}
+              </span>
+              <span>net {money(Math.abs(totals.spent - totals.income), db.settings.currency)}</span>
+            </div>
+          </section>
 
-        <section className="card b2" data-testid="today-pickup">
-          <h2>Pick up where you left</h2>
-          {pickup ? (
-            <>
-              <div className="pickup-line">
-                <strong>{ACT_WORDS[pickup.act]}</strong> {journalLabel(pickup)}
-              </div>
-              <div className="muted small">{journalKind(pickup)} · {fmtDate(pickup.at.slice(0, 10))}</div>
-            </>
-          ) : (
-            <p className="muted">Your latest change will appear here.</p>
-          )}
-          {recent.length > 1 ? (
-            <table className="table" data-testid="today-recent">
-              <tbody>
-                {recent.slice(1, 5).map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="muted small">{ACT_WORDS[entry.act]}</td>
-                    <td>{journalLabel(entry)}</td>
-                    <td className="muted small">{journalKind(entry)}</td>
-                  </tr>
+          <section className="card tile s3" data-testid="today-fuel">
+            <span className="tile-lab">{fillVehicle ? `Fuel · ${fillVehicle.name}` : "Fuel"}</span>
+            {lastFill ? (
+              <>
+                <div className="tile-val num">{num(lastFill.litres, 1)} <small>L</small></div>
+                <div className="tile-note">
+                  <span>{money(lastFill.total, db.settings.currency)} · {fmtDate(lastFill.date)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="tile-note"><span>No fills logged yet.</span></div>
+            )}
+          </section>
+
+          <section className="card tile s3" data-testid="today-service">
+            <span className="tile-lab">Service due</span>
+            {dueServices.length === 0 ? (
+              <div className="tile-note"><span>Nothing close.</span></div>
+            ) : (
+              <div className="mini-list">
+                {dueServices.slice(0, 2).map(({ vehicle, est, odo }) => (
+                  <button key={vehicle.id} className="mini-row pal-row" onClick={() => onJump?.("vehicles", vehicle.id)} data-testid={`today-service-${vehicle.id}`}>
+                    <span>
+                      <span className="t">{vehicle.name}</span>
+                      <span className="m" style={{ display: "block" }}>{serviceLeftLine(est.remaining)} · {num(odo.value, 0)} {db.settings.distanceUnit}{odo.estimated ? " est." : ""}</span>
+                    </span>
+                    <span className="prog grow" style={{ maxWidth: 70 }}><i style={{ width: `${Math.min(100, Math.round(((est.interval - est.remaining) / est.interval) * 100))}%` }} /></span>
+                  </button>
                 ))}
-              </tbody>
-            </table>
-          ) : null}
-        </section>
+              </div>
+            )}
+          </section>
 
-        <section className="card b2">
-          <h2>Service left</h2>
-          {services.length === 0 ? <p className="muted">No vehicles yet.</p> : null}
-          <table className="table">
-            <tbody>
-              {services.map(({ vehicle, est, odo }) => (
-                <tr key={vehicle.id}>
-                  <td>{vehicle.name}</td>
-                  <td>{serviceLeftLine(est.remaining)}</td>
-                  <td className="muted small">
-                    {num(odo.value, 0)} {db.settings.distanceUnit}
-                    {odo.estimated ? " (est.)" : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+          <section className="card tile s7 row2" data-testid="today-attention">
+            <span className="tile-lab">Attention</span>
+            {wants.length === 0 ? (
+              <div className="tile-note"><span>Nothing needs you right now.</span></div>
+            ) : (
+              <>
+                <div className="mini-list">
+                  {wants.slice(0, 3).map((item) => (
+                    <button key={item.key} className="mini-row pal-row" onClick={() => onJump?.("attention")}>
+                      <span className={`dot ${item.severity === "urgent" ? "bad" : item.severity === "upcoming" ? "warn" : ""}`}></span>
+                      <span>
+                        <span className="t">{item.title}</span>
+                        <span className="m" style={{ display: "block" }}>{item.subtitle}</span>
+                      </span>
+                      <span className="small muted" style={{ marginLeft: "auto" }}>{SEV_WORD[item.severity]}</span>
+                    </button>
+                  ))}
+                </div>
+                {wants.length > 3 ? (
+                  <div className="tile-note"><button className="link" onClick={() => onJump?.("attention")}>Open Attention · {wants.length} open</button></div>
+                ) : null}
+              </>
+            )}
+          </section>
 
-        <section className="card b2">
-          <h2>Renewals</h2>
-          {renewals.length === 0 ? <p className="muted">No subscriptions.</p> : null}
-          <table className="table">
-            <tbody>
-              {renewals.map((s) => {
-                const d = daysBetween(today, s.nextRenewal);
-                return (
-                  <tr key={s.id}>
-                    <td>{s.name}</td>
-                    <td>{money(s.amount, db.settings.currency)}</td>
-                    <td className={d < 0 ? "error" : "muted small"}>{d < 0 ? `${-d} days late` : relDays(d)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </section>
+          <section className="card tile s5 row2" data-testid="today-pickup">
+            <span className="tile-lab">Pick up where you left</span>
+            {pickup ? (
+              <>
+                <div className="pickup-line">
+                  <strong>{ACT_WORDS[pickup.act]}</strong> {journalLabel(pickup)}
+                </div>
+                <div className="muted small">{journalKind(pickup)} · {fmtDate(pickup.at.slice(0, 10))}</div>
+              </>
+            ) : (
+              <p className="muted">Your latest change will appear here.</p>
+            )}
+            {recent.length > 1 ? (
+              <div className="mini-list" data-testid="today-recent">
+                {recent.slice(1, 5).map((entry) => (
+                  <div key={entry.id} className="mini-row">
+                    <span className="t small">{ACT_WORDS[entry.act]}</span>
+                    <span className="m grow muted">{journalLabel(entry)}</span>
+                    <span className="m small">{journalKind(entry)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="card tile s4">
+            <span className="tile-lab">Upcoming renewals</span>
+            {renewals.length === 0 ? (
+              <div className="tile-note"><span>No subscriptions.</span></div>
+            ) : (
+              <div className="mini-list">
+                {renewals.map((s) => {
+                  const d = daysBetween(today, s.nextRenewal);
+                  return (
+                    <div key={s.id} className="mini-row">
+                      <span className="t small grow">{s.name}</span>
+                      <span className="m small num">{money(s.amount, db.settings.currency)}</span>
+                      <span className={`m small ${d < 0 ? "error" : ""}`}>{d < 0 ? `${-d} days late` : relDays(d)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {renewals.length > 0 ? <div className="tile-note"><button className="link" onClick={() => onJump?.("money")}>Open Money</button></div> : null}
+          </section>
+
+          <section className="card tile s5">
+            <span className="tile-lab">Recent documents</span>
+            {recentPapers.length === 0 ? (
+              <div className="tile-note"><span>Nothing filed yet. Drop files anywhere to add them.</span></div>
+            ) : (
+              <div className="mini-list">
+                {recentPapers.map((p) => (
+                  <button key={p.id} className="mini-row pal-row" onClick={() => onJump?.("papers", p.id)}>
+                    <span className="t small grow">{p.title}</span>
+                    <span className="m small">{p.kind.replace("_", " ")}</span>
+                    <span className="m small">{fmtDate(p.createdAt.slice(0, 10))}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="card tile s3">
+            <span className="tile-lab">With your phone</span>
+            <div className="mini-list" style={{ marginTop: 6 }}>
+              <div className="mini-row pal-row">
+                <span className={`dot ${seen.startsWith("Phone last seen") && !seen.includes("day") ? "good" : "warn"}`}></span>
+                <span className="m">{seen}</span>
+              </div>
+            </div>
+            <div className="tile-note">
+              <button className="link" onClick={() => onJump?.("settings")}>Pairing lives in Settings</button>
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

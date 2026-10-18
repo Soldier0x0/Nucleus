@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget color tokens: static fallback for older Android (Warm Paper light). -->
+<resources>
+  <color name="widget_bg">#FFFBF2</color>
+  <color name="widget_ink">#221C15</color>
+  <color name="widget_sub">#6E6455</color>
+  <color name="widget_accent">#BE7A2E</color>
+</resources>

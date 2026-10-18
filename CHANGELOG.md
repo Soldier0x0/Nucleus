@@ -10,6 +10,17 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.15
+
+- Added the Warm Paper design pass on the desktop: the cream-paper light theme and warm dark theme from the design boards, a grouped 232 px sidebar with icons and a search button, page topbars with captions, and rebuilt Today, Attention, Money and Settings screens on the new layouts.
+- Added a station finder on the desktop: type a city and the OpenStreetMap pump index fills in around it, favourites and saved pumps rise to the top of the fuel-log station list, and Google Maps opens a route to each pin. Your home city is remembered; both OSM hosts are allowed in the app's network list and nothing else talks out.
+- Added spreadsheet exports on the desktop: transactions, fuel log, services, subscriptions, jars and notes write CSV files, Save-anywhere dialog and filenames matching the phone's, and Travel writes a dates calendar file — column for column with the phone's exports.
+- Added named saved views on Travel and Media, stamped like the Money and Papers ones from v0.14, and dropping a folder onto the desktop window now unfolds up to three levels and up to 40 files (a backup JSON replaces the document, everything else attaches to Papers).
+- Added signed in-app updates for Windows and Linux: the desktop About card checks its own GitHub release, downloads the signed installer, and the release job composes the manifest so an install of this version keeps checking tomorrow. This is the first auto-checking version, so it installs by hand.
+- Changed the Android Attention widgets to Material-You: on Android 12+ they pick up your wallpaper palette; older versions keep the paper light and night looks.
+- Fixed print pages: Papers rows and the Media status column no longer drop out of the printed page, and the toolbox layout stays hidden.
+- Fixed the Cycle widget opening the wrong tab, the garage stats losing their row on the desktop, the money add button naming income rows "expense", saving an empty saved view, and blank fuel rows slipping into the log.
+
 ## v0.14
 
 - Added the Ctrl+K command palette: sections, money, vehicles, papers, notes, kanban, trips, media and attention reachable as one flat search, with the arrows/Enter/Esc keys.
