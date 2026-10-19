@@ -166,7 +166,7 @@ export type FuelEntry = {
 export type OdometerLog = {
   id: string;
   vehicleId: string;
-  /** ISO datetime of the reading. */
+  /** Local calendar day, "YYYY-MM-DD" (a datetime also parses: consumers slice the first 10 chars). */
   at: string;
   odometer: number;
   note?: string;

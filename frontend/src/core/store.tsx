@@ -11,11 +11,14 @@ import {
   buildDecoyDB,
   DECOY_DB_KEY,
   defaultProfileIndex,
+  encodeSwitchMarker,
   parseProfileIndex,
+  parseSwitchMarker,
   persistDocumentKey,
   PROFILE_INDEX_KEY,
   profileDocKey,
   shellSettings,
+  SWITCH_MARKER_KEY,
   type ProfileIndex,
   type ProfileMeta,
   type VaultSession,
@@ -131,8 +134,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         }
         const index = await readIndex();
         if (cancelled) return;
-        setProfiles(index.profiles);
-        setActiveProfileId(index.activeId);
+        // A switch may have ended between carrying the primary document and
+        // naming the profile in the index. The marker says which profile is in
+        // the primary document; tie the index to it.
+        let live = index;
+        const to = parseSwitchMarker(await secureStorage.getItem(SWITCH_MARKER_KEY));
+        if (to && index.profiles.some((p) => p.id === to)) {
+          live = { ...index, activeId: to };
+          await writeIndex(live);
+          if (cancelled) return;
+        }
+        await secureStorage.removeItem(SWITCH_MARKER_KEY);
+        setProfiles(live.profiles);
+        setActiveProfileId(live.activeId);
         setSession("real");
         writable.current = true;
         setUnreadable(false);
@@ -264,9 +278,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const next = await readDocument(profileDocKey(id));
       if (!next) return;
       await storage.setItem(DB_KEY, await encryptString(JSON.stringify(next)));
+      // Marker after the primary carries the new profile, index after the
+      // marker: a marker on boot then proves the document already switched.
+      await secureStorage.setItem(SWITCH_MARKER_KEY, encodeSwitchMarker(id));
       const index = await readIndex();
       const updated = { ...index, activeId: id };
       await writeIndex(updated);
+      await secureStorage.removeItem(SWITCH_MARKER_KEY);
       applyIndex(updated);
       setDb(next);
     },
@@ -309,11 +327,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (!writable.current || slot.current !== "real" || id === activeIdRef.current) return;
       const index = await readIndex();
       if (index.profiles.length < 2) return;
-      await storage.removeItem(profileDocKey(id));
+      // The index first: a crash in between leaves the doc orphaned but never
+      // an index row that points at a missing document.
       const profilesNext = index.profiles.filter((p) => p.id !== id);
       const updated = { activeId: index.activeId, profiles: profilesNext };
       await writeIndex(updated);
       applyIndex(updated);
+      await storage.removeItem(profileDocKey(id));
     },
     [applyIndex],
   );

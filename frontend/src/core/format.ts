@@ -1,4 +1,15 @@
-export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+/** Hex chunk; the platform's RNG when present (Hermes may lack Web Crypto entirely). */
+function randChunk(len: number): string {
+  const c = globalThis.crypto;
+  if (typeof c?.getRandomValues !== "function") return Math.random().toString(36).slice(2, 2 + len);
+  const n = Math.ceil(len / 2);
+  const b = new Uint8Array(n);
+  c.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, len);
+}
+
+/** Record ids: random party, ending with a time chunk so recently made rows sort naturally. */
+export const uid = (): string => `${randChunk(8)}${randChunk(8)}-${Date.now().toString(36).slice(-4)}`;
 
 export const todayISO = () => toISODate(new Date());
 

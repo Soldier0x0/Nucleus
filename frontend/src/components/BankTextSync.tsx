@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
-import { CHANNELS } from "@/src/core/notify";
+import { CHANNELS, permissionState } from "@/src/core/notify";
 import { useStore } from "@/src/core/store";
 import { classifyMoney } from "@/src/core/moneyWords";
 import { memoryKey, saveBankNotices, type BankAsk, type BankTxn, type InboxLine } from "@/src/core/smsMoney";
@@ -33,6 +33,10 @@ function rowFromAsk(ask: BankAsk, choice: "category" | "transfer"): BankTxn {
 
 async function postAsks(asks: BankAsk[]) {
   if (!asks.length) return;
+  // Android 13 walls notifications behind a runtime permission: without it
+  // these schedules satisfy nothing and the ask is lost forever.
+  const permission = await permissionState();
+  if (!permission.granted) return;
   await Notifications.setNotificationCategoryAsync("sms-ask", [
     { identifier: "keep", buttonTitle: "Keep" },
     { identifier: "transfer", buttonTitle: "Own transfer" },

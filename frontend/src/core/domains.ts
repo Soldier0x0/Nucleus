@@ -57,7 +57,10 @@ export function readiness(db: DB, t: Trip) {
   const docsMissing = t.docs.filter((doc) => !doc.have);
   if (docsMissing.length) missing.push(namedGap(docsMissing.map((doc) => doc.name), "document"));
   if (!budgetOk) missing.push("No budget set");
-  const spent = tripTxns(db, t.id).reduce((s, x) => s + x.amount, 0);
+  // Refunds are negative amounts that came back, so they lower, not raise, what the trip cost.
+  // Transfers are money moved between the user's own accounts, not spend.
+  const txns = tripTxns(db, t.id);
+  const spent = txns.reduce((s, x) => s + (x.type === "income" ? -x.amount : x.transfer ? 0 : x.amount), 0);
   return { score, packPct, docPct, budgetOk, missing, spent, daysToStart: daysBetween(todayISO(), t.start), days: daysBetween(t.start, t.end) + 1 };
 }
 

@@ -111,3 +111,8 @@ export function missingVaultFiles(localList: VaultFile[], remoteList: VaultFile[
   const have = new Set(remoteList.map((f) => f.hash));
   return localList.filter((f) => !have.has(f.hash));
 }
+
+/** Content check for a received blob: only store payloads that hash to the row the sender named. */
+export function verifyVaultPayload(hash: string, payloadB64: string): boolean {
+  return toB64(sha256(toUtf8(payloadB64))) === hash;
+}

@@ -10,6 +10,22 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.15.4
+
+- Fixed every number counting twice: the accounts, budget bar, week-left, month strip and CSV export skip transfers and internal moves, the trip spend nets refunds against what the trip cost, and "Rs 1500" now reads as 1500 instead of 15.
+- Fixed a switch or delete of a profile leaving a stray index row that could land the next boot on a blank document: a half-done switch now recovers to the profile the document already carries.
+- Fixed the same reminder paying a subscription twice when its attention card was marked again.
+- Fixed dropped files landing before the backup import instead of with it, and the note now also counts other .json files it skipped.
+- Fixed a vehicle fill or service logged just after midnight recording the day before, and a fill with an empty odometer box now saves as an estimate instead of a silent number.
+- Fixed the Today screen showing the phone as alive before the phone ever synced.
+- Fixed the loan payoff note showing the set-a-payment hint for a payment that can never clear.
+- Fixed bank text asks being scheduled without the permission that lets them appear.
+- Added a desktop auto-lock: after 15 minutes of no input the vault locks itself.
+- Changed the sync to check the vault file hash on both sides before writing, and the pair screen to pause after five wrong codes so it cannot be guessed fast.
+- Changed stronger PIN scrambling: 600,000 recovery rounds for a new vault, and the ids of new records come from the secure random source.
+- Changed the desktop to open web documents without script, keep exports to .json, .csv, .ics and .md files under a size cap, and hold only the file permissions it uses.
+- Changed the Settings module rows to follow the sidebar order and offer only what the desktop actually has.
+
 ## v0.15.3
 
 - Fixed the publication that v0.15.2 missed: the Windows installers and the signed update manifest were absent there, so the desktop update feed still could not move past 0.15. This release carries the full set.

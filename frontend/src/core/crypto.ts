@@ -15,7 +15,9 @@ import { deviceKeyAction, writeReplacement, type KeySlot } from "./openDb";
 
 const DEK_KEY = "nucleus.dek.v1";
 const PREFIX = "NCE1."; // Nucleus Cipher Envelope v1
-export const PBKDF2_ITERATIONS = 100_000;
+export const PBKDF2_ITERATIONS = 600_000;
+/** A hostile backup envelope can name billions of iterations; long is enough, bound the work. */
+export const PBKDF2_ITERATIONS_MAX = 10_000_000;
 
 export const randomBytes = (n: number) => Crypto.getRandomBytes(n);
 
@@ -218,7 +220,8 @@ export async function encryptWithPassword(plain: string, password: string): Prom
 }
 
 export async function decryptWithPassword(env: PasswordEnvelope, password: string) {
-  const key = await passwordKey(password, fromB64(env.salt), env.iterations);
+  const iterations = Math.min(env.iterations, PBKDF2_ITERATIONS_MAX);
+  const key = await passwordKey(password, fromB64(env.salt), iterations);
   return fromUtf8(gcm(key, fromB64(env.iv)).decrypt(fromB64(env.ct)));
 }
 

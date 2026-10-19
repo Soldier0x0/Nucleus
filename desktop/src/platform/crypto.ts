@@ -3,7 +3,7 @@
  *
  * Formats MUST stay byte-compatible with the phone in both directions:
  * - device documents: "NCE1." + base64(iv) + "." + base64(AES-256-GCM ciphertext)
- * - password backups: { kdf: "pbkdf2-sha256", iterations: 100000, salt, iv, ct } (all base64)
+ * - password backups: { kdf: "pbkdf2-sha256", iterations, salt, iv, ct } (all base64)
  *
  * This file is intentionally free of Tauri, React Native and Expo imports so it
  * can run under `node --test` (see frontend/src/core/desktopCompat.test.ts).
@@ -13,7 +13,9 @@ import { pbkdf2Async } from "@noble/hashes/pbkdf2.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 
 const PREFIX = "NCE1."; // Nucleus Cipher Envelope v1
-export const PBKDF2_ITERATIONS = 100_000;
+export const PBKDF2_ITERATIONS = 600_000;
+/** Long is enough; a hostile envelope naming 4 billion rounds would freeze the app. */
+export const PBKDF2_ITERATIONS_MAX = 10_000_000;
 
 export class DataUnreadableError extends Error {
   constructor(message = "Could not open saved data") {
@@ -126,7 +128,8 @@ export async function encryptWithPassword(plain: string, password: string): Prom
 }
 
 export async function decryptWithPassword(env: PasswordEnvelope, password: string) {
-  const key = await passwordKey(password, fromB64(env.salt), env.iterations);
+  const iterations = Math.min(env.iterations, PBKDF2_ITERATIONS_MAX);
+  const key = await passwordKey(password, fromB64(env.salt), iterations);
   return fromUtf8(gcm(key, fromB64(env.iv)).decrypt(fromB64(env.ct)));
 }
 

@@ -238,7 +238,7 @@ function PaperDetail({ paper, onPatch, onDelete }: { paper: Paper; onPatch: (c: 
           setViewerNote("The stored file could not be read from the vault folder.");
           return;
         }
-        window.open(URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: paperMime(paper) ?? "application/pdf" })), "_blank");
+        window.open(URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: paperMime(paper) ?? "application/pdf" })), "_blank", "noopener");
         return;
       }
       if (uri.startsWith("data:")) {
@@ -252,11 +252,11 @@ function PaperDetail({ paper, onPatch, onDelete }: { paper: Paper; onPatch: (c: 
             return;
           }
         }
-        window.open(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), "_blank");
+        window.open(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), "_blank", "noopener");
         return;
       }
       if (uri.startsWith("blob:") || uri.startsWith("http")) {
-        window.open(uri, "_blank");
+        window.open(uri, "_blank", "noopener");
         return;
       }
       setViewerNote("This file is still on your phone. It will come over with sync (Phase D2); for now, attach a copy from this computer.");

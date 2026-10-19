@@ -103,10 +103,11 @@ export function serviceEstimate(db: DB, v: Vehicle) {
 // ---------------- Money ----------------
 export function monthTotals(db: DB, mk: string) {
   const txns = db.txns.filter((t) => monthKey(t.date) === mk);
-  const spent = txns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-  const income = txns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  // Transfers are moves between this user's own accounts, not spend or income.
+  const spent = txns.filter((t) => t.type === "expense" && !t.transfer).reduce((s, t) => s + t.amount, 0);
+  const income = txns.filter((t) => t.type === "income" && !t.transfer).reduce((s, t) => s + t.amount, 0);
   const byCat: Record<string, number> = {};
-  txns.filter((t) => t.type === "expense").forEach((t) => (byCat[t.category] = (byCat[t.category] ?? 0) + t.amount));
+  txns.filter((t) => t.type === "expense" && !t.transfer).forEach((t) => (byCat[t.category] = (byCat[t.category] ?? 0) + t.amount));
   const categories = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
   return { txns, spent, income, categories };
 }
@@ -116,7 +117,7 @@ export function monthSeries(db: DB, n: number, category?: string) {
   const out: { key: string; label: string; value: number }[] = [];
   for (let i = n - 1; i >= 0; i--) {
     const key = monthKey(addMonths(cur + "-01", -i));
-    const value = db.txns.filter((t) => t.type === "expense" && monthKey(t.date) === key && (!category || t.category === category)).reduce((s, t) => s + t.amount, 0);
+    const value = db.txns.filter((t) => t.type === "expense" && !t.transfer && monthKey(t.date) === key && (!category || t.category === category)).reduce((s, t) => s + t.amount, 0);
     out.push({ key, label: monthLabel(key), value });
   }
   return out;

@@ -220,16 +220,16 @@ export function moneyCsv(txns: Txn[], currency: string, from: string, to: string
   const lines = ["Nucleus spending", `From,${from}`, `To,${to}`, `Currency,${currency}`, "", "Monthly totals", "Month,Spent,Income"];
   for (const month of monthsBetween(from, to)) {
     const inMonth = rows.filter((t) => t.date.slice(0, 7) === month);
-    const spent = inMonth.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    const income = inMonth.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const spent = inMonth.filter((t) => t.type === "expense" && !t.transfer).reduce((s, t) => s + t.amount, 0);
+    const income = inMonth.filter((t) => t.type === "income" && !t.transfer).reduce((s, t) => s + t.amount, 0);
     lines.push([month, money2(spent), money2(income)].join(","));
   }
   lines.push("", "Weekly totals", "Week starting,Spent,Income");
   for (const week of weeksBetween(from, to)) {
     const next = addDays(week, 7);
     const inWeek = rows.filter((t) => t.date >= week && t.date < next);
-    const spent = inWeek.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    const income = inWeek.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const spent = inWeek.filter((t) => t.type === "expense" && !t.transfer).reduce((s, t) => s + t.amount, 0);
+    const income = inWeek.filter((t) => t.type === "income" && !t.transfer).reduce((s, t) => s + t.amount, 0);
     lines.push([week, money2(spent), money2(income)].join(","));
   }
   lines.push("", "Transactions", "Date,Type,Category,Item,Amount,Note");

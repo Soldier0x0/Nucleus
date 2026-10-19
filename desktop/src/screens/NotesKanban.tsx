@@ -10,6 +10,13 @@ export function NotesKanban({ focusId }: { focusId?: string }) {
   // A focus from anywhere (sidebar, palette) lands on the tab that owns the record;
   // kanban cards live on the board, not in notes.
   const [tab, setTab] = useState<Tab>(() => (focusId && db.kanban.some((b) => b.cards.some((c) => c.id === focusId)) ? "kanban" : "notes"));
+  useEffect(() => {
+    if (!focusId) return;
+    // Opening a card from outside picks the tab it lives on, every time.
+    const ownsCard = db.kanban.some((b) => b.cards.some((c) => c.id === focusId));
+    if (ownsCard && tab !== "kanban") setTab("kanban");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
   return (
     <div className="stack">
       <div className="tabs">
@@ -112,6 +119,12 @@ function Board({ focusId }: { focusId?: string }) {
   const { db, update } = useStore();
   const owner = focusId ? db.kanban.find((b) => b.cards.some((c) => c.id === focusId)) : undefined;
   const [boardId, setBoardId] = useState<string | null>(owner?.id ?? db.kanban[0]?.id ?? null);
+  // The same trick as the tab above: a fresh focus on a card in another board
+  // must move the board picker over, not leave it on the old board.
+  useEffect(() => {
+    if (owner?.id && owner.id !== boardId) setBoardId(owner.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId]);
   const [cardDrafts, setCardDrafts] = useState<Record<string, string>>({});
   const board = db.kanban.find((b) => b.id === boardId) ?? db.kanban[0] ?? null;
 

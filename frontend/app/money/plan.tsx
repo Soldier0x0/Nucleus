@@ -155,7 +155,7 @@ export default function MoneyPlan() {
                     <Bar value={d.principal - d.balance} max={Math.max(d.principal, 1)} height={12} />
                   </View>
                   <T muted style={{ fontSize: 12, marginTop: 10 }}>
-                    {!isFinite(p.months) ? "At this payment the balance never clears — the interest is larger than the payment." : isNaN(p.months) ? "Set a monthly payment to see the payoff date." : `Clear in ${num(p.months, 0)} months · about ${num(p.interest, 0)} ${cur} interest from here`}
+                    {isNaN(p.months) ? "Set a monthly payment to see the payoff date." : !isFinite(p.months) ? "At this payment the balance never clears — the interest is larger than the payment." : `Clear in ${num(p.months, 0)} months · about ${num(p.interest, 0)} ${cur} interest from here`}
                   </T>
                 </Card>
               );

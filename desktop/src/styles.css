@@ -537,7 +537,9 @@ button {
   color: var(--ink);
   font-weight: 600;
 }
-.nav .ic {
+/* Icons: every <svg className="ic"> gets this. Scoped to .nav before, which
+   left the sidebar search icon unstyled — a default-size black blob. */
+.ic {
   width: 16px;
   height: 16px;
   stroke: currentColor;
@@ -575,33 +577,7 @@ button {
 }
 .nav-search kbd {
   margin-left: auto;
-  font: 600 10.5px "Inter", system-ui, sans-serif;
-  color: var(--faint);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 2px 5px;
-  background: var(--panel-2);
-}
-.nav-palette {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  height: 34px;
-  padding: 0 10px;
-  color: var(--faint);
-  font-size: 12.5px;
-  margin: 2px 2px 10px;
-  text-align: left;
-}
-.nav-palette:hover {
-  color: var(--ink);
-  border-color: var(--accent);
-}
-.nav-palette kbd {
-  margin-left: auto;
+  white-space: nowrap;
   font: 600 10.5px "Inter", system-ui, sans-serif;
   color: var(--faint);
   border: 1px solid var(--line);

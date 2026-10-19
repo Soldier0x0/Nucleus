@@ -65,7 +65,8 @@ export function fuelLabel(v: { fuelType: FuelType; hybridFrom?: HybridFrom }): s
 
 export function weekLeft(db: DB, today = todayISO()) {
   const mk = monthKey(today);
-  const spent = db.txns.filter((t) => t.type === "expense" && monthKey(t.date) === mk).reduce((s, t) => s + t.amount, 0);
+  // Transfers are moves between this user's own accounts, not spend.
+  const spent = db.txns.filter((t) => t.type === "expense" && !t.transfer && monthKey(t.date) === mk).reduce((s, t) => s + t.amount, 0);
   const budget = db.budget.monthly;
   const year = Number(today.slice(0, 4));
   const month = Number(today.slice(5, 7));

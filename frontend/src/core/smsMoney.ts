@@ -8,7 +8,7 @@ export type InboxLine = { sender: string; body: string; at: string; app?: string
 export type KeptLine = { kind: "debit" | "credit" | "balance"; amount: number; sender: string; at: string };
 
 const OTP = /\b(otp|one[ -]?time(?: password)?|verification code|do not share)\b/i;
-const INR = /(?:inr|rs\.?|₹)\s*([0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?)/gi;
+const INR = /(?:inr|rs\.?|₹)\s*((?:[0-9]{1,3}(?:,[0-9]{2,3})+|[0-9]+)(?:\.[0-9]{1,2})?)/gi;
 
 function amounts(body: string): number[] {
   const out: number[] = [];

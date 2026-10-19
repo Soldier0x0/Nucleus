@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window: app-data files, native dialogs, opener, the PIN key vault and the update feed.",
+  "description": "Main window: app-data files, native dialogs, the opener for vault attachments, the PIN key vault and the update feed. Plugin-fs writes stay inside AppData; exports to user-picked paths go through the checked write_export_file.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -10,9 +10,9 @@
     "opener:allow-open-path",
     "opener:allow-open-url",
     "stronghold:default",
-    "stronghold:allow-destroy",
     "fs:default",
-    "fs:write-all",
+    "fs:read-all",
+    "fs:allow-appdata-write-recursive",
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled",

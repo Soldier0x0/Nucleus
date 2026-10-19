@@ -103,35 +103,53 @@ export function DropLayer() {
     setNote("");
     const files = await collectFiles(paths, MAX_DROP_FILES);
     let attached = 0;
-    let backupName = "";
     let firstError = "";
-    for (const { path, name } of files.slice(0, MAX_DROP_FILES)) {
+    let importedName = "";
+    let skippedJson = 0;
+    // A backup replaces the whole document, so it must land before any paper
+    // does — files attached first would be overwritten by it.
+    const backupIndex = files.findIndex(({ name }) => /\.json$/i.test(name));
+    if (backupIndex >= 0) {
+      const { path, name } = files[backupIndex];
       try {
-        if (/\.json$/i.test(name)) {
-          await importBackup(path, name);
-          backupName = name;
-          continue;
-        }
+        if (await importBackup(path, name)) importedName = name;
+      } catch (err) {
+        firstError = `${name}: ${err instanceof Error ? err.message : "could not be imported"}`;
+      }
+      skippedJson = files.filter((f, i) => i !== backupIndex && /\.json$/i.test(f.name)).length;
+    }
+    for (let i = 0; i < files.length; i += 1) {
+      if (i === backupIndex) continue;
+      const { path, name } = files[i];
+      if (/\.json$/i.test(name)) {
+        if (backupIndex < 0) skippedJson += 1;
+        continue;
+      }
+      try {
         await attachPaper(path, name);
         attached++;
       } catch (err) {
         firstError = `${name}: ${err instanceof Error ? err.message : "could not be imported"}`;
       }
     }
-    if (backupName) setNote(`Imported ${backupName}.`);
-    else if (attached) setNote(`Attached ${attached} file${attached === 1 ? "" : "s"} to Papers.`);
-    else if (firstError) setNote(firstError);
+    const parts: string[] = [];
+    if (importedName) parts.push(`Imported ${importedName}.`);
+    if (attached) parts.push(`Attached ${attached} file${attached === 1 ? "" : "s"} to Papers.`);
+    if (skippedJson) parts.push(`Skipped ${skippedJson} more .json file${skippedJson === 1 ? "" : "s"}.`);
+    if (firstError) parts.push(firstError);
+    setNote(parts.join(" ") || "Nothing importable in the drop.");
   };
 
-  const importBackup = async (path: string, name: string) => {
+  /** true when the document was replaced. */
+  const importBackup = async (path: string, name: string): Promise<boolean> => {
     const bytes = await readFile(path);
     if (bytes.length > MAX_FILE) throw new Error("larger than 20 MB");
     const text = new TextDecoder().decode(bytes);
     const picked = parseBackup(text);
     if (picked.kind === "encrypted") throw new Error("encrypted backups import in Settings");
-    if (!window.confirm(`Replace the document on this computer with "${name}"? The current document is overwritten.`)) return;
+    if (!window.confirm(`Replace the document on this computer with "${name}"? The current document is overwritten.`)) return false;
     replace(picked.file.data);
-    setNote(`Imported ${name}.`);
+    return true;
   };
 
   const attachPaper = async (path: string, name: string) => {
@@ -154,7 +172,6 @@ export function DropLayer() {
       mime,
     };
     update((d) => ({ ...d, papers: [row, ...d.papers] }));
-    setNote(`Attached ${name} to Papers.`);
   };
 
   return (

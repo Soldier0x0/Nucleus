@@ -27,7 +27,7 @@ export function PdfPane({ data, title }: { data: Uint8Array; title: string }) {
     setZoom(1);
     (async () => {
       try {
-        const doc = await getDocument({ data: new Uint8Array(data) }).promise;
+        const doc = await getDocument({ data: new Uint8Array(data), isEvalSupported: false }).promise;
         if (dead) {
           void doc.destroy();
           return;
