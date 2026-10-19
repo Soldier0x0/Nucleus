@@ -10,6 +10,12 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.15.3
+
+- Fixed the publication that v0.15.2 missed: the Windows installers and the signed update manifest were absent there, so the desktop update feed still could not move past 0.15. This release carries the full set.
+- Fixed the CI version pick to stop loudly when the published tags cannot be listed, instead of quietly stamping the next minor into builds nobody asked for.
+- The app is the same as v0.15.2; nothing in the app changed.
+
 ## v0.15.2
 
 - Fixed the publication that v0.15.1 missed: that release carried only nucleus-v0.15.1.apk while the desktop installers and the signed update manifest were absent. This release restores them, so the desktop update feed resumes from here.

@@ -70,7 +70,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")' 2>/dev/null || true)
+          # The version pick must never see an empty tag list: a failed listing
+          # makes the newest changelog heading look unpublished twice and the
+          # builds stamp the next minor into files nobody asked for.
+          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")')
+          if ! echo "$tags" | grep -q "v0."; then
+            echo "No published tags could be listed; stopping instead of stamping a wrong version." >&2
+            exit 1
+          fi
           # shellcheck disable=SC2086
           name=$(node .github/scripts/next-android-version.js --changelog CHANGELOG.md $tags)
           echo "name=${name}" >> "$GITHUB_OUTPUT"
@@ -358,7 +365,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")' 2>/dev/null || true)
+          # The version pick must never see an empty tag list: a failed listing
+          # makes the newest changelog heading look unpublished twice and the
+          # builds stamp the next minor into files nobody asked for.
+          tags=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v0." --jq '.[].ref | sub("^refs/tags/"; "")')
+          if ! echo "$tags" | grep -q "v0."; then
+            echo "No published tags could be listed; stopping instead of stamping a wrong version." >&2
+            exit 1
+          fi
           # shellcheck disable=SC2086
           name=$(node .github/scripts/next-android-version.js --changelog CHANGELOG.md $tags)
           echo "name=${name}" >> "$GITHUB_OUTPUT"
