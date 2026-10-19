@@ -52,6 +52,18 @@ function ensureHandler() {
       importance: Notifications.AndroidImportance.DEFAULT,
       sound: "default",
     }).catch(() => {});
+    // Every channel must exist before the Sound rows in Settings are tapped:
+    // Android's channel-settings deep link goes nowhere for a channel id that was never made.
+    Notifications.setNotificationChannelAsync(CHANNELS.water, {
+      name: CHANNEL_NAMES.water,
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+    }).catch(() => {});
+    Notifications.setNotificationChannelAsync(CHANNELS.cycle, {
+      name: CHANNEL_NAMES.cycle,
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: "default",
+    }).catch(() => {});
   }
 }
 

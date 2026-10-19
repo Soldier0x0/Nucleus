@@ -9,7 +9,7 @@
  * UI can be previewed. The browser fallback is dev-only and not secure: secrets
  * written there are labelled by the secure store.
  */
-import { BaseDirectory, exists, mkdir, readDir, readFile, readTextFile, remove, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { BaseDirectory, exists, mkdir, readDir, readFile, readTextFile, remove, rename, writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import { isTauri } from "./env";
 import { fromB64, toB64 } from "./crypto";
 
@@ -32,7 +32,15 @@ async function readKv(): Promise<Kv> {
   if (!isTauri()) return {};
   try {
     if (!(await exists(KV_FILE, { baseDir: BaseDirectory.AppData }))) return {};
-    return JSON.parse(await readTextFile(KV_FILE, { baseDir: BaseDirectory.AppData })) as Kv;
+    const raw = await readTextFile(KV_FILE, { baseDir: BaseDirectory.AppData });
+    try {
+      return JSON.parse(raw) as Kv;
+    } catch {
+      // A corrupt map keeps a copy before anything new is written over it,
+      // so the next save cannot silently erase the whole vault.
+      await writeTextFile(`${KV_FILE}.corrupt`, raw, { baseDir: BaseDirectory.AppData }).catch(() => {});
+      return {};
+    }
   } catch {
     return {};
   }
@@ -40,7 +48,11 @@ async function readKv(): Promise<Kv> {
 
 async function writeKv(kv: Kv): Promise<void> {
   await mkdir("", { baseDir: BaseDirectory.AppData, recursive: true }).catch(() => {});
-  await writeTextFile(KV_FILE, JSON.stringify(kv), { baseDir: BaseDirectory.AppData });
+  // Write beside the file and rename over it: a crash mid-save can no longer
+  // truncate storage.json into a broken, half-written map.
+  const tmp = `${KV_FILE}.tmp`;
+  await writeTextFile(tmp, JSON.stringify(kv), { baseDir: BaseDirectory.AppData });
+  await rename(tmp, KV_FILE, { oldPathBaseDir: BaseDirectory.AppData, newPathBaseDir: BaseDirectory.AppData });
 }
 
 export const storage = {

@@ -23,6 +23,7 @@ import { looksLikeReceipt } from "@/src/core/receipt";
 import { HomeSurface } from "@/src/components/HomeSurface";
 import { BankTextSync } from "@/src/components/BankTextSync";
 import { QuietSync } from "@/src/components/QuietSync";
+import { NotificationTaps } from "@/src/components/NotificationTaps";
 import { useCycleNotify } from "@/src/core/useCycleNotify";
 import { useWaterNotify } from "@/src/core/useWaterNotify";
 
@@ -103,6 +104,7 @@ export default function RootLayout() {
                 <HomeSurface />
                 <BankTextSync />
                 <QuietSync />
+                <NotificationTaps />
                 <LockGate />
               </ToastProvider>
             </Themed>

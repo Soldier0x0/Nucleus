@@ -247,9 +247,8 @@ export default function Money() {
 }
 
 function shiftMonth(month: string, dir: -1 | 1): string {
-  const next = monthKey(addMonths(`${month}-01`, dir));
-  if (next > monthKey(todayISO())) return month;
-  return next;
+  // Browsing stays free both ways, matching the desktop money input.
+  return monthKey(addMonths(`${month}-01`, dir));
 }
 
 function MonthSwipe({ month, width, onMonth }: { month: string; width: number; onMonth: (month: string) => void }) {

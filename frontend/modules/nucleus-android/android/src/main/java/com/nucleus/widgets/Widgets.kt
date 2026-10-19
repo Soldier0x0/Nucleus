@@ -59,6 +59,13 @@ internal object WidgetRender {
 
   private data class Card(val kicker: String, val value: String, val subtitle: String, val path: String, val action: String? = null)
 
+  /** The attention value line. Singular for one, because "1 want you" reads broken. */
+  private fun wantYou(count: Int): String = when {
+    count <= 0 -> "Nothing wants you"
+    count == 1 -> "1 wants you"
+    else -> "$count want you"
+  }
+
   /** 2×2 — how many things want you, and the loudest one. Tap = Attention tab. */
   private fun attentionCard(context: Context, snap: JSONObject?): RemoteViews {
     val views = RemoteViews(context.packageName, R.layout.widget_attention)
@@ -70,7 +77,7 @@ internal object WidgetRender {
     } else {
       val top = o.optJSONObject("top")
       views.setTextViewText(R.id.attention_kicker, "Attention")
-      views.setTextViewText(R.id.attention_value, if (o.optInt("count", 0) == 0) "Nothing wants you" else "${o.optInt("count", 0)} want you")
+      views.setTextViewText(R.id.attention_value, wantYou(o.optInt("count", 0)))
       val line = if (top == null) "Go live your life" else {
         val days = top.optString("daysLine").orEmpty().trim()
         if (days.isBlank()) top.optString("title").orEmpty().trim() else "${top.optString("title").trim()} · $days"
@@ -98,8 +105,9 @@ internal object WidgetRender {
       }
       else -> {
         val top = at.optJSONObject("top")!!
-        views.setTextViewText(R.id.af_attention_value, "${at.optInt("count", 0)} want you")
-        views.setTextViewText(R.id.af_attention_top, top.optString("title"))
+        views.setTextViewText(R.id.af_attention_value, wantYou(at.optInt("count", 0)))
+        val days = top.optString("daysLine").orEmpty().trim()
+        views.setTextViewText(R.id.af_attention_top, if (days.isBlank()) top.optString("title").orEmpty().trim() else "${top.optString("title").trim()} · $days")
       }
     }
     when {

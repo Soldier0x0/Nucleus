@@ -187,6 +187,19 @@ function Shell() {
   const lastDeviceSync = (db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt;
   const attentionCount = visibleAttention(db, todayISO()).length;
 
+  // A module switched off in Settings takes its section with it: the sidebar row,
+  // the palette entry and (if it was the open screen) this very panel.
+  const moduleOn = (id: SectionId): boolean => {
+    if (id === "today" || id === "attention" || id === "settings" || id === "devlab") return true;
+    if (id === "notes") return !["notes", "kanban"].every((mid) => db.settings.modules.find((m) => m.id === mid)?.enabled === false);
+    const state = db.settings.modules.find((m) => m.id === id);
+    return state ? state.enabled : true;
+  };
+  useEffect(() => {
+    if (!moduleOn(section)) setSection("today");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.settings.modules, section]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "d" || e.key === "D")) {
@@ -228,7 +241,7 @@ function Shell() {
             <button
               className="danger-btn"
               onClick={() => {
-                if (window.confirm("Start fresh without the old document? The saved file is left untouched on disk.")) void discardUnreadable();
+                if (window.confirm("Start fresh without the old document? The unreadable copy is kept on disk as a backup first.")) void discardUnreadable();
               }}
             >
               Start fresh
@@ -295,9 +308,9 @@ function Shell() {
           <kbd>Ctrl K</kbd>
         </button>
         <div className="slabel">Workspace</div>
-        {SECTIONS.filter((s) => s.group === "workspace").map(navBtn)}
+        {SECTIONS.filter((s) => s.group === "workspace" && moduleOn(s.id)).map(navBtn)}
         <div className="slabel">Modules</div>
-        {SECTIONS.filter((s) => s.group === "modules").map(navBtn)}
+        {SECTIONS.filter((s) => s.group === "modules" && moduleOn(s.id)).map(navBtn)}
         <div className="side-foot">
           {SECTIONS.filter((s) => s.group === "foot").map(navBtn)}
           <div className="syncfoot">

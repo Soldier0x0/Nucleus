@@ -17,7 +17,16 @@ const arg = (name) => {
 };
 const tag = arg("--tag");
 const dir = arg("--assets-dir") ?? "release-files";
-const version = (arg("--version") ?? tag ?? "").replace(/^v/, "");
+
+/** tauri-plugin-updater parses `version` as strict semver, so "0.15" alone must become "0.15.0". */
+function toSemver(version) {
+  const parts = String(version).split(".");
+  if (parts.length === 1) return `${parts[0]}.0.0`;
+  if (parts.length === 2) return `${parts[0]}.${parts[1]}.0`;
+  return parts.slice(0, 3).join(".");
+}
+
+const version = toSemver((arg("--version") ?? tag ?? "").replace(/^v/, ""));
 const repo = process.env.GITHUB_REPOSITORY;
 
 if (!repo || !repo.includes("/")) {

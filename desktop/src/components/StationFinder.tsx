@@ -48,6 +48,7 @@ export function StationFinder() {
   };
 
   const search = async () => {
+    if (status === "busy") return;
     if (!city.trim()) {
       setStatus("error");
       setMessage("Type a city first.");

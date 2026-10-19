@@ -27,6 +27,8 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="2dp"
+      android:maxLines="2"
+      android:ellipsize="end"
       android:textColor="@color/widget_ink"
       android:textSize="20sp"
       android:textStyle="bold" />
@@ -62,6 +64,8 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="2dp"
+      android:maxLines="2"
+      android:ellipsize="end"
       android:textColor="@color/widget_ink"
       android:textSize="20sp"
       android:textStyle="bold" />
@@ -71,6 +75,8 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="2dp"
+      android:maxLines="2"
+      android:ellipsize="end"
       android:textColor="@color/widget_sub"
       android:textSize="12sp" />
   </LinearLayout>
