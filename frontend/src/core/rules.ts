@@ -10,7 +10,7 @@ import type { AttentionItem, Severity } from "./intelligence";
 import { monthTotals, serviceEstimate } from "./intelligence";
 import { homeSchedule, tripStatus } from "./domains";
 import type { DB, Rule, RuleTriggerKind } from "./types";
-import { addDays, daysBetween, fmtDate, money, monthKey, monthLabel, num, todayISO } from "./format";
+import { addDays, addMonths, daysBetween, fmtDate, money, monthKey, monthLabel, num, todayISO } from "./format";
 import { serviceLeftLine } from "./vehicleMath";
 
 export type TriggerMeta = {
@@ -237,8 +237,9 @@ export function dryRun(db: DB, r: Rule, today = todayISO()): { count: number; wi
       break;
     case "budgetPct":
       if (db.budget.monthly > 0)
+        // Adding 30 days jumps two calendar months in the short ones. Walk months.
         for (let i = 0; i < 3; i++) {
-          const mk = monthKey(addDays(today, -i * 30));
+          const mk = monthKey(addMonths(`${today.slice(0, 7)}-01`, -i));
           if ((monthTotals(db, mk).spent / db.budget.monthly) * 100 >= v) count++;
         }
       break;

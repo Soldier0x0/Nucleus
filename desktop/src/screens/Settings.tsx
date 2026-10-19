@@ -15,8 +15,12 @@ import { APP_VERSION } from "../App";
 import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
 
-const DESKTOP_MODULES: ModuleId[] = ["vehicles", "money", "papers", "notes", "kanban"];
-const PHONE_ONLY: ModuleId[] = ["lab", "net", "cycle", "health"];
+// The desktop truth: every module with a real sidebar screen is toggleable here,
+// in the sidebar's order. lab/net/cycle stay phone-only; the rest have no desktop
+// screen yet.
+const SECTION_ORDER: ModuleId[] = ["money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "kanban", "tools", "rules", "dev", "builder", "lab", "net", "cycle"];
+const DESKTOP_MODULES: ModuleId[] = ["money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "kanban"];
+const PHONE_ONLY: ModuleId[] = ["lab", "net", "cycle"];
 
 export function Settings() {
   const { db, setSettings, replace } = useStore();
@@ -256,7 +260,7 @@ export function Settings() {
             <p className="muted">Modules are shared with the phone. Phone-only modules never appear on the desktop.</p>
             <table className="table">
               <tbody>
-                {MODULES.map((m) => {
+                {[...MODULES].sort((a, b) => SECTION_ORDER.indexOf(a.id as ModuleId) - SECTION_ORDER.indexOf(b.id as ModuleId)).map((m) => {
                   const id = m.id as ModuleId;
                   const state = db.settings.modules.find((x) => x.id === id);
                   const desktop = DESKTOP_MODULES.includes(id);

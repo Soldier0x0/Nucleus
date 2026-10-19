@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 import { lastSeenLine } from "@core/syncStatus";
 import { visibleAttention } from "@core/attention";
 import { todayISO } from "@core/format";
 import { StoreProvider, useStore } from "./store";
 import { LockScreen } from "./LockScreen";
 import { SyncBridge } from "./sync/SyncBridge";
-import { secureStatus } from "./platform/secure";
+import { secureStatus, lockSecure } from "./platform/secure";
 import { localPrefs } from "./platform/storage";
 import { storedThemePref, THEME_KEY } from "./platform/theme";
 import { Today } from "./screens/Today";
@@ -28,6 +28,29 @@ export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" 
 
 /** Bumped per release; also shown as the sidebar chip. */
 export const APP_VERSION = "0.15";
+
+/** Idle time before the desktop locks itself, like the phone does. */
+const IDLE_LOCK_MS = 15 * 60_000;
+
+const IDLE_EVENTS: (keyof WindowEventMap)[] = ["mousemove", "mousedown", "keydown", "wheel", "touchstart"];
+
+/** Locks the app after IDLE_LOCK_MS without input while it is unlocked. */
+function useIdleLock(enabled: boolean, onIdle: () => void): void {
+  useEffect(() => {
+    if (!enabled) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(onIdle, IDLE_LOCK_MS);
+    };
+    for (const event of IDLE_EVENTS) window.addEventListener(event, reset, { passive: true });
+    reset();
+    return () => {
+      clearTimeout(timer);
+      for (const event of IDLE_EVENTS) window.removeEventListener(event, reset);
+    };
+  }, [enabled, onIdle]);
+}
 
 type SectionDef = { id: SectionId; label: string; icon: ReactNode; group: "workspace" | "modules" | "foot" };
 
@@ -151,6 +174,13 @@ const HIDDEN_SECTIONS: SectionId[] = ["devlab"];
 export function App() {
   const [lockMode, setLockMode] = useState<"create" | "unlock" | null>(null);
   const [unlocked, setUnlocked] = useState(false);
+
+  // 15 idle minutes send the app back to the lock screen, like the phone.
+  const idleLock = useCallback(() => {
+    lockSecure();
+    setUnlocked(false);
+  }, []);
+  useIdleLock(unlocked, idleLock);
 
   useEffect(() => {
     let alive = true;

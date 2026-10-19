@@ -13,7 +13,7 @@
  */
 import type { DB, PairedDevice } from "@core/types";
 import { addPairedDevice, derivePairKey, openMessage, pairedDeviceById, sealMessage, verifyPairProof } from "@core/pairing";
-import { applySyncDelta, changesSince, missingVaultFiles, vaultFileList, type SyncDelta, type VaultFile } from "@core/syncPackage";
+import { applySyncDelta, changesSince, missingVaultFiles, vaultFileList, verifyVaultPayload, type SyncDelta, type VaultFile } from "@core/syncPackage";
 import type { SyncCollection } from "@core/syncStamp";
 import { fromUtf8 } from "../platform/crypto";
 import { cachedPublicIdentity, rememberPublicIdentity } from "./identity";
@@ -36,6 +36,27 @@ const BLOB_TARGETS: { list: SyncCollection; field: string; kind: string; fallbac
 const reply = (status: number, value: unknown): HttpReply => ({ status, body: typeof value === "string" ? value : JSON.stringify(value) });
 const locked = () => reply(503, { error: "locked" });
 
+// Pair-code guesses come one POST at a time; pace them. The counting is
+// server-side and keyed to the code on the pair screen: when the code is
+// regenerated the count clears, and a successes clears it too.
+let pairFailCode = "";
+let pairFailCount = 0;
+const PAIR_FAIL_LIMIT = 5;
+function notePairFail(code: string): void {
+  if (pairFailCode !== code) {
+    pairFailCode = code;
+    pairFailCount = 0;
+  }
+  pairFailCount += 1;
+}
+function pairFailSaturated(code: string): boolean {
+  if (pairFailCode !== code) {
+    pairFailCode = code;
+    pairFailCount = 0;
+  }
+  return pairFailCount >= PAIR_FAIL_LIMIT;
+}
+
 export function handleSyncRequest(method: string, path: string, body: Uint8Array): HttpReply {
   const route = path.split("?")[0] ?? path;
   if (method === "GET" && route === "/info") return handleInfo();
@@ -56,23 +77,37 @@ function handlePair(body: Uint8Array): HttpReply {
   const identity = runtime?.identity() ?? null;
   const code = currentPairCode();
   if (!runtime || !identity || !code) return locked();
+  // An online guesser is indistinguishable from a mis-typed phone here, so the
+  // counter only pauses the guesses until the code is regenerated or one lands.
+  if (pairFailSaturated(code)) return reply(429, { ok: false, error: "pairing paused; reopen the pair screen" });
 
   let outer: Record<string, unknown>;
   try {
     const parsed = JSON.parse(fromUtf8(body)) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return reply(400, { ok: false, error: "bad-request" });
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      notePairFail(code);
+      return reply(400, { ok: false, error: "bad-request" });
+    }
     outer = parsed as Record<string, unknown>;
   } catch {
+    notePairFail(code);
     return reply(400, { ok: false, error: "bad-request" });
   }
-  if (outer.t !== "nucleus-pair-1" || typeof outer.body !== "string") return reply(400, { ok: false, error: "bad-request" });
+  if (outer.t !== "nucleus-pair-1" || typeof outer.body !== "string") {
+    notePairFail(code);
+    return reply(400, { ok: false, error: "bad-request" });
+  }
   const phonePublicKey = typeof outer.publicKey === "string" ? outer.publicKey : typeof outer.phonePublicKey === "string" ? outer.phonePublicKey : "";
-  if (!phonePublicKey) return reply(403, { ok: false, error: "bad-code" });
+  if (!phonePublicKey) {
+    notePairFail(code);
+    return reply(403, { ok: false, error: "bad-code" });
+  }
 
   let pairKey: string;
   try {
     pairKey = derivePairKey(identity.privateKey, phonePublicKey, code);
   } catch {
+    notePairFail(code);
     return reply(403, { ok: false, error: "bad-code" });
   }
   const refused = sealMessage(pairKey, { ok: false, error: "bad-code" });
@@ -80,9 +115,13 @@ function handlePair(body: Uint8Array): HttpReply {
   let payload: Record<string, unknown>;
   try {
     const opened = openMessage(pairKey, outer.body) as unknown;
-    if (!opened || typeof opened !== "object" || Array.isArray(opened)) return { status: 403, body: refused };
+    if (!opened || typeof opened !== "object" || Array.isArray(opened)) {
+      notePairFail(code);
+      return { status: 403, body: refused };
+    }
     payload = opened as Record<string, unknown>;
   } catch {
+    notePairFail(code);
     return { status: 403, body: refused };
   }
 
@@ -90,8 +129,12 @@ function handlePair(body: Uint8Array): HttpReply {
   const phoneName = typeof payload.name === "string" ? payload.name.trim() : "";
   const phoneKey = typeof payload.phonePublicKey === "string" ? payload.phonePublicKey : phonePublicKey;
   const proof = typeof payload.proof === "string" ? payload.proof : "";
-  if (!phoneId || phoneKey !== phonePublicKey || !verifyPairProof(pairKey, proof)) return { status: 403, body: refused };
+  if (!phoneId || phoneKey !== phonePublicKey || !verifyPairProof(pairKey, proof)) {
+    notePairFail(code);
+    return { status: 403, body: refused };
+  }
 
+  pairFailCount = 0;
   const device: PairedDevice = { id: phoneId, name: phoneName || "Phone", key: pairKey, lastSyncAt: "" };
   runtime.apply((db) => addPairedDevice(db, device));
   rememberPublicIdentity(identity);
@@ -209,6 +252,8 @@ function applyIncomingVaultFiles(db: DB, files: unknown[]): DB {
     const ref = typeof row.ref === "string" ? row.ref : "";
     const dataB64 = typeof row.dataB64 === "string" ? row.dataB64 : "";
     if (!hash || !kind || !ref || !dataB64 || have.has(hash)) continue;
+    // Only keep payloads whose content hashes to the row the sender named.
+    if (!verifyVaultPayload(hash, dataB64)) continue;
     const target = BLOB_TARGETS.find((t) => t.kind === kind);
     if (!target) continue;
     const rows = (next[target.list] as unknown as Record<string, unknown>[] | undefined) ?? [];

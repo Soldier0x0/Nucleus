@@ -39,7 +39,9 @@ export default function Attention() {
   const mark = (it: AttentionItem, status: "done" | "dismissed" | "snoozed", days = 3) => {
     update((d) => {
       let next = d;
-      if (status === "done" && it.subscriptionId) next = paySubscription(next, it.subscriptionId);
+      // A second tap (or a swipe and a tap in quick succession) must not pay twice.
+      // The first "done" already advanced the renewal.
+      if (status === "done" && it.subscriptionId && d.attention[it.key]?.status !== "done") next = paySubscription(next, it.subscriptionId);
       return { ...next, attention: { ...next.attention, [it.key]: { status, until: status === "snoozed" ? addDays(today, days) : undefined } } };
     });
     setOpen(null);

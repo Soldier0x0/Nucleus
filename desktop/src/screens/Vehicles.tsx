@@ -73,6 +73,7 @@ function VehicleDetail({ vehicle }: { vehicle: Vehicle }) {
       vehicleId: vehicle.id,
       date: fuelDraft.date || todayISO(),
       odometer: Number.isFinite(odometer) ? Math.round(odometer) : odo.value,
+      ...(Number.isFinite(odometer) ? {} : { odometerEstimated: true }),
       litres: volume,
       price,
       total: Math.round(volume * price * 100) / 100,
@@ -86,9 +87,12 @@ function VehicleDetail({ vehicle }: { vehicle: Vehicle }) {
   const addLog = () => {
     const value = Number.parseFloat(logDraft.odometer.replace(/,/g, ""));
     if (!Number.isFinite(value)) return;
-    const row: OdometerLog = { id: uid(), vehicleId: vehicle.id, at: new Date(`${logDraft.date || todayISO()}T12:00:00`).toISOString(), odometer: Math.round(value) };
+    // Plain date, like fuel rows: parsing into an ISO instant lets timezones
+    // move the reading onto the neighbouring calendar day (UTC+13 back a day).
+    const at = logDraft.date || todayISO();
+    const row: OdometerLog = { id: uid(), vehicleId: vehicle.id, at, odometer: Math.round(value) };
     update((d) => ({ ...d, odometerLogs: [row, ...d.odometerLogs] }));
-    setLogDraft({ date: row.at.slice(0, 10), odometer: "" });
+    setLogDraft({ date: at, odometer: "" });
   };
 
   const removeFuel = (id: string) => update((d) => ({ ...d, fuel: d.fuel.filter((f) => f.id !== id) }));

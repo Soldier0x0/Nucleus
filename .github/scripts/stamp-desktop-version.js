@@ -36,6 +36,18 @@ function stamp({ root, version }) {
     throw new Error("Could not find the package version line in desktop/src-tauri/Cargo.toml");
   }
   fs.writeFileSync(cargoPath, stamped);
+  const appPath = path.join(root, "desktop", "src", "App.tsx");
+  const app = fs.readFileSync(appPath, "utf8");
+  // The sidebar chip and the About row read this export; without the stamp the
+  // app announced the version of the era its constant was last touched.
+  const appStamped = app.replace(
+    /export const APP_VERSION = "[^"\n]*";/,
+    `export const APP_VERSION = "${semver}";`,
+  );
+  if (!appStamped.includes(`APP_VERSION = "${semver}"`)) {
+    throw new Error("Could not find the APP_VERSION export in desktop/src/App.tsx");
+  }
+  fs.writeFileSync(appPath, appStamped);
   return semver;
 }
 

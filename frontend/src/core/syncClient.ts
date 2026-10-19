@@ -12,7 +12,7 @@
  */
 import type { DB, PairedDevice } from "./types";
 import { addPairedDevice, derivePairKey, newDeviceKeyPair, openMessage, pairProof, removePairedDevice, sealMessage, PAIR_QR_TAG } from "./pairing";
-import { applySyncDelta, changesSince, vaultFileList, type SyncDelta, type VaultFile } from "./syncPackage";
+import { applySyncDelta, changesSince, vaultFileList, verifyVaultPayload, type SyncDelta, type VaultFile } from "./syncPackage";
 import type { SyncCollection } from "./syncStamp";
 import { randomBytes } from "./crypto";
 
@@ -261,6 +261,8 @@ export function applyIncomingVaultFiles(db: DB, files: unknown): DB {
     const ref = typeof row.ref === "string" ? row.ref : "";
     const dataB64 = typeof row.dataB64 === "string" ? row.dataB64 : "";
     if (!hash || !kind || !ref || !dataB64 || have.has(hash)) continue;
+    // Only keep payloads whose content hashes to the row the sender named.
+    if (!verifyVaultPayload(hash, dataB64)) continue;
     const target = BLOB_TARGETS.find((t) => t.kind === kind);
     if (!target) continue;
     const rows = (next[target.list] as unknown as Record<string, unknown>[] | undefined) ?? [];

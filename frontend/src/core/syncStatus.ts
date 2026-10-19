@@ -27,3 +27,11 @@ export function lastSeenLine(lastSyncAt: string | undefined, now: string): strin
   const d = Math.round(h / 24);
   return `Phone last seen ${d}d ago`;
 }
+
+/** True while the phone's last sync is younger than maxMins, parsed without trusting string shapes. */
+export function phoneSeenFresh(lastSyncAt: string | undefined, now: string, maxMins = 1440): boolean {
+  if (!lastSyncAt) return false;
+  const ms = Date.parse(now) - Date.parse(lastSyncAt);
+  if (!Number.isFinite(ms)) return false;
+  return ms >= 0 && ms <= maxMins * 60000;
+}

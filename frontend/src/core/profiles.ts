@@ -10,6 +10,7 @@ import { withSampleData } from "./sample";
 
 export const DECOY_DB_KEY = "nucleus.profile.decoy.v1";
 export const PROFILE_INDEX_KEY = "nucleus.profiles.v1";
+export const SWITCH_MARKER_KEY = "nucleus.profile.switchMarker.v1";
 export const DEFAULT_PROFILE_ID = "personal";
 
 export const profileDocKey = (id: string) => `nucleus.profile.${id}.v1`;
@@ -39,6 +40,25 @@ export function parseProfileIndex(raw: string | null): ProfileIndex {
     return defaultProfileIndex();
   }
 }
+
+/**
+ * Marker for a profile switch that was interrupted: written only after the
+ * primary document already holds the target profile, so on boot it can never
+ * point at a profile the document does not carry. Boot clears it after tying
+ * the index to that same profile.
+ */
+export function parseSwitchMarker(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { to?: unknown };
+    if (typeof parsed.to !== "string" || !parsed.to.trim()) return null;
+    return parsed.to.trim().slice(0, 40);
+  } catch {
+    return null;
+  }
+}
+
+export const encodeSwitchMarker = (to: string) => JSON.stringify({ to });
 
 /** Primary always wins when both hashes match, so a duplicated PIN cannot hide the real profile. */
 export function pickPinMatch(primary: boolean, decoy: boolean): PinMatch {

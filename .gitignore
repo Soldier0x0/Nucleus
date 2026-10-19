@@ -6,4 +6,8 @@ credentials.json
 *.key
 .credentials
 .cursor/
+*.keystore
+keystore.properties
+google-services.json
+GoogleService-Info.plist
 

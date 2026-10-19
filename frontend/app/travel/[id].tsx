@@ -9,7 +9,7 @@ import { countryFacts, holidays, rates } from "@/src/core/online";
 import { addTripExpense, PACK_TEMPLATES, packFromTemplate, packingFromGroups, readiness, reuseCandidate, tripStatus, tripTxns, upsertTrip } from "@/src/core/domains";
 import { deleteEntity } from "@/src/core/actions";
 import { EXPENSE_CATEGORIES } from "@/src/core/defaults";
-import { CURRENCIES, addDays, fmtDate, num, parseNum, uid } from "@/src/core/format";
+import { CURRENCIES, addDays, fmtDate, num, parseNum, todayISO, uid } from "@/src/core/format";
 import type { Trip } from "@/src/core/types";
 import { Header } from "@/src/components/Header";
 import { Amount, Button, Card, Chip, ChipRow, EmptyState, Eyebrow, Icon, IconButton, Press, Segmented, T } from "@/src/components/ui";
@@ -302,7 +302,7 @@ function TripExpenseSheet({ trip, onClose }: { trip: Trip; onClose: () => void }
   const converted = A * R;
   const save = () => {
     if (!(A > 0) || !(R > 0)) return;
-    update((d) => addTripExpense(d, trip.id, { id: uid(), type: "expense", amount: Number(converted.toFixed(2)), category: cat, date: new Date().toISOString().slice(0, 10), note: note.trim() || `${trip.name} · ${cat}`, ...(cur !== home ? { origAmount: A, origCurrency: cur } : {}) }));
+    update((d) => addTripExpense(d, trip.id, { id: uid(), type: "expense", amount: Number(converted.toFixed(2)), category: cat, date: todayISO(), note: note.trim() || `${trip.name} · ${cat}`, ...(cur !== home ? { origAmount: A, origCurrency: cur } : {}) }));
     toast("Trip expense added · also in Money", "cash");
     onClose();
   };

@@ -74,7 +74,7 @@ test("password envelopes decrypt across implementations in both directions", asy
 
   assert.equal(deskEnv.kdf, "pbkdf2-sha256");
   assert.equal(deskEnv.iterations, phone.PBKDF2_ITERATIONS);
-  assert.equal(deskEnv.iterations, 100_000);
+  assert.equal(deskEnv.iterations, 600_000);
   assert.equal(desk.fromB64(deskEnv.salt).length, 16);
   assert.equal(desk.fromB64(deskEnv.iv).length, 12);
 });

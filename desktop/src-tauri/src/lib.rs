@@ -26,10 +26,49 @@ fn pin_to_key(password: &str) -> Vec<u8> {
 
 /// Writes a backup export to the path the user picked in the save dialog.
 /// The fs plugin scope only covers the app data folder, so this tiny command
-/// handles the one file the user explicitly chose.
+/// handles the one file the user explicitly chose. The webview cannot name
+/// location outside these checks: absolute path, an existing parent folder,
+/// an export extension and a bounded size.
 #[tauri::command]
 fn write_export_file(path: String, contents: String) -> Result<(), String> {
-    std::fs::write(&path, contents).map_err(|e| e.to_string())
+    const EXPORT_EXTENSIONS: [&str; 4] = ["json", "csv", "ics", "md"];
+    const MAX_EXPORT_BYTES: usize = 64 * 1024 * 1024;
+    if contents.len() > MAX_EXPORT_BYTES {
+        return Err("export is too large to save".to_string());
+    }
+    if contents.contains('\0') {
+        return Err("export contains a NUL byte".to_string());
+    }
+    let target = std::path::PathBuf::from(&path);
+    if !target.is_absolute() {
+        return Err("export path must be absolute".to_string());
+    }
+    let ext = target
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .unwrap_or_default();
+    if !EXPORT_EXTENSIONS.contains(&ext.as_str()) {
+        return Err(format!("exports are limited to {}", EXPORT_EXTENSIONS.join(", ")));
+    }
+    let parent = match target.parent() {
+        Some(dir) if dir.is_dir() => dir,
+        _ => return Err("the destination folder does not exist".to_string()),
+    };
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|_| "the destination folder could not be resolved".to_string())?;
+    if target.is_dir() {
+        return Err("export path is a folder".to_string());
+    }
+    // The real destination is the canonical parent joined with the file name
+    // only, so a ".." segment cannot escape the folder the dialog named.
+    let name = target
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "export file name is invalid".to_string())?;
+    let safe_target = canonical_parent.join(name);
+    std::fs::write(&safe_target, contents).map_err(|e| e.to_string())
 }
 
 /// Relays one HTTP request to the webview and waits up to 5 s for the answer.

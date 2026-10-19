@@ -3,7 +3,7 @@ import { monthTotals, serviceEstimate } from "@core/intelligence";
 import { serviceLeftLine } from "@core/vehicleMath";
 import { odometerEstimate } from "@core/fuelCapture";
 import { visibleAttention } from "@core/attention";
-import { lastSeenLine } from "@core/syncStatus";
+import { lastSeenLine, phoneSeenFresh } from "@core/syncStatus";
 import { ACT_WORDS, journalKind, journalLabel } from "@core/journal";
 import { daysBetween, fmtDate, money, monthKey, num, relDays, todayISO } from "@core/format";
 
@@ -25,7 +25,9 @@ export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | 
   const lastFill = [...db.fuel].sort((a, b) => b.date.localeCompare(a.date))[0];
   const fillVehicle = lastFill ? db.vehicles.find((v) => v.id === lastFill.vehicleId) : undefined;
   const recentPapers = [...db.papers].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")).slice(0, 4);
-  const seen = lastSeenLine((db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt, new Date().toISOString());
+  const lastDeviceSync = (db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt;
+  const seen = lastSeenLine(lastDeviceSync, new Date().toISOString());
+  const seenFresh = phoneSeenFresh(lastDeviceSync, new Date().toISOString());
   const budgetPct = db.budget.monthly > 0 ? Math.min(100, Math.round((totals.spent / db.budget.monthly) * 100)) : null;
 
   return (
@@ -190,7 +192,7 @@ export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | 
             <span className="tile-lab">With your phone</span>
             <div className="mini-list" style={{ marginTop: 6 }}>
               <div className="mini-row pal-row">
-                <span className={`dot ${seen.startsWith("Phone last seen") && !seen.includes("day") ? "good" : "warn"}`}></span>
+                <span className={`dot ${seenFresh ? "good" : "warn"}`}></span>
                 <span className="m">{seen}</span>
               </div>
             </div>

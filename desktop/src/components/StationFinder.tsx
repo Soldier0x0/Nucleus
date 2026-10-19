@@ -95,7 +95,7 @@ export function StationFinder() {
       const { openUrl } = await import("@tauri-apps/plugin-opener");
       await openUrl(link);
     } else {
-      window.open(link, "_blank");
+      window.open(link, "_blank", "noopener");
     }
   };
 
