@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Image, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { Image, Modal, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { stepGallery, type GalleryShot } from "@/src/core/gallery";
 
 export function PhotoGallery({ shots, testID }: { shots: GalleryShot[]; testID: string }) {
@@ -31,16 +31,23 @@ export function PhotoGallery({ shots, testID }: { shots: GalleryShot[]; testID: 
         ))}
       </ScrollView>
       {open !== null ? (
-        <ScrollView
-          horizontal
-          pagingEnabled
-          decelerationRate="fast"
-          onMomentumScrollEnd={(event) => onEnd(event.nativeEvent.contentOffset.x, open, setOpen)}
-        >
-          {shots.map((shot) => (
-            <Image key={`open-${shot.id}`} source={{ uri: shot.uri }} style={{ width: page, height: 320 }} />
-          ))}
-        </ScrollView>
+        <Modal transparent animationType="fade" visible onRequestClose={() => setOpen(null)}>
+          <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)" }} onPress={() => setOpen(null)}>
+            <ScrollView
+              horizontal
+              pagingEnabled
+              decelerationRate="fast"
+              contentOffset={{ x: page * open, y: 0 }}
+              onMomentumScrollEnd={(event) => onEnd(event.nativeEvent.contentOffset.x, open, setOpen)}
+            >
+              {shots.map((shot) => (
+                <Pressable key={`open-${shot.id}`} onPress={() => setOpen(null)}>
+                  <Image source={{ uri: shot.uri }} style={{ width: page, height: 320 }} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Modal>
       ) : null}
     </View>
   );

@@ -1201,6 +1201,11 @@ button {
   padding: 8px;
 }
 
+.kan-card.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 /* ---------- settings ---------- */
 .settings-grid {
   display: grid;

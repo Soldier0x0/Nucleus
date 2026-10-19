@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { visibleAttention } from "@core/attention";
-import { fmtDate, money } from "@core/format";
+import { fmtDate, money, todayISO } from "@core/format";
+import type { DB } from "@core/types";
 import type { SectionId } from "../App";
 
 type Cmd = { id: string; title: string; subtitle?: string; run: () => void };
@@ -50,47 +51,52 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
 
     for (const id of Object.keys(SECTION_LABEL) as SectionId[]) {
       if (id === "devlab" && !includeDev) continue;
+      if (!moduleOn(db, id)) continue;
       const n = of(id);
       push(`section:${id}`, SECTION_LABEL[id], n < 9 ? `Open — Ctrl+${n + 1}` : "Open", () => onJump(id));
     }
 
-    for (const item of visibleAttention(db, todayDb())) {
+    for (const item of visibleAttention(db, todayISO())) {
       push(`att:${item.key}`, item.title, item.subtitle, () => onJump("attention"));
     }
 
-    for (const v of db.vehicles) {
+    if (moduleOn(db, "vehicles")) for (const v of db.vehicles) {
       if (match(v.name, v.make, v.model, v.plate)) out.push({ id: `vehicle:${v.id}`, title: v.name, subtitle: "Vehicle", run: () => onJump("vehicles", v.id) });
     }
-    for (const t of db.txns) {
-      if (match(t.category, t.note, t.item)) out.push({ id: `txn:${t.id}`, title: t.note || t.category, subtitle: `${t.category} · ${fmtDate(t.date)} · ${money(t.amount, db.settings.currency)}`, run: () => onJump("money") });
+    if (moduleOn(db, "money")) {
+      for (const t of db.txns) {
+        if (match(t.category, t.note, t.item)) out.push({ id: `txn:${t.id}`, title: t.note || t.category, subtitle: `${t.category} · ${fmtDate(t.date)} · ${money(t.amount, db.settings.currency)}`, run: () => onJump("money") });
+      }
+      for (const s of db.subscriptions) {
+        if (match(s.name, s.category)) out.push({ id: `sub:${s.id}`, title: s.name, subtitle: `Renews ${fmtDate(s.nextRenewal)}`, run: () => onJump("money") });
+      }
     }
-    for (const s of db.subscriptions) {
-      if (match(s.name, s.category)) out.push({ id: `sub:${s.id}`, title: s.name, subtitle: `Renews ${fmtDate(s.nextRenewal)}`, run: () => onJump("money") });
-    }
-    for (const p of db.papers) {
+    if (moduleOn(db, "papers")) for (const p of db.papers) {
       if (match(p.title, p.number, p.kind, p.note, p.insurer)) out.push({ id: `paper:${p.id}`, title: p.title, subtitle: "Paper", run: () => onJump("papers", p.id) });
     }
-    for (const n of db.notes) {
+    if (moduleOn(db, "notes")) for (const n of db.notes) {
       if (match(n.title, n.body, ...n.checklist.map((c) => c.text))) out.push({ id: `note:${n.id}`, title: n.title || "Untitled note", subtitle: n.body.slice(0, 70) || undefined, run: () => onJump("notes", n.id) });
     }
-    for (const b of db.kanban) {
+    if (moduleOn(db, "kanban")) for (const b of db.kanban) {
       for (const c of b.cards) {
         if (match(c.title, c.note, b.name)) out.push({ id: `card:${c.id}`, title: c.title, subtitle: b.name, run: () => onJump("notes", c.id) });
       }
     }
-    for (const t of db.trips) {
+    if (moduleOn(db, "travel")) for (const t of db.trips) {
       if (match(t.name, t.destination)) out.push({ id: `trip:${t.id}`, title: t.name, subtitle: t.destination, run: () => onJump("travel") });
     }
-    for (const m of db.media) {
+    if (moduleOn(db, "media")) for (const m of db.media) {
       if (match(m.title)) out.push({ id: `media:${m.id}`, title: m.title, subtitle: m.kind, run: () => onJump("media") });
     }
-    for (const a of db.appliances) {
-      if (match(a.name, a.room, a.brand)) out.push({ id: `app:${a.id}`, title: a.name, subtitle: a.room, run: () => onJump("home") });
+    if (moduleOn(db, "home")) {
+      for (const a of db.appliances) {
+        if (match(a.name, a.room, a.brand)) out.push({ id: `app:${a.id}`, title: a.name, subtitle: a.room, run: () => onJump("home") });
+      }
+      for (const c of db.chores) {
+        if (match(c.name, c.room)) out.push({ id: `chore:${c.id}`, title: c.name, subtitle: `Every ${c.everyDays} days`, run: () => onJump("home") });
+      }
     }
-    for (const c of db.chores) {
-      if (match(c.name, c.room)) out.push({ id: `chore:${c.id}`, title: c.name, subtitle: `Every ${c.everyDays} days`, run: () => onJump("home") });
-    }
-    for (const m of db.medicines) {
+    if (moduleOn(db, "health")) for (const m of db.medicines) {
       if (match(m.name, m.dose)) out.push({ id: `med:${m.id}`, title: m.name, subtitle: m.dose, run: () => onJump("health") });
     }
     for (const r of db.reminders.slice(-20).reverse()) {
@@ -140,10 +146,17 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
   );
 }
 
+/**
+ * Keyboard order for Ctrl+1..9 across the sidebar. Devlab comes last.
+ */
 function of(section: SectionId): number {
   return ["today", "attention", "money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "settings"].indexOf(section);
 }
 
-function todayDb(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Workspace sections always show; module sections follow the module switches in Settings. */
+function moduleOn(db: DB, section: string): boolean {
+  if (section === "today" || section === "attention" || section === "settings" || section === "devlab") return true;
+  if (section === "notes") return !["notes", "kanban"].every((id) => db.settings.modules.find((m) => m.id === id)?.enabled === false);
+  const state = db.settings.modules.find((m) => m.id === section);
+  return state ? state.enabled : true;
 }

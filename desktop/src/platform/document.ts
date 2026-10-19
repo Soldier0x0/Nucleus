@@ -36,6 +36,14 @@ export async function dropLegacyDocument(): Promise<void> {
 }
 
 export async function discardDocument(): Promise<void> {
+  // "Start fresh" keeps its word: before the broken envelope is dropped from
+  // storage.json, the bytes are copied next to it so nothing is unrecoverable.
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  for (const key of [DB_KEY, LEGACY_DB_KEY]) {
+    await storage.getItem(key)
+      .then((value) => (value ? storage.setItem(`${key}.discarded-${stamp}`, value) : null))
+      .catch(() => {});
+  }
   await storage.removeItem(DB_KEY).catch(() => {});
   await storage.removeItem(LEGACY_DB_KEY).catch(() => {});
 }

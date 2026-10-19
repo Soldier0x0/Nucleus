@@ -6,7 +6,10 @@ import type { KanbanBoard, KanbanCard, Note } from "@core/types";
 type Tab = "notes" | "kanban";
 
 export function NotesKanban({ focusId }: { focusId?: string }) {
-  const [tab, setTab] = useState<Tab>("notes");
+  const { db } = useStore();
+  // A focus from anywhere (sidebar, palette) lands on the tab that owns the record;
+  // kanban cards live on the board, not in notes.
+  const [tab, setTab] = useState<Tab>(() => (focusId && db.kanban.some((b) => b.cards.some((c) => c.id === focusId)) ? "kanban" : "notes"));
   return (
     <div className="stack">
       <div className="tabs">
@@ -17,7 +20,7 @@ export function NotesKanban({ focusId }: { focusId?: string }) {
         ))}
       </div>
       {tab === "notes" ? <Notes focusId={focusId} /> : null}
-      {tab === "kanban" ? <Board /> : null}
+      {tab === "kanban" ? <Board focusId={focusId} /> : null}
     </div>
   );
 }
@@ -105,9 +108,10 @@ function Notes({ focusId }: { focusId?: string }) {
   );
 }
 
-function Board() {
+function Board({ focusId }: { focusId?: string }) {
   const { db, update } = useStore();
-  const [boardId, setBoardId] = useState<string | null>(db.kanban[0]?.id ?? null);
+  const owner = focusId ? db.kanban.find((b) => b.cards.some((c) => c.id === focusId)) : undefined;
+  const [boardId, setBoardId] = useState<string | null>(owner?.id ?? db.kanban[0]?.id ?? null);
   const [cardDrafts, setCardDrafts] = useState<Record<string, string>>({});
   const board = db.kanban.find((b) => b.id === boardId) ?? db.kanban[0] ?? null;
 
@@ -205,7 +209,7 @@ function Board() {
               .filter((c) => c.columnId === col.id)
               .sort((a, b) => a.order - b.order)
               .map((card) => (
-                <div className="kan-card" key={card.id}>
+                <div className={`kan-card ${card.id === focusId ? "kan-card on" : ""}`} key={card.id} data-testid={`kan-card-${card.id}`}>
                   <input
                     value={card.title}
                     onChange={(e) => patchBoard(board, (x) => ({ ...x, cards: x.cards.map((c) => (c.id === card.id ? { ...c, title: e.target.value } : c)) }))}

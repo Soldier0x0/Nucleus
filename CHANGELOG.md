@@ -10,6 +10,20 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.15.1
+
+- Fixed the signed update feed for Windows and Linux: the manifest now carries a proper three-part version number, so an install of v0.15 that could not see updates at all starts auto-updating from here. This first hop is still a hand-download of v0.15.1 from the release page.
+- Fixed dead taps in Settings → Notifications: the Water and Cycle sound rows open Android's channel settings even before those features were ever used, since all channels now exist up front.
+- Added notification taps that open their screen: reminder notices to Reminders, water notices to Health, cycle notices to Cycle, and bank text questions to Money.
+- Fixed the widgets cutting words in half: the value and price lines wrap to two lines and then ellipsize, one waiting thing reads "1 wants you", and the 4×2 card names its item with the due line like the 2×2 card.
+- Fixed the Money month strip strand at the current month: swiping forward now browses later months, matching the desktop's month input.
+- Fixed the papers gallery photo view showing as a second pager under the grid: it is now a fullscreen overlay that closes with a tap or the back button.
+- Fixed the Ctrl+K palette opening a kanban card as a blank note: it lands on the Kanban board with that card highlighted.
+- Fixed the "On desktop" module switches doing nothing: switched-off modules leave the sidebar, the palette and their screens, synced with the phone.
+- Fixed the station finder firing a second search while the first one was still running when Enter was pressed.
+- Fixed the palette treating midnight as the next day: attention answers by this computer's own local date.
+- Fixed "Start fresh" after an unreadable save: the copy is kept on disk as a backup before anything is dropped, and the key/value file is saved as write-and-rename, so a mid-write crash can no longer truncate the file and take every key with it.
+
 ## v0.15
 
 - Added the Warm Paper design pass on the desktop: the cream-paper light theme and warm dark theme from the design boards, a grouped 232 px sidebar with icons and a search button, page topbars with captions, and rebuilt Today, Attention, Money and Settings screens on the new layouts.
