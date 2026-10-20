@@ -10,6 +10,10 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.16.1
+
+- Fixed the desktop Cycle page floating its calendar halfway down a blank column. The calendar and the details now sit side by side, top aligned like the other modules.
+
 ## v0.16
 
 - Added the Tools, Rules, Dev Tools and Tool Builder screens to the desktop, so no module on it says "phone only" or "later phase" any more.

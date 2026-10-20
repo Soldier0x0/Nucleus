@@ -658,6 +658,15 @@ button {
   flex: 1;
   min-height: 0;
 }
+/* Two equally fat page columns (Cycle). Top-aligned like .workcols. */
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.split .workcol {
+  padding: 18px 28px 96px;
+}
 .workcols {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -1285,6 +1294,9 @@ button {
     grid-template-columns: 190px 1fr;
   }
   .workcols {
+    grid-template-columns: 1fr;
+  }
+  .split {
     grid-template-columns: 1fr;
   }
 }
