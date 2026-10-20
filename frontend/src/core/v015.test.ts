@@ -52,7 +52,7 @@ test("v015 · print keeps the list rows and media status visible", () => {
 
 test("v015 · the shell jumps straight from Today and stamps v0.15", () => {
   const app = read(`${DESK}/src/App.tsx`);
-  assert.match(app, /APP_VERSION\s*=\s*"0\.15"/, "version export drives the sidebar chip and About");
+  assert.match(app, /APP_VERSION\s*=\s*"0\.16(\.\d+)?"/, "version export drives the sidebar chip and About");
   assert.ok(app.includes("onJump"), "Today talks back to the shell");
 });
 

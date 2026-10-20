@@ -192,8 +192,15 @@ export function Cycle() {
   };
 
   return (
-    <div className="topbar">
-      <div className="workcol">
+    <>
+      <header className="topbar">
+        <div>
+          <p className="caption">Journal · calendar · stash · reminders</p>
+          <h1>Cycle</h1>
+        </div>
+      </header>
+      <div className="split">
+        <div className="workcol">
         {introDue ? (
           <div className="card">
             <div className="row">
@@ -617,6 +624,7 @@ export function Cycle() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -34,7 +34,7 @@ import { DropLayer } from "./components/DropLayer";
 export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "cycle" | "home" | "travel" | "papers" | "notes" | "media" | "tools" | "rules" | "dev" | "builder" | "net" | "lab" | "settings" | "devlab";
 
 /** Bumped per release; also shown as the sidebar chip. */
-export const APP_VERSION = "0.15";
+export const APP_VERSION = "0.16.1";
 
 /** Idle time before the desktop locks itself, like the phone does. */
 const IDLE_LOCK_MS = 15 * 60_000;
