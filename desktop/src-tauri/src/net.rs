@@ -248,13 +248,13 @@ fn os_version() -> Option<String> {
 fn total_memory_gb() -> f64 {
     #[cfg(target_os = "windows")]
     {
-        let out = std::process::Command::new("powershell")
+        std::process::Command::new("powershell")
             .args(["-NoProfile", "-Command", "[math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory/1GB,1)"])
             .output()
-            .ok()?;
-        let text = String::from_utf8_lossy(&out.stdout);
-        let value = text.trim().parse::<f64>().ok()?;
-        (value * 10.0).floor() / 10.0
+            .ok()
+            .and_then(|out| String::from_utf8_lossy(&out.stdout).trim().parse::<f64>().ok())
+            .map(|value| (value * 10.0).floor() / 10.0)
+            .unwrap_or(0.0)
     }
     #[cfg(not(target_os = "windows"))]
     {
