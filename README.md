@@ -1,14 +1,30 @@
 # Nucleus
 
+[![Build release APK](https://github.com/Soldier0x0/Nucleus/actions/workflows/android-apk.yml/badge.svg)](https://github.com/Soldier0x0/Nucleus/actions/workflows/android-apk.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
+[![Latest release](https://img.shields.io/github/v/release/Soldier0x0/Nucleus)](https://github.com/Soldier0x0/Nucleus/releases/latest)
+
 Nucleus is a private, local-first personal platform for vehicles, money, travel, home, notes, media and tools. Records stay on the device, encrypted. An optional Online switch, off by default, can fetch weather, currency rates and holidays without sending those records anywhere.
 
-The phone app is one APK. Install the latest release. That file is the whole app.
+One APK for the phone. Installers for Windows and Linux on the desktop. Both keep each other in sync over Wi-Fi.
 
-## Install
+<p align="center">
+  <img src="docs/shots/today.jpg" alt="The Today screen: a day summary with spending, income, upcoming renewals and the day's plan" width="820">
+</p>
+
+## What it looks like
+
+| Money | Cycle | Vehicles |
+|:---:|:---:|:---:|
+| <img src="docs/shots/money.jpg" width="280"> | <img src="docs/shots/cycle.jpg" width="280"> | <img src="docs/shots/vehicles.jpg" width="280"> |
+| <img src="docs/shots/attention.jpg" width="280"> | <img src="docs/shots/health.jpg" width="280"> | <img src="docs/shots/home.jpg" width="280"> |
+| <img src="docs/shots/notes.jpg" width="280"> | <img src="docs/shots/travel.jpg" width="280"> | <img src="docs/shots/settings.jpg" width="280"> |
+
+These screenshots run on the app's own sample dataset — Settings → Data → Add sample data. No real records. The desktop app shown here is the same document as the phone, side by side over Wi-Fi.
+
+## Install on the phone
 
 [Latest release](https://github.com/Soldier0x0/Nucleus/releases/latest)
-
-On the phone:
 
 1. Open that page.
 2. Download the APK. The file is named `nucleus-v0.N.apk`.
@@ -21,6 +37,10 @@ A first install uses that same file. If Nucleus is already on the phone, install
 Only the latest release is needed. Skip the older versions.
 
 If Android blocks the file, allow the browser or Files to install unknown apps, then open the APK again.
+
+## Install on the desktop
+
+The same release carries the desktop installers: `-setup.exe` and `.msi` for Windows, `.AppImage` and `.deb` for Linux. Download one from the [latest release](https://github.com/Soldier0x0/Nucleus/releases/latest) and install it the usual way. The desktop app opens the same encrypted document and keeps the phone in sync over Wi-Fi.
 
 ## Releases
 
@@ -40,7 +60,3 @@ Nucleus is open source under the MIT license — [LICENSE.md](LICENSE.md). The b
 The app is free. If it helps you:
 
 - [GitHub Sponsors](https://github.com/sponsors/Soldier0x0)
-
-## Desktop
-
-The desktop app ships the same document with installers for Windows (.msi and -setup.exe) and Linux (.deb and .AppImage) in the same release. Both keep the phone in sync over Wi-Fi. One release, one version — see above.
