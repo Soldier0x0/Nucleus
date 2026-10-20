@@ -199,7 +199,8 @@ test("v0154 · windows opened by the app cannot reach back into the app", () => 
 
 test("v0154 · exports are typed, bounded, and cannot walk out of the folder", () => {
   const rust = read(`${DESK_TAURI}/src/lib.rs`);
-  assert.match(rust, /const EXPORT_EXTENSIONS: \[&str; 4] = \["json", "csv", "ics", "md"\];/);
+  // v0.16 widens the list by one: the cycle doctor's PDF goes through the same guarded path.
+  assert.match(rust, /const EXPORT_EXTENSIONS: \[&str; 5] = \["json", "csv", "ics", "md", "pdf"\];/);
   assert.match(rust, /const MAX_EXPORT_BYTES: usize = 64 \* 1024 \* 1024;/);
   assert.match(rust, /contents\.contains\('\\0'\)/);
   assert.match(rust, /\.canonicalize\(\)/);
@@ -217,11 +218,15 @@ test("v0154 · the desktop capability set holds only what the app uses", () => {
 
 // ---------- the shipped look tells the truth ----------
 
-test("v0154 · the Settings rows follow the sidebar and offer only real desktop sections", () => {
+test("v0154 · the Settings rows follow the sidebar and every module is switchable", () => {
   const src = read(`${DESK}/src/screens/Settings.tsx`);
-  assert.match(src, /const SECTION_ORDER: ModuleId\[\] = \["money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "kanban", "tools", "rules", "dev", "builder", "lab", "net", "cycle"\];/);
-  assert.match(src, /const DESKTOP_MODULES: ModuleId\[\] = \["money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "kanban"\];/);
-  assert.match(src, /const PHONE_ONLY: ModuleId\[\] = \["lab", "net", "cycle"\];/);
+  // v0.16 made every module a real desktop screen, so every row is an
+  // ordinary switch and the Phone-only/Later-phase badges are gone.
+  assert.ok(!src.includes("DESKTOP_MODULES"), "the desktop/badge split is gone");
+  assert.ok(!src.includes("PHONE_ONLY"), "the phone-only badges are gone");
+  assert.ok(!src.includes("Later phase"), "no module sits in a later phase");
+  assert.ok(!src.includes("Phone only"), "no module is phone-only");
+  assert.ok(!src.includes("Phone-only modules never appear"), "the stale caption is gone");
   const order = src.indexOf("SECTION_ORDER");
   assert.match(
     src,

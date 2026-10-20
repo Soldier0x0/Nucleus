@@ -13,11 +13,18 @@ const SECTION_LABEL: Record<SectionId, string> = {
   money: "Money",
   vehicles: "Vehicles",
   health: "Health",
+  cycle: "Cycle",
   home: "Home",
   travel: "Travel",
   papers: "Papers",
   notes: "Notes",
   media: "Media",
+  tools: "Tools",
+  rules: "Rules",
+  dev: "Dev Tools",
+  builder: "Tool Builder",
+  net: "Network",
+  lab: "Lab",
   settings: "Settings",
   devlab: "Dev Lab",
 };
@@ -150,7 +157,7 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
  * Keyboard order for Ctrl+1..9 across the sidebar. Devlab comes last.
  */
 function of(section: SectionId): number {
-  return ["today", "attention", "money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "settings"].indexOf(section);
+  return ["today", "attention", "money", "vehicles", "health", "cycle", "home", "travel", "papers", "notes", "media", "tools", "rules", "dev", "builder", "net", "lab", "settings"].indexOf(section);
 }
 
 /** Workspace sections always show; module sections follow the module switches in Settings. */
