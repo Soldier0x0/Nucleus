@@ -10,6 +10,15 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.16
+
+- Added the Tools, Rules, Dev Tools and Tool Builder screens to the desktop, so no module on it says "phone only" or "later phase" any more.
+- Added the Cycle screen to the desktop: the calendar, day notes, change timer, stash counts, search, phases, doctor report, private export and buddy line, fed by the same data the phone logs.
+- Added the Network screen to the desktop: ping, a DNS lookup and a scan of the computer's own subnet, run by small local Rust helpers that only touch the name you type.
+- Added the Lab screen to the desktop with what a computer actually has — the machine facts, a click test and a display test — and plain words for the sensors a desktop does not have.
+- Added desktop reminders that use the browser notifications the webview already speaks, and a Rules screen with the same when/then editor, dry run and quiet hours as the phone.
+- Added a "sections" Settings page where all sixteen modules are ordinary switches, and the cycle doctor's PDF travels through the same guarded save path as every other export.
+
 ## v0.15.4
 
 - Fixed every number counting twice: the accounts, budget bar, week-left, month strip and CSV export skip transfers and internal moves, the trip spend nets refunds against what the trip cost, and "Rs 1500" now reads as 1500 instead of 15.

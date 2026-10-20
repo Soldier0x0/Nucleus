@@ -18,13 +18,20 @@ import { Travel } from "./screens/Travel";
 import { Papers } from "./screens/Papers";
 import { NotesKanban } from "./screens/NotesKanban";
 import { Media } from "./screens/Media";
+import { Tools } from "./screens/Tools";
+import { Rules } from "./screens/Rules";
+import { Dev } from "./screens/Dev";
+import { Builder } from "./screens/Builder";
+import { Cycle } from "./screens/Cycle";
+import { Net } from "./screens/Net";
+import { Lab } from "./screens/Lab";
 import { Settings } from "./screens/Settings";
 import { DevLab } from "./screens/DevLab";
 import { CommandPalette } from "./components/CommandPalette";
 import { LookChooser } from "./components/LookChooser";
 import { DropLayer } from "./components/DropLayer";
 
-export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "home" | "travel" | "papers" | "notes" | "media" | "settings" | "devlab";
+export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "cycle" | "home" | "travel" | "papers" | "notes" | "media" | "tools" | "rules" | "dev" | "builder" | "net" | "lab" | "settings" | "devlab";
 
 /** Bumped per release; also shown as the sidebar chip. */
 export const APP_VERSION = "0.15";
@@ -107,6 +114,17 @@ const SECTIONS: SectionDef[] = [
     icon: ic(<path d="M12 19s-6.6-4.2-8.4-8A4.65 4.65 0 0 1 12 7.7 4.65 4.65 0 0 1 20.4 11c-1.8 3.8-8.4 8-8.4 8Z" />),
   },
   {
+    id: "cycle",
+    label: "Cycle",
+    group: "modules",
+    icon: ic(
+      <>
+        <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+        <path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" />
+      </>,
+    ),
+  },
+  {
     id: "home",
     label: "Home",
     group: "modules",
@@ -147,6 +165,68 @@ const SECTIONS: SectionDef[] = [
       <>
         <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
         <path d="M3.5 8.5h17M7.5 5.5v3M16.5 5.5v3M8 16h4" />
+      </>,
+    ),
+  },
+  {
+    id: "tools",
+    label: "Tools",
+    group: "modules",
+    icon: ic(
+      <>
+        <rect x="5" y="3.5" width="14" height="17" rx="2" />
+        <path d="M8.5 8h7M8 11.5h8M9 15h6" />
+      </>,),
+  },
+  {
+    id: "rules",
+    label: "Rules",
+    group: "modules",
+    icon: ic(
+      <>
+        <circle cx="6" cy="6" r="2.2" />
+        <circle cx="6" cy="18" r="2.2" />
+        <circle cx="17" cy="7" r="2.2" />
+        <path d="M6 8.2v7.6M13 6.5a8.5 8.5 0 0 1-5.4 8" />
+      </>,
+    ),
+  },
+  {
+    id: "dev",
+    label: "Dev Tools",
+    group: "modules",
+    icon: ic(<path d="m9 8-4 4 4 4M15 8l4 4-4 4" />),
+  },
+  {
+    id: "builder",
+    label: "Tool Builder",
+    group: "modules",
+    icon: ic(
+      <>
+        <rect x="3.5" y="8" width="17" height="11" rx="2" />
+        <path d="M8 8V5.5h8V8M9.5 12.5h5" />
+      </>,
+    ),
+  },
+  {
+    id: "net",
+    label: "Network",
+    group: "modules",
+    icon: ic(
+      <>
+        <path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0" />
+        <circle cx="12" cy="18.5" r="1.3" />
+      </>,
+    ),
+  },
+  {
+    id: "lab",
+    label: "Lab",
+    group: "modules",
+    icon: ic(
+      <>
+        <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
+        <path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3" />
       </>,
     ),
   },
@@ -367,6 +447,13 @@ function Shell() {
         {section === "papers" ? <Papers focusId={focus?.id} /> : null}
         {section === "notes" ? <NotesKanban focusId={focus?.id} /> : null}
         {section === "media" ? <Media /> : null}
+        {section === "tools" ? <Tools focusId={focus?.id} /> : null}
+        {section === "rules" ? <Rules /> : null}
+        {section === "dev" ? <Dev /> : null}
+        {section === "builder" ? <Builder onJump={(sec, id) => jump(sec, id)} /> : null}
+        {section === "cycle" ? <Cycle /> : null}
+        {section === "net" ? <Net /> : null}
+        {section === "lab" ? <Lab /> : null}
         {section === "settings" ? <Settings /> : null}
         {section === "devlab" ? <DevLab /> : null}
       </main>

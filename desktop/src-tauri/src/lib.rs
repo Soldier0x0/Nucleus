@@ -11,6 +11,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_autostart::MacosLauncher;
 
+mod net;
 mod sync_server;
 use sync_server::{RunningServer, ServerInfo, StartOptions, SyncHandler, SyncRequest, SyncResponse};
 
@@ -31,7 +32,7 @@ fn pin_to_key(password: &str) -> Vec<u8> {
 /// an export extension and a bounded size.
 #[tauri::command]
 fn write_export_file(path: String, contents: String) -> Result<(), String> {
-    const EXPORT_EXTENSIONS: [&str; 4] = ["json", "csv", "ics", "md"];
+    const EXPORT_EXTENSIONS: [&str; 5] = ["json", "csv", "ics", "md", "pdf"];
     const MAX_EXPORT_BYTES: usize = 64 * 1024 * 1024;
     if contents.len() > MAX_EXPORT_BYTES {
         return Err("export is too large to save".to_string());
@@ -199,6 +200,7 @@ pub fn run() {
         .plugin(tauri_plugin_stronghold::Builder::new(pin_to_key).build())
         .setup(|app| {
             app.manage(SyncState::new(app.handle().clone()));
+            app.manage(net::LanState::default());
             setup_tray(app)?;
             Ok(())
         })
@@ -209,7 +211,12 @@ pub fn run() {
             sync_server_stop,
             sync_server_status,
             lan_ip,
-            hostname
+            hostname,
+            net::net_ping,
+            net::net_dns,
+            net::net_lan_start,
+            net::net_lan_stop,
+            net::device_facts
         ])
         .run(tauri::generate_context!())
         .expect("error while running Nucleus");

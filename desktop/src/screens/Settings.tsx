@@ -15,12 +15,9 @@ import { APP_VERSION } from "../App";
 import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
 
-// The desktop truth: every module with a real sidebar screen is toggleable here,
-// in the sidebar's order. lab/net/cycle stay phone-only; the rest have no desktop
-// screen yet.
-const SECTION_ORDER: ModuleId[] = ["money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "kanban", "tools", "rules", "dev", "builder", "lab", "net", "cycle"];
-const DESKTOP_MODULES: ModuleId[] = ["money", "vehicles", "health", "home", "travel", "papers", "notes", "media", "kanban"];
-const PHONE_ONLY: ModuleId[] = ["lab", "net", "cycle"];
+// The desktop truth (v0.16): every module the phone has has a real screen
+// here, so every row below is an ordinary switch in the sidebar's order.
+const SECTION_ORDER: ModuleId[] = ["money", "vehicles", "health", "cycle", "home", "travel", "papers", "notes", "media", "kanban", "tools", "rules", "dev", "builder", "net", "lab"];
 
 export function Settings() {
   const { db, setSettings, replace } = useStore();
@@ -257,28 +254,20 @@ export function Settings() {
 
           <section className="card st-sections">
             <h2>Sections</h2>
-            <p className="muted">Modules are shared with the phone. Phone-only modules never appear on the desktop.</p>
+            <p className="muted">Every module runs here as well as on the phone. Switch one off and its sidebar section goes with it.</p>
             <table className="table">
               <tbody>
                 {[...MODULES].sort((a, b) => SECTION_ORDER.indexOf(a.id as ModuleId) - SECTION_ORDER.indexOf(b.id as ModuleId)).map((m) => {
                   const id = m.id as ModuleId;
                   const state = db.settings.modules.find((x) => x.id === id);
-                  const desktop = DESKTOP_MODULES.includes(id);
-                  const phoneOnly = PHONE_ONLY.includes(id);
                   return (
-                    <tr key={m.id} className={desktop ? "" : "muted"}>
+                    <tr key={m.id}>
                       <td>{m.name}</td>
                       <td className="right">
-                        {phoneOnly ? (
-                          <span className="chip">Phone only</span>
-                        ) : desktop ? (
-                          <label className="switch">
-                            <input type="checkbox" checked={state?.enabled ?? true} onChange={(e) => toggleModule(id, e.target.checked)} />
-                            <span>On desktop</span>
-                          </label>
-                        ) : (
-                          <span className="chip">Later phase</span>
-                        )}
+                        <label className="switch" data-testid={`settings-module-${id}`}>
+                          <input type="checkbox" checked={state?.enabled ?? true} onChange={(e) => toggleModule(id, e.target.checked)} />
+                          <span>On desktop</span>
+                        </label>
                       </td>
                     </tr>
                   );
@@ -293,7 +282,7 @@ export function Settings() {
               <li><span className="logo" style={{ width: 20, height: 20 }}></span><b>Nucleus v{APP_VERSION}</b> — the desktop of your phone vault.</li>
               <li>Everything lives in one encrypted file saved as you edit. No account, no cloud, no ads.</li>
               <li>Sync runs peer-to-peer with the phone over your own Wi-Fi.</li>
-              <li>Desktop today: Today, Attention, Money, Vehicles, Health, Home, Travel, Papers, Notes, Media, Settings, Dev Lab (Ctrl+Alt+D).</li>
+              <li>Desktop today: Today, Attention, Money, Vehicles, Health, Cycle, Home, Travel, Papers, Notes, Media, Tools, Rules, Dev Tools, Tool Builder, Network, Lab, Settings, Dev Lab (Ctrl+Alt+D).</li>
             </ul>
             {isTauri() ? (
               <div className="row" style={{ marginTop: 10 }}>
