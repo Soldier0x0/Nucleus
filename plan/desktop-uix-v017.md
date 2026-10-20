@@ -113,6 +113,30 @@ Rules: line-height 1.4 body, 1.2 titles; max ~72ch for prose; truncate row text 
 - Print styles retained; screenshot/“fill the screen” Lab overlay unchanged.
 
 
+## 7a. Awwwards cross-check (done Oct 2026; nothing above changes)
+
+Checked the current SOTD/honors field plus the closest data-product winner in detail
+(Razorpay Sprint 26 — SOTD May 2026, 7.42/10, fintech launch site). Four findings, all of which
+this plan already bets on — recorded here so v0.17 reviews can lean on them:
+
+1. **Two-color discipline travels.** Sprint 26 runs an entire launch on one accent (#0039FF) plus
+   near-black (#151515) — "the restraint is what makes everything else land." Same principle as
+   our `--accent` strictly-interactive rule; we keep warm neutrals instead of near-black.
+2. **Calm earns motion.** Every Rive animation there pulls focus because the surrounding space is
+   quiet. Practical rule for us: **one hero motion moment per screen** (the KPI count-up), every
+   other transition stays at the 120/200ms token tier. No ambient loops, no decorative springs.
+3. **Big spare type + small structured captions.** Wide grotesque display, clear hierarchy,
+   intentional not decorative color — matches the `t.large` tabular KPIs / `t.caption` section-label
+   pairing.
+4. **A11y is the differentiator.** Jury scored Sprint 26 usability (7.21) below creativity (8.10),
+   and engineering accessibility was the lowest mark (6.80) — "on three winners in five." Section 6
+   (keyboard, visible focus, contrast in both modes) is therefore the headline of this redesign,
+   not the tail. A daily tool must win where showcases are weakest.
+
+Deliberately NOT copied: scrollytelling, WebGL/3D billboards, parallax, dark-billboard palettes —
+showcase register, wrong for a tool used every day. Sources: awwwards.com sites-of-the-day
+(Oct 2026), awwwards.com/razorpay-sprint26-the-future-of-payments.html, exhibita.design jury breakdown.
+
 ## 9. Support/monetization surface (ties into the open-source docs)
 
 - Settings → About gains a "Support the project" row that opens the GitHub
