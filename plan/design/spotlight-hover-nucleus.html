@@ -1,0 +1,177 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Spotlight Hover" technique.
+     Upstream reference: plan/design/forever/spotlight-hover.html (untracked, licence-unstated — study only).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Spotlight Hover".
+     Kept: the zero-reflow cursor coordinate pair (--mx/--my custom properties driving a radial
+     wash), and the rect-cache-with-resize-refresh discipline (never reads layout per move).
+     Not ported: the masked grid reveal and peach-glow aesthetic, the idle auto-orbit demo.
+     Retargeted warm: a 5–6% ink wash over a real Today card grid — feedback on content.
+     Keyboard parity: focus centers the wash, so keyboard users get the same affordance.
+     Nucleus tokens (v0.16.1 verbatim) + v0.17 motion tier. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native spotlight hover: an ink wash tracks the cursor across Today module cards via --mx/--my custom properties — zero reflow, rect-cached, no rAF, keyboard-centered.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Spotlight Hover (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --ok: #4c8a57; --ok-soft: rgba(76, 138, 87, 0.14);
+    --warn: #bc8524; --warn-soft: rgba(188, 133, 36, 0.16);
+    --error: #b4534b; --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --ok: #7fb98a; --ok-soft: rgba(127, 185, 138, 0.16);
+    --warn: #d9a94c; --warn-soft: rgba(217, 169, 76, 0.18);
+    --error: #d9837a; --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    display: grid; place-items: center;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { width: min(100%, 432px); }
+  .hd h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  .hd p  { font-size: 12px; color: var(--muted); margin: 3px 0 14px; }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .tile {
+    position: relative; appearance: none; cursor: pointer; overflow: hidden;
+    display: block; width: 100%; text-align: left;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 14px 13px; box-shadow: var(--shadow);
+  }
+  /* The wash: --mx/--my (px) drive a radial that is pure composite work — pointermove
+     writes two custom properties, nothing reads layout. Ink, not accent: navigation
+     focus stays single-accent; this is feedback, not ornament. */
+  .tile::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%),
+      color-mix(in srgb, var(--ink) 6%, transparent), transparent 72%);
+    transition: opacity var(--base) ease;
+  }
+  .tile:hover::before, .tile:focus-visible::before { opacity: 1; }
+  .tile:focus-visible {
+    outline: none; border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    box-shadow: var(--shadow), 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+
+  .tile .tag  { display: block; font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+                letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .tile .num  { display: block; margin-top: 9px; font-size: 25px; font-weight: 600;
+                letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tile .num small { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+  .tile .sub  { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); }
+
+  .cap { position: fixed; left: 12px; bottom: 12px;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+  .chip { position: fixed; right: 14px; bottom: 12px; appearance: none; cursor: pointer;
+          border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+          border-radius: 999px; padding: 8px 14px;
+          font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .chip:hover { color: var(--ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile::before { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="wrap" aria-label="Today screen preview">
+    <div class="hd">
+      <h2>Today</h2>
+      <p>Wed · Sep 22 — module cards; the wash follows the cursor (keyboard centers it)</p>
+    </div>
+    <div class="grid">
+      <button class="tile" type="button">
+        <span class="tag">Money</span>
+        <span class="num">₹12,450<small> /wk</small></span>
+        <span class="sub">left this week · 6 days remain</span>
+      </button>
+      <button class="tile" type="button">
+        <span class="tag">Health</span>
+        <span class="num">8,412</span>
+        <span class="sub">steps · 64% of goal</span>
+      </button>
+      <button class="tile" type="button">
+        <span class="tag">Cycle</span>
+        <span class="num">Day 18</span>
+        <span class="sub">follicular · predicted</span>
+      </button>
+      <button class="tile" type="button">
+        <span class="tag">Reminders</span>
+        <span class="num">3 due</span>
+        <span class="sub">today · 1 overdue</span>
+      </button>
+    </div>
+  </main>
+  <div class="cap">Nucleus · Spotlight hover (rebuilt)</div>
+  <button class="chip" type="button" id="themeBtn">Light / Dark</button>
+<script>
+(function () {
+  "use strict";
+  // Zero-reflow cursor tracking, upstream discipline kept verbatim: rects cached once,
+  // refreshed only on resize/scroll — pointermove only WRITES two custom properties.
+  var tiles = Array.prototype.slice.call(document.querySelectorAll(".tile"));
+  var rects = [];
+
+  function cache() { rects = tiles.map(function (t) { return t.getBoundingClientRect(); }); }
+
+  tiles.forEach(function (tile, i) {
+    function setLocal(px, py) {
+      var r = rects[i];
+      // clamp so exiting the edge never leaves a wash hanging outside
+      var x = Math.max(0, Math.min(r.width, px - r.left));
+      var y = Math.max(0, Math.min(r.height, py - r.top));
+      tile.style.setProperty("--mx", x.toFixed(1) + "px");
+      tile.style.setProperty("--my", y.toFixed(1) + "px");
+    }
+    // pointerenter seeds the position BEFORE the fade-in — the wash appears
+    // already under the cursor instead of sliding in from the default center
+    tile.addEventListener("pointerenter", function (e) { setLocal(e.clientX, e.clientY); });
+    tile.addEventListener("pointermove", function (e) { setLocal(e.clientX, e.clientY); });
+    // keyboard parity: focus centers the wash (same affordance, no pointer faking)
+    tile.addEventListener("focus", function () {
+      var r = rects[i];
+      setLocal(r.left + r.width / 2, r.top + r.height * 0.38);
+    });
+  });
+
+  addEventListener("resize", cache);
+  addEventListener("scroll", cache, { passive: true, capture: true });
+  cache();
+
+  var themeBtn = document.getElementById("themeBtn");
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+  });
+})();
+</script>
+</body>
+</html>

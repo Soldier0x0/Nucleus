@@ -127,6 +127,49 @@ Upstream slides a gradient pill between four native buttons on a cached spring w
 
 Desktop wiring when v0.17 lands: Money tabs, Reminders filters, Settings segments — the `.seg` pill layer and spring plug into the existing control grid directly; selection readouts ride `role="status"` so period changes announce politely.
 
+### Spotlight Hover — rebuilt as `plan/design/spotlight-hover-nucleus.html` (22 Oct 2026)
+
+Upstream tracks the cursor with a CSS custom-property pair and preserves layout cost by caching the card rect. The technique is kept verbatim; the dressing is replaced with warm, informative ink.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Coordinates | `--c04-x/--c04-y` px custom properties drive a radial glow | kept verbatim as `--mx/--my`; `pointerenter` seeds the position before fade-in so the wash appears under the cursor, not sliding in from center |
+| Layout cost | rect cached at init, refreshed on resize only, never per move | kept + passive captured `scroll` refresh for real scrolling shells; zero rAF anywhere |
+| Aesthetic | peach glow + Space Grotesk display face + masked grid reveal | 6% ink wash over `--panel` — feedback on content, not ornament; ink not accent (navigation focus stays single-accent); masked grid dropped (decorative, uninformatative) |
+| Life | glow auto-orbits while the pointer is away (idle demo) | no orbit: event-driven, settle-and-stop; wash fades in 200ms on enter, out on leave |
+| A11y | arrow keys move the glow on a tabindexed card | tiles are real buttons with labels; `focus-visible` centers the wash — keyboard users get the same affordance without pointer faking |
+
+Desktop wiring when v0.17 lands: Today's two-column module grid and Money tiles read the same `--mx/--my` pair; combine with (not instead of) the 4% ink row fill used on lists. Ship the focus-centering, skip the orbit.
+
+### Empty State — rebuilt as `plan/design/empty-state-nucleus.html` (22 Oct 2026)
+
+Upstream is a 26-mote canvas cloud hovering over an open vessel, with spring physics and scatter-on-poke. Honoring their own avoidWhen — "motion competes with a call-to-action" — the cloud is not ported; the vessel is, as a single inline SVG whose rim brightness is settle-keyed.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Illustration | DPR-aware canvas, 26 typed-array motes, bezier vessel | one inline SVG: `--panel-2` void, muted walls, dashed ground, front rim accent (dasharray 76/24 over `pathLength=100`) |
+| Life | motes drift, scatter on poke, spring-settle, loop forever | one settle on first paint: 5px drop-in + rim brightens `--accent-soft` → full `--accent` (520ms, 160ms delay, `both`) — then the page is still |
+| Composition | illustration is the whole demo | illustration + real copy: headline, one sentence, primary **Add expense** button (focusable, ring, press state) |
+| A11y | canvas wears `role="img"` + blanketing label | SVG `role="img"` describes only the vessel; headline/sentence/action are real HTML, announced naturally |
+| Context | abstract stage | Money ledger before the first expense |
+
+Desktop wiring when v0.17 lands: empty states for Money (no transactions), Reminders (none due), Health (no device entries). Budget rule: an empty state settles once and stops — if it animates more than once, it is a screensaver.
+
+### Error Shake — rebuilt as `plan/design/error-shake-nucleus.html` (22 Oct 2026)
+
+Upstream shakes a ghost-email field with a rAF decaying sine. The envelope is kept exactly; everything byte-driving is converted to CSS, and their auto-reset is corrected for production.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Shake | rAF: `x = sin·AMP·exp(−7.5t)`, AMP 13px | same envelope baked into a 550ms CSS keyframe track (11px → −9 → 6 → −4 → 2.4 → −1.4 …), GPU translateX, zero rAF; re-armed per invalid submit via forced reflow |
+| Border flush | rAF RGB lerp to red over 180ms | 200ms `--base` transition to `--error` + `--error-soft` 3px ring (swaps out the neutral focus ring while erroring) |
+| X mark | scale pop with 1.18 overshoot | `cubic-bezier(.34,1.56,.64,1)` pop, strokes drawn center-out (`transform-box: fill-box`), second stroke staggered 70ms |
+| Message | slides up, `aria-live` polite (their own docs add it) | kept + `role="status"`; 200ms 3px slide; error text in `--error` |
+| Reset | error self-clears after 2.7s | **production fix: error persists until the value changes** — input event clears it; a form that forgives itself while the user is reading it teaches nothing |
+| Theater | ghost email, blinking caret, idle auto-error | dropped: dumb `inputmode="decimal"` field, real validation (`> 0`), event-driven only; success path flashes `--ok` and clears on next input |
+
+Desktop wiring when v0.17 lands: every invalid/destructive-rejection flow — Expense save, Transfer form, wrong-pin unlock. Reduced motion keeps the static error frame (border + mark + message) so meaning survives without motion; pairs with the undo snackbar (forgiving path) rather than replacing it.
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.
