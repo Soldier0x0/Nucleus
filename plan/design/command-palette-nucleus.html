@@ -1,0 +1,313 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Command Palette" technique.
+     Upstream reference: plan/design/forever/command-palette.html
+     (RAW PENDING RE-ARCHIVE — paste lost in context compaction; licence-unstated, study
+     only. Technique values below come from the documented extraction pass in the digest).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Command Palette".
+     Kept: the spring entry (cubic-bezier(.34,1.56,.64,1)), wrap-around arrow navigation,
+     hover-syncs-selection. Material: dialog-tier from the Frosted Glass study — blur +
+     saturate over a dimmed paper scrim (nothing glassy sits beneath, so never glass-on-glass)
+     with a solid fallback via @supports. A11y gaps their own docs concede are CLOSED here:
+     aria-haspopup/aria-expanded on the trigger, role="dialog" + aria-modal, focus trap,
+     Escape + scrim close with focus restore, role="listbox" + aria-activedescendant.
+     Feature status: OPEN §1 DECISION — whether Cmd+K ships in v0.17 is undecided; the
+     toolbar Search chip is the built-in trigger either way. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native command palette: spring dialog over a paper scrim, wrap-around arrow nav, hover synced to selection, full dialog/listbox a11y and focus restoration.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Command Palette (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --ok: #4c8a57; --ok-soft: rgba(76, 138, 87, 0.14);
+    --warn: #bc8524; --warn-soft: rgba(188, 133, 36, 0.16);
+    --error: #b4534b; --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    --mat-hi: rgba(255, 255, 255, 0.35);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --ok: #7fb98a; --ok-soft: rgba(127, 185, 138, 0.16);
+    --warn: #d9a94c; --warn-soft: rgba(217, 169, 76, 0.18);
+    --error: #d9837a; --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+    --mat-hi: rgba(255, 255, 255, 0.10);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    display: grid; place-items: center;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    width: min(100%, 396px); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .hd h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  .hd p  { font-size: 12px; color: var(--muted); margin: 3px 0 14px; }
+
+  .trig {
+    appearance: none; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%;
+    border: 1px solid var(--line); background: var(--bg); color: var(--faint);
+    border-radius: 8px; padding: 10px 14px; font: 500 13px/1 "Inter", sans-serif;
+    transition: border-color var(--fast) ease, color var(--fast) ease;
+  }
+  .trig:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--muted); }
+  .trig:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .trig kbd {
+    margin-left: auto; font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 4px 7px;
+    background: var(--panel);
+  }
+
+  .log { font: 500 11px/1.4 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--muted); margin: 13px 0 0; }
+
+  /* --- the overlay: scrim + glass dialog (dialog tier, §3 materials) --- */
+  .ov { position: fixed; inset: 0; z-index: 30; display: grid; }
+  .ov[hidden] { display: none; }
+  .scrim { position: absolute; inset: 0; background: rgba(30, 24, 17, .36); }
+  :root[data-theme="dark"] .scrim { background: rgba(0, 0, 0, .52); }
+  .ov.open .scrim { animation: scrfade 200ms ease both; }
+  @keyframes scrfade { from { opacity: 0; } to { opacity: 1; } }
+
+  .pal {
+    position: relative; align-self: start; justify-self: center; width: min(94%, 480px);
+    margin-top: 17vh; border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow), 0 24px 60px -24px rgba(30, 24, 17, .5), inset 0 1px 0 var(--mat-hi);
+    /* dialog-tier material from the Frosted Glass study */
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .pal { background: var(--panel); }   /* legible degrade: fully opaque */
+  }
+  .ov.open .pal { animation: palpop 240ms cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes palpop {
+    from { opacity: 0; transform: translateY(7px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .pal .in {
+    display: flex; align-items: center; gap: 10px; padding: 4px 16px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pal .in svg { flex: none; }
+  .pal .in input {
+    flex: 1; min-width: 0; border: 0; outline: none; background: transparent;
+    color: var(--ink); font: 500 14px/1 "Inter", sans-serif; padding: 12px 0 6px;
+  }
+  .pal .in input::placeholder { color: var(--faint); }
+
+  .opts { max-height: 300px; overflow-y: auto; padding: 6px; }
+  .opt {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  .opt .t { flex: 1; min-width: 0; color: var(--ink); }
+  .opt .hint { font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--faint); }
+  .opt[aria-selected="true"] { background: var(--accent-soft); }
+  .opt[aria-selected="true"] .t { color: var(--ink); font-weight: 600; }
+  .none { padding: 14px; font-size: 12px; color: var(--faint); text-align: center; border-radius: 8px; }
+
+  .pal .foot {
+    display: flex; gap: 14px; padding: 9px 16px; border-top: 1px solid var(--line);
+    font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--faint);
+    letter-spacing: .05em;
+  }
+
+  .cap { position: fixed; left: 12px; bottom: 12px; z-index: 40;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+  .chip { position: fixed; right: 14px; bottom: 12px; z-index: 40; appearance: none; cursor: pointer;
+          border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+          border-radius: 999px; padding: 8px 14px;
+          font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .chip:hover { color: var(--ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ov.open .scrim, .ov.open .pal { animation: none; }
+    .trig, .opt { transition: none; }
+    .pal { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--panel); }
+  }
+</style>
+</head>
+<body>
+  <main class="card" aria-label="Command palette trigger preview">
+    <div class="hd">
+      <h2>Today</h2>
+      <p>Toolbar trigger — built-in affordance; ±  one flag if §1 green-lights it globally</p>
+    </div>
+    <button class="trig" type="button" id="trig" aria-haspopup="dialog" aria-expanded="false">
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="9.4" y1="9.4" x2="12.6" y2="12.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      Search
+      <kbd>⌘K</kbd>
+    </button>
+    <p class="log" id="log" role="status" aria-live="polite">Try ⌘K / Ctrl+K, or click Search.</p>
+  </main>
+
+  <div class="ov" id="ov" hidden>
+    <div class="scrim" id="scrim"></div>
+    <div class="pal" role="dialog" aria-modal="true" aria-label="Command palette">
+      <div class="in">
+        <svg width="15" height="15" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="9.4" y1="9.4" x2="12.6" y2="12.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="q" type="text" placeholder="Jump to… — type or use ↑↓" aria-label="Search commands"
+               role="combobox" aria-expanded="true" aria-controls="opts">
+      </div>
+      <div class="opts" id="opts" role="listbox" aria-label="Commands"></div>
+      <div class="foot"><span>↑↓ navigate</span><span>⏎ open</span><span>esc close</span></div>
+    </div>
+  </div>
+
+  <div class="cap">Nucleus · Command palette (rebuilt)</div>
+  <button class="chip" type="button" id="themeBtn">Light / Dark</button>
+<script>
+(function () {
+  "use strict";
+  var trigger = document.getElementById("trig");
+  var ov = document.getElementById("ov");
+  var scrim = document.getElementById("scrim");
+  var q = document.getElementById("q");
+  var optsBox = document.getElementById("opts");
+  var log = document.getElementById("log");
+  var themeBtn = document.getElementById("themeBtn");
+
+  var CMDS = [
+    { t: "Money — Today",        h: "MONEY" },
+    { t: "Money — Ledger",       h: "MONEY" },
+    { t: "Health — Cycle log",   h: "HEALTH" },
+    { t: "Health — Export",      h: "HEALTH" },
+    { t: "Reminders — add",      h: "REMINS" },
+    { t: "Settings — General",   h: "SETTS" },
+    { t: "Toggle dark mode",     h: "THEME" },
+    { t: "Sync now",             h: "SYNC" }
+  ];
+  var view = CMDS, active = 0, lastFocus = null;
+
+  function render(list) {
+    optsBox.textContent = "";
+    if (!list.length) {
+      var none = document.createElement("p");
+      none.className = "none";
+      none.textContent = "No matches — try “money” or “health”.";
+      optsBox.appendChild(none);
+      q.setAttribute("aria-activedescendant", "");
+      return;
+    }
+    list.forEach(function (c, i) {
+      var el = document.createElement("div");
+      el.className = "opt";
+      el.id = "cp-o" + i;
+      el.setAttribute("role", "option");
+      el.setAttribute("aria-selected", String(i === active));
+      var t = document.createElement("span"); t.className = "t"; t.textContent = c.t;
+      var h = document.createElement("span"); h.className = "hint"; h.textContent = c.h;
+      el.appendChild(t); el.appendChild(h);
+      // hover-syncs-selection (upstream behaviour, kept)
+      el.addEventListener("mouseenter", function () { setActive(i, false); });
+      el.addEventListener("click", function () { run(i); });
+      optsBox.appendChild(el);
+    });
+    q.setAttribute("aria-activedescendant", "cp-o" + active);
+    var el = optsBox.children[active];
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }
+  function setActive(i, fromKeys) {
+    if (!view.length) return;
+    active = (i + view.length) % view.length;          // wrap-around, kept from upstream
+    Array.prototype.forEach.call(optsBox.children, function (el, j) {
+      if (el.classList && el.classList.contains("opt")) el.setAttribute("aria-selected", String(j === active));
+    });
+    q.setAttribute("aria-activedescendant", "cp-o" + active);
+    var el = optsBox.children[active];
+    if (el) el.scrollIntoView({ block: "nearest" });
+    return fromKeys;
+  }
+
+  function filter() {
+    var s = q.value.trim().toLowerCase();
+    view = !s ? CMDS : CMDS.filter(function (c) { return c.t.toLowerCase().indexOf(s) !== -1; });
+    active = 0;
+    render(view);
+  }
+
+  function open() {
+    if (!ov.hidden) return;
+    lastFocus = document.activeElement;
+    ov.hidden = false;
+    ov.classList.add("open");
+    trigger.setAttribute("aria-expanded", "true");
+    view = CMDS; active = 0; q.value = "";
+    render(view);
+    q.focus();
+  }
+  function close(restoreFocus) {
+    if (ov.hidden) return;
+    ov.classList.remove("open");
+    ov.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    if (restoreFocus !== false && lastFocus) lastFocus.focus();
+  }
+  function run(i) {
+    var c = view[i];
+    close();
+    if (c && /toggle dark mode/i.test(c.t)) {
+      var dark = document.documentElement.getAttribute("data-theme") === "dark";
+      document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+      themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+      log.textContent = "→ Theme switched to " + (dark ? "light" : "dark");
+    } else {
+      log.textContent = c ? ("→ " + c.t + "  (demo: routes are stubs)") : "";
+    }
+  }
+
+  trigger.addEventListener("click", open);
+  scrim.addEventListener("mousedown", function () { close(); });
+
+  document.addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      ov.hidden ? open() : close();
+      return;
+    }
+    if (ov.hidden) return;
+    if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); setActive(active + 1, true); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActive(active - 1, true); }
+    else if (e.key === "Enter") { e.preventDefault(); if (view.length) run(active); }
+    else if (e.key === "Tab") { e.preventDefault(); }   // focus trap: the dialog alone owns keys while open
+  });
+
+  q.addEventListener("input", filter);
+
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+  });
+})();
+</script>
+</body>
+</html>

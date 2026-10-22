@@ -223,6 +223,45 @@ Upstream reorders rows with a per-row spring and a lerped lift. Kept as the reor
 
 Desktop wiring when v0.17 lands: Reminders ordering, Settings row groups. grip-only is the guardrail — whole-row dragging inside dense settings lists invites accidental reorders.
 
+### Upload Progress Ring — rebuilt as `plan/design/upload-progress-nucleus.html` (22 Oct 2026)
+
+*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+
+Upstream fills a conic pie with a two-half-circle compositor pair — `rL` covers 0–180°, `rR` un-hides only past 50% — on an easeInOutCubic 2800ms timeline, then auto-restarts for the demo. The technique is kept as strokes instead of conic-fills (cheaper, crisper caps); the loop and glow stack are stripped.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Ring | conic pie via two half-circles + rotation | same left-then-right sequencing as two half-arc strokes; one rAF drives both dashoffsets — a 66px ring re-paints a hairline per frame |
+| Timeline | easeInOutCubic, 2800ms, loops | kept exactly; single run per event, settle-and-stop |
+| Completion | stays put, stays accent | `--accent` → `--ok` stroke swap (200ms) + center tick draw-in (260ms, 70ms delay), `role="status"` announces "Complete — file saved" |
+| Material | glow-bloomy dark ring | faint track + tabular % in the donut hole on paper; radius matches §4 icon scale |
+| Not ported | auto-restart demo, glow bloom | real trigger (Health data export → "Export again" replays); the simulated export is the only latency |
+
+Desktop wiring when v0.17 lands: Health export, Money backup/restore, the sync line under Settings. Not for destructive zones — hold-to-confirm's turf.
+
+### Command Palette — rebuilt as `plan/design/command-palette-nucleus.html` (22 Oct 2026) — §1 DECISION OPEN
+
+*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass. **Feature-gated:** whether Cmd+K ships in v0.17 is an undecided §1 question — the toolbar Search chip exists either way; the palette is one wiring flag if approved.*
+
+Upstream pops a spring dialog with wrap-around arrow navigation and hover-synced selection; their docs concede missing dialog semantics, and the port closes every one of them.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Entry | spring scale/rise | kept curve `cubic-bezier(.34,1.56,.64,1)`, 240ms 7px rise; scrim fades 200ms; reduced motion instant |
+| Material | dark slab | dialog tier from the Frosted Glass study: `blur(20px) saturate(180%)` on 88% panel tint over a dimmed paper scrim — nothing glassy beneath, so never glass-on-glass; `@supports` fallback = fully opaque; radius 16 (dialog tier) |
+| Trigger | a lonely button | toolbar Search chip (built-in §1 affordance) **+** Cmd/Ctrl+K; `aria-haspopup="dialog"` + `aria-expanded` kept honest |
+| List | buttons hovered, no semantics | `role="listbox"` + options, `aria-activedescendant`, wrap-around ArrowUp/Down, hover ↔ selection stay in sync, Enter runs, filter with a settled "No matches" row |
+| Focus | their known gap: none | open → input focus; Escape / scrim / ⌘K toggles close with focus restored to the trigger; Tab is claimed by the dialog while open |
+| Actions | demo stubs | real actions log a `role="status"` line; "Toggle dark mode" actually flips theme (small honesty: the demo's one real route) |
+
+Desktop wiring when v0.17 lands: if approved — palette module keyed off §1 toolbar; actions clone existing routes, no new surfaces invented.
+
+### Elastic Sub-Grid Bento — technique-banked, study-only (22 Oct 2026)
+
+*Raw pending re-archive (paste lost to compaction); logged from the analysis pass.*
+
+**No rebuild queued.** The elastic sub-grid drag (cells shove their neighbors with soft-spring displacement while resizing/dragging) is banked for the v0.18 streams era alongside Treemap and Live Line Sweep — sub-grid elasticity pairs naturally with data-density changes, which are explicitly out of v0.17 scope per §2. When v0.18 charts open, reference the upstream analysis from `plan/design/forever/` (to be re-added) before designing the bento module.
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.
