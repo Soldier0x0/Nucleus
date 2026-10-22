@@ -1,6 +1,7 @@
 # Design Sources — v0.17 Reference
 
 Status: research reference for the v0.17 Apple-inspired redesign (`plan/desktop-uix-v017.md`). Docs-only; no code impact.
+Wired (22 Oct 2026, shipped in v0.17): drag-handle (§4, commit-committed at drop), hold-to-confirm (§7, kanban board/column deletes), toast stack (§7, VaultPulse/Cycle/Money CSV), undo snackbar (§7, notes/cards), skeleton shimmer (§8, the `!ready` gate; demo gap not ported), liquid toggle (§4, CSS on the native checkboxes), segmented leaf + spotlight (CSS retargets; the segmented JS spring and the CountUp per-digit reel remain deferred). The AA audit loosened two light-theme constants from §2: `--faint` #9c9181 → #766a5c and `--accent` #be7a2e → #a35f1b (dark theme unchanged).
 
 ## Primary reference: Apple DESIGN.md
 
