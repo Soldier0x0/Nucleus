@@ -545,7 +545,8 @@ function Shell() {
             ref={setToolbarHost}
             data-testid="screen-toolbar"
           />
-          <ErrorBoundary key={section} screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
+          <div className="screen-body" key={section} data-testid="screen-body">
+          <ErrorBoundary screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
           {section === "today" ? <Today onJump={(sec, id) => jump(sec, id)} /> : null}
           {section === "attention" ? <Attention /> : null}
           {section === "money" ? <Money /> : null}
@@ -566,6 +567,7 @@ function Shell() {
           {section === "settings" ? <Settings /> : null}
           {section === "devlab" ? <DevLab /> : null}
           </ErrorBoundary>
+          </div>
         </ToolbarHostProvider>
       </main>
       {palette ? <CommandPalette onClose={() => setPalette(false)} onJump={jump} includeDev /> : null}
