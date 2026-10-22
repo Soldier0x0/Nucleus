@@ -81,6 +81,22 @@ This is the v0.17 §7 hero motion: "Numbers: count-up animation on KPI change". 
 
 Desktop wiring when v0.17 lands: becomes the `CountUp` numeric helper for Today/Money KPI tiles (one hero motion moment per screen — this is it), the toast stack pairs with the undo snackbar as the desktop's two-layer feedback system (transient status = toast, dangerous-reversible = undo snackbar, blocking decisions = dialog sheet).
 
+### Frosted Glass — rebuilt as `plan/design/glass-materials-nucleus.html` (22 Oct 2026)
+
+This is the §3 materials reference for plan §1 (sidebar/toolbar shell). The upstream demo floats a glass card over decorative drifting blobs; the rebuild grounds the same recipe over the app's real scenario — opaque paper cards scrolling beneath a translucent sidebar + toolbar — and prototypes the plan's scroll-edge cue.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Stage | glass card over three drifting gold/cream/tan blobs (the entire demo) | no decorative stage — the blur source is *real content*: opaque cards scrolling beneath; cards stay opaque (never glass on glass) |
+| Glass values | blur(16px) saturate(140%), panel rgba .42 dark / .55 light | plan §1 / Apple frosted-bar baseline: blur(20px) saturate(180%), 60% window tint as `--mat-tint` |
+| Specular | `inset 0 1px 0 rgba(255,255,255,.22)` top rim — the premium tell | kept as `--mat-hi`: toolbar top edge, sidebar right edge (`inset -1px 0 0`) |
+| Fallback | upstream limitation: blur silently vanishes in Firefox, leaving a washed 42% panel | `@supports not (backdrop-filter: blur(1px))` raises tint to 94% opaque — legible degrade instead |
+| Added | — | scroll-edge cue: toolbar hairline + descent shadow wake only while content passes beneath (passive `scroll` listener) |
+| Hover | panel lifts `translateY(-4px) scale(1.02)` | not ported to chrome — glass is furniture, not content; hover life belongs to the 4% ink row fills |
+| Not ported | blob drift keyframes, Space Grotesk display face, `forever:` hooks, blob visibility-pause | theming via `[data-theme]`; no ambient loop exists, so nothing to pause |
+
+Demo tokens deliberately use the v0.17 §3 **retuned** set (light `#EFEAE3/#FBF8F3/#F4F0E9`, dark `#17130E/#211B14/#2A231B`), not the 0.16.1 stage other rebuilds carry verbatim — the material layer targets v0.17. Desktop wiring when v0.17 lands: sidebar 240px grouped rows (30px) + 52px sticky toolbar from plan §1; materials restricted to the sidebar/toolbar/dialog layers (§4 dialog sheet reads the same tokens later).
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.

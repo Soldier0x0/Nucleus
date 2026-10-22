@@ -1,0 +1,254 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Frosted Glass" technique.
+     Upstream reference: plan/design/forever/frosted-glass.html (untracked, licence-unstated — study only).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Frosted Glass".
+     The upstream demo floats glass over decorative drifting blobs; the app scenario is glass
+     over REAL content passing beneath — sidebar + toolbar over scrolling opaque cards — so that
+     is what this rebuild demonstrates, with the plan §1 scroll-edge hairline cue and a
+     @supports fallback (upstream's own Firefox limitation). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus v0.17 material study: translucent sidebar + toolbar glass over scrolling opaque paper cards, with scroll-edge hairline cue and no-blur fallback.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Glass Materials (rebuilt)</title>
+<style>
+  /* Tokens: the v0.17 §3 RETUNED palette (target values), not the 0.16.1 stage —
+     the material layer is being designed for v0.17. Bridge: light #EFEAE3/#FBF8F3/#F4F0E9,
+     dark #17130E/#211B14/#2A231B, hairlines per plan. */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #EFEAE3; --surface: #FBF8F3; --surface-2: #F4F0E9;
+    --ink: #201A12; --ink-2: #4A4136; --muted: #6E6455; --faint: #9C9181;
+    --hairline: rgba(32, 26, 19, 0.10);
+    --accent: #BE7A2E; --accent-strong: #A9661F; --accent-ink: #FFF8EC;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --warn: #BC8524;
+    /* upstream glass recipe, tuned to plan §1: window tint 55–65% */
+    --mat-tint: rgba(251, 248, 243, 0.60);
+    --mat-border: rgba(32, 26, 19, 0.10);
+    --mat-hi: rgba(255, 255, 255, 0.55);      /* upstream: inset top specular */
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #17130E; --surface: #211B14; --surface-2: #2A231B;
+    --ink: #F1EBE0; --ink-2: #D8CFC2; --muted: #A79B8A; --faint: #7E7264;
+    --hairline: rgba(255, 244, 230, 0.14);
+    --accent: #D8934C; --accent-strong: #E8A45C; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --warn: #D9A94C;
+    --mat-tint: rgba(33, 27, 20, 0.60);
+    --mat-border: rgba(255, 244, 230, 0.14);
+    --mat-hi: rgba(255, 244, 230, 0.16);
+  }
+  /* upstream limitation handled where upstream leaves it silent */
+  @supports not (backdrop-filter: blur(1px)) {
+    :root, :root[data-theme="light"] { --mat-tint: rgba(251, 248, 243, 0.94); }
+    :root[data-theme="dark"]       { --mat-tint: rgba(33, 27, 20, 0.94); }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* The window — sidebar to the left, scrolling main to the right. */
+  #win { position: fixed; inset: 0; display: flex; overflow: hidden; }
+
+  /* Sidebar material (plan §1): translucent, 240px, above content. */
+  #sidebar {
+    flex: 0 0 240px; display: flex; flex-direction: column; z-index: 2;
+    background: var(--mat-tint);
+    backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid var(--mat-border);
+    box-shadow: inset -1px 0 0 var(--mat-hi);       /* upstream specular, edge-flipped */
+    padding: 14px 10px; gap: 2px;
+  }
+  .brand { display: flex; align-items: center; gap: 8px; padding: 4px 10px 14px; }
+  .brand .dot { width: 20px; height: 20px; border-radius: 6px; background: var(--accent); }
+  .brand b { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+  .brand .ver { font: 500 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+                color: var(--faint); border: 1px solid var(--hairline); border-radius: 999px;
+                padding: 3px 7px; }
+  .slbl { font: 600 10px/1 "Inter", sans-serif; color: var(--faint);
+          letter-spacing: .08em; text-transform: uppercase; padding: 12px 10px 6px; }
+  .row {
+    display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 10px;
+    border-radius: 7px; color: var(--ink-2); font-size: 13px; cursor: default;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .row.on {
+    background: var(--accent-soft); color: var(--accent-strong); font-weight: 600;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  .row .ico { width: 16px; font-size: 13px; color: var(--muted); text-align: center; }
+  .row.on .ico { color: var(--accent); }
+  .row .badge { margin-left: auto; background: var(--warn); color: var(--accent-ink);
+                border-radius: 999px; font: 600 10px/1 "Inter", sans-serif; padding: 3px 7px; }
+  .foot { margin-top: auto; padding: 10px; display: flex; align-items: center; gap: 8px; }
+  .syncdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .foot span { font: 500 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--faint); }
+
+  /* Toolbar material (plan §1): translucent, sticky, hairline appears only when
+     content passes beneath (the scroll-edge cue). */
+  #main { flex: 1; min-width: 0; display: flex; flex-direction: column; z-index: 1; }
+  #toolbar {
+    flex: 0 0 52px; display: flex; align-items: center; gap: 12px; z-index: 2;
+    padding: 0 22px;
+    background: var(--mat-tint);
+    backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: inset 0 1px 0 var(--mat-hi);
+    border-bottom: 1px solid transparent;                 /* scroll-edge cue */
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  #main.under #toolbar {
+    border-bottom-color: var(--mat-border);
+    box-shadow: inset 0 1px 0 var(--mat-hi), 0 10px 22px -18px rgba(30, 24, 17, .45);
+  }
+  #toolbar h1 { font-size: 20px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  #toolbar .cnt { font: 500 11px/1 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--faint); }
+  #toolbar .sp { flex: 1; }
+  .tbtn { appearance: none; border: 0; cursor: pointer; border-radius: 7px;
+          font: 600 13px/1 "Inter", sans-serif; color: var(--ink-2);
+          background: var(--surface-2); border: 1px solid var(--hairline);
+          height: 32px; padding: 0 14px;
+          transition: background 120ms ease; }
+  .tbtn:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .tbtn:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); outline: none; }
+  .tbtn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+  #scroller { overflow-y: auto; flex: 1; scrollbar-gutter: stable; padding: 22px; }
+  .content { max-width: 720px; display: grid; gap: 18px; margin-inline: auto; }
+  .page-cap { font: 600 11px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+              color: var(--faint); letter-spacing: .08em; text-transform: uppercase; }
+
+  /* Cards stay opaque — no glass on glass (plan §1). */
+  .card {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(30, 24, 17, .04), 0 10px 26px -20px rgba(30, 24, 17, .28);
+    overflow: hidden;
+  }
+  .card .hd { padding: 14px 18px 0; }
+  .card .hd h2 { font-size: 15px; font-weight: 600; margin: 0; }
+  .card .hd p { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+  .kpi { display: flex; gap: 34px; padding: 14px 18px 18px; }
+  .kpi div b { display: block; font: 700 24px/1.2 "Inter", sans-serif;
+               font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .kpi div span { font-size: 11px; color: var(--muted); text-transform: uppercase;
+                  letter-spacing: .06em; }
+  table { width: 100%; border-collapse: collapse; }
+  tbody tr { height: 40px; border-top: 1px solid var(--hairline); }
+  tbody tr:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  td { font-size: 13px; padding: 0 18px; }
+  td + td, th + th { text-align: right; font-variant-numeric: tabular-nums; }
+  th { font: 600 10px/1 "Inter", sans-serif; color: var(--faint); letter-spacing: .08em;
+       text-transform: uppercase; text-align: right; padding: 10px 18px; }
+  th:first-child, td:first-child { text-align: left; }
+
+  .tbtntheme { position: fixed; right: 14px; bottom: 12px; z-index: 5; appearance: none;
+    border: 1px solid var(--hairline); cursor: pointer; background: var(--surface-2);
+    color: var(--muted); border-radius: 999px; padding: 8px 14px;
+    font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .tbtntheme:hover { color: var(--ink); }
+  .cap { position: fixed; left: 12px; bottom: 16px; z-index: 5;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="win">
+  <aside id="sidebar" aria-label="Sections">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><b>Nucleus</b><span class="ver">v0.17</span></div>
+    <div class="slbl">Workspace</div>
+    <div class="row on"><span class="ico">☀</span> Today</div>
+    <div class="row"><span class="ico">✦</span> Attention <span class="badge">3</span></div>
+    <div class="row"><span class="ico">▦</span> Home</div>
+    <div class="slbl">Modules</div>
+    <div class="row"><span class="ico">₹</span> Money</div>
+    <div class="row"><span class="ico">⛭</span> Vehicles</div>
+    <div class="row"><span class="ico">✈</span> Travel</div>
+    <div class="row"><span class="ico">♥</span> Health</div>
+    <div class="row"><span class="ico">◷</span> Cycle</div>
+    <div class="row"><span class="ico">☰</span> Notes</div>
+    <div class="row"><span class="ico">▤</span> Papers</div>
+    <div class="row"><span class="ico">⚑</span> Reminders</div>
+    <div class="foot"><span class="syncdot" aria-hidden="true"></span><span>synced 14:02</span></div>
+  </aside>
+  <main id="main">
+    <header id="toolbar">
+      <h1>Today</h1><span class="cnt">16 modules · 3 attention</span>
+      <span class="sp"></span>
+      <button class="tbtn" type="button">Search</button>
+      <button class="tbtn primary" type="button">Add</button>
+    </header>
+    <div id="scroller">
+      <div class="content">
+        <div class="page-cap">Money this week</div>
+        <section class="card">
+          <div class="hd"><h2>Week left</h2><p>September 1 – 7 · budget fed from Money</p></div>
+          <div class="kpi">
+            <div><b id="k1">₹12,450</b><span>left</span></div>
+            <div><b>₹31,080</b><span>spent</span></div>
+            <div><b>61%</b><span>of budget</span></div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="hd"><h2>Recent expenses</h2><p>Transfers and internal moves excluded</p></div>
+          <table>
+            <thead><tr><th>What</th><th>Category</th><th>Amount</th></tr></thead>
+            <tbody>
+              <tr><td>Fuel · Indian Oil</td><td>Vehicle</td><td>₹3,120</td></tr>
+              <tr><td>Groceries · DMart</td><td>Home</td><td>₹2,845</td></tr>
+              <tr><td>Netflix</td><td>Subscriptions</td><td>₹649</td></tr>
+              <tr><td>Chai · bhramara</td><td>Food</td><td>₹80</td></tr>
+              <tr><td>Service · Nexa</td><td>Vehicle</td><td>₹5,240</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <!-- scroll filler: pushes content beneath the toolbar so the scroll-edge cue shows -->
+        <section class="card" aria-hidden="true">
+          <div class="hd"><h2>Earlier</h2><p>Keep scrolling — the toolbar hairline wakes when cards pass beneath</p></div>
+          <table><tbody>
+            <tr><td>Fill · HP petrol</td><td>Vehicle</td><td>₹1,860</td></tr>
+            <tr><td>Water can</td><td>Home</td><td>₹60</td></tr>
+            <tr><td>Toll · Mumbai–Pune</td><td>Travel</td><td>₹350</td></tr>
+            <tr><td>Eyewear checkup</td><td>Health</td><td>₹900</td></tr>
+          </tbody></table>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="cap">Nucleus · Glass materials (rebuilt)</div>
+<button class="tbtntheme" type="button" id="themeBtn">Dark / Light</button>
+<script>
+(function () {
+  "use strict";
+  var main = document.getElementById("main");
+  var scroller = document.getElementById("scroller");
+  var themeBtn = document.getElementById("themeBtn");
+
+  // scroll-edge cue (plan §1): the toolbar hairline only shows while content passes beneath
+  function under() {
+    main.classList.toggle("under", scroller.scrollTop > 4);
+  }
+  scroller.addEventListener("scroll", under, { passive: true });
+
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Dark / Light" : "Light / Dark";
+  });
+  under();
+})();
+</script>
+</body>
+</html>
