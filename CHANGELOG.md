@@ -16,6 +16,7 @@ From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed
 - Fixed every screen crash from turning into a black window — a broken screen now shows a recovery card with a Try again button, and the sidebar stays alive.
 - Fixed automatic updates never being installed on the desktop: Nucleus now checks shortly after launch, then downloads, installs and reopens itself.
 - Fixed the .deb flavour of the update feed: the Linux .deb ships with its own signature, so a .deb install applies its own updates — the computer password prompt during install is the system installing Nucleus, once per update.
+- Changed the Android release key (the old keystore was lost): this and later APKs are signed by a new key, so install this APK with uninstall first, right after backing up from Settings. Linux is unaffected.
 
 ## v0.16.1
 
