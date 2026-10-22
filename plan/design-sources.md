@@ -97,6 +97,36 @@ This is the §3 materials reference for plan §1 (sidebar/toolbar shell). The up
 
 Demo tokens deliberately use the v0.17 §3 **retuned** set (light `#EFEAE3/#FBF8F3/#F4F0E9`, dark `#17130E/#211B14/#2A231B`), not the 0.16.1 stage other rebuilds carry verbatim — the material layer targets v0.17. Desktop wiring when v0.17 lands: sidebar 240px grouped rows (30px) + 52px sticky toolbar from plan §1; materials restricted to the sidebar/toolbar/dialog layers (§4 dialog sheet reads the same tokens later).
 
+### Liquid Toggle — rebuilt as `plan/design/toggle-liquid-nucleus.html` (22 Oct 2026)
+
+The upstream is an SVG goo-filter toggle (`feGaussianBlur` + `feColorMatrix` alpha-matrix) with two trailing droplets lagged by `sin(p·π)`. Kept: the elastic settle feel and a11y posture. The filter itself is deliberately not ported — their own metadata flags rendering cost in dense forms, and at the §4 switch size droplets land sub-pixel.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Renderer | SVG + goo filter, 3 circles with droplet lag | CSS-only 40×24 pill button, 20px knob (paper fill, hairline, 1px shadow) |
+| Motion | per-frame lerp `p += (t−p)·0.085`, demo keeps rAF alive | §4 spec: 200ms spring `cubic-bezier(.32,.72,0,1)` translateX; knob squish `scale 1.26→.82` via the same curve on flip, settles and stops |
+| Track | `transition: fill .5s`, teal on navy | 200ms crossfade to `--accent`; off-state surface-2 + inset hairline; `--accent-strong` ring on the on-state |
+| A11y | `aria-pressed` on a button, focus-visible, reduced-motion snap | `role="switch"` + `aria-checked` (correct toggle protocol), labels via `aria-labelledby`, 3px 35% accent focus ring, reduced-motion jump + no squish |
+| Context | single abstract stage + idle auto-toggle demo | real settings-row context (three toggle rows, hover fill); event-driven — no demo loop, no `forever:` hooks |
+
+Desktop wiring when v0.17 lands: the §4 iOS-style switch replacing checkbox rows in Settings/Cycle/Lab/Reminders — the highest-visibility control delta in the redesign (a switch is on nearly every screen).
+
+### Segmented Control — rebuilt as `plan/design/segmented-pill-nucleus.html` (22 Oct 2026)
+
+Upstream slides a gradient pill between four native buttons on a cached spring with velocity-stretch. Kept nearly whole — including their geometry-cache discipline and the wrap-around-safe trajectory interpolation — with the a11y gap their own docs admit closed.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Geometry | `measure()` once, re-read on resize only, never per frame (their comment) | kept verbatim; `offsetLeft/offsetWidth` cached on all four tabs |
+| Spring | k=0.18, damp=0.65 per frame; rAF runs while the auto-cycle demos | same constants; **settle-and-stop** — loop exits when `|cur−idx|` and `|vel|` pass thresholds; reduced-motion jumps instantly |
+| Overshoot | wrap-around fix clamps `i0` to real pairs, lets `fr` run outside 0..1 | kept verbatim — the pill bounces past the edge correctly |
+| Stretch | `\|vel\|·40px` unclamped | same factor, clamped to 12px (calm rule) |
+| Pill | slate→sage gradient, `card-shadow` glow | flat `--accent` fill (single-accent rule), 1px contact shadow, radius 7 tabs on radius 10 track |
+| A11y | buttons + `aria-pressed`; docs admit missing tablist | `role="tablist"/"tab"` + `aria-selected`, roving tabindex, Arrow/Home/End navigation, 3px 35% focus rings |
+| Context | abstract Day/Week/Month/Year demo + auto-cycle | Money screen period selector with live `role="status"` mono readout ("This week · Sep 21 – 27") |
+
+Desktop wiring when v0.17 lands: Money tabs, Reminders filters, Settings segments — the `.seg` pill layer and spring plug into the existing control grid directly; selection readouts ride `role="status"` so period changes announce politely.
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.

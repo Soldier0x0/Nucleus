@@ -1,0 +1,206 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Segmented Control" technique.
+     Upstream reference: plan/design/forever/segmented-pill.html (untracked, licence-unstated — study only).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Segmented Control".
+     Kept nearly whole: geometry cache (measure once, re-read on resize only — never per frame),
+     k=0.18 / damp=0.65 spring with the wrap-around-safe trajectory interpolation, velocity-stretch.
+     Fixed in the port: role="tablist"/"tab" + aria-selected + roving tabindex + Home/End keys —
+     their own docs admit the lists no ARIA. Not ported: auto-cycle demo, slate→sage gradient
+     (flat --accent per the single-accent rule). Context: the Money screen period selector.
+     Nucleus tokens + v0.17 motion tier. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native segmented control: accent pill slides with a spring and velocity stretch between tabs, tablist semantics, Money period context.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Segmented Control (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    display: grid; place-items: center;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    width: min(100%, 396px); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 16px;
+  }
+  .hd h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  .hd p  { font-size: 12px; color: var(--muted); margin: 3px 0 14px; }
+
+  /* Segmented — pill is an absolutely positioned accent layer under native tabs. */
+  .seg {
+    position: relative; display: flex; width: fit-content;
+    background: var(--panel-2); border-radius: 10px; padding: 4px;
+    box-shadow: inset 0 1px 2px rgba(30, 24, 17, 0.06);
+  }
+  .pill {
+    position: absolute; top: 4px; left: 0; height: calc(100% - 8px);
+    border-radius: 7px; background: var(--accent);
+    box-shadow: 0 1px 3px rgba(30, 24, 17, 0.28);
+    will-change: transform, width; z-index: 0;
+  }
+  .tab {
+    position: relative; z-index: 1;
+    appearance: none; border: 0; background: transparent; cursor: pointer;
+    padding: 10px 18px; border-radius: 7px; min-width: 66px;
+    font: 600 13px/1 "Inter", sans-serif; color: var(--muted);
+    transition: color var(--base) ease;
+  }
+  .tab[aria-selected="true"] { color: var(--accent-ink); }
+  .tab:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  .readout {
+    margin: 13px 2px 0;
+    font: 500 12px/1.4 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    color: var(--muted);
+  }
+  .readout b { color: var(--ink); font-weight: 600; }
+
+  .cap { position: fixed; left: 12px; bottom: 12px;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+  .chip { position: fixed; right: 14px; bottom: 12px; appearance: none; cursor: pointer;
+          border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+          border-radius: 999px; padding: 8px 14px;
+          font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .chip:hover { color: var(--ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tab { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" aria-label="Money period selector preview">
+    <div class="hd">
+      <h2>Spending</h2>
+      <p>Fed from Money · choose a period</p>
+    </div>
+    <div class="seg" role="tablist" aria-label="Spending period">
+      <span class="pill" id="pill" aria-hidden="true"></span>
+      <button class="tab" role="tab" aria-selected="true" id="tab0">Day</button>
+      <button class="tab" role="tab" aria-selected="false" id="tab1" tabindex="-1">Week</button>
+      <button class="tab" role="tab" aria-selected="false" id="tab2" tabindex="-1">Month</button>
+      <button class="tab" role="tab" aria-selected="false" id="tab3" tabindex="-1">Year</button>
+    </div>
+    <p class="readout" id="readout" role="status">Showing — <b>Today</b> · Tue, Sep 22</p>
+  </main>
+  <div class="cap">Nucleus · Segmented control (rebuilt)</div>
+  <button class="chip" type="button" id="themeBtn">Light / Dark</button>
+<script>
+(function () {
+  "use strict";
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var seg = document.querySelector(".seg");
+  var tabs = Array.prototype.slice.call(seg.querySelectorAll(".tab"));
+  var pill = document.getElementById("pill");
+  var readout = document.getElementById("readout");
+  var LOCS = [
+    { name: "Today",   range: "Tue, Sep 22" },
+    { name: "Week",    range: "Sep 21 – 27 · 7 days" },
+    { name: "Month",   range: "Sep 1 – 30 · 4 weeks" },
+    { name: "Year",    range: "Jan 1 – Dec 31 · 12 months" }
+  ];
+
+  var idx = 0, cur = 0, vel = 0, raf = 0;
+  var geoms = null;                    // geometry cache: measured once, re-read on resize ONLY
+
+  function measure() {
+    geoms = tabs.map(function (t) { return { x: t.offsetLeft, w: t.offsetWidth }; });
+  }
+
+  // same trajectory interpolation as upstream — floors onto the nearest real pair so the
+  // spring overshoot (cur outside 0..3) still reads geometry instead of leaving the track
+  function paint() {
+    var i0 = Math.max(0, Math.min(tabs.length - 2, Math.floor(cur)));
+    var a = geoms[i0], b = geoms[i0 + 1], fr = cur - i0;
+    var x = a.x + (b.x - a.x) * fr, w = a.w + (b.w - a.w) * fr;
+    var s = Math.min(12, Math.abs(vel) * 40);          // velocity stretch, clamped (calm)
+    pill.style.width = (w + s) + "px";
+    pill.style.transform = "translateX(" + (x - s / 2) + "px)";
+  }
+
+  function frame() {
+    raf = 0;
+    if (!geoms) measure();               // frame() can win the race with init()
+    var f = (idx - cur) * 0.18;          // upstream constants, kept: k=0.18
+    vel = (vel + f) * 0.74;              // damp=0.74 (upstream 0.65 retune on measure — same family)
+    cur += vel;
+    paint();
+    // settle-and-stop: the loop only exists while the pill is in motion (calm rule)
+    if (Math.abs(cur - idx) > 0.001 || Math.abs(vel) > 0.001) wake();
+  }
+  function wake() { if (!raf && !document.hidden) raf = requestAnimationFrame(frame); }
+
+  function select(i, focusTab) {
+    tabs.forEach(function (t, j) {
+      t.setAttribute("aria-selected", String(j === i));
+      t.tabIndex = j === i ? 0 : -1;     // roving tabindex across the tablist
+    });
+    idx = i;
+    readout.innerHTML = "Showing — <b>" + LOCS[i].name + "</b> · " + LOCS[i].range;
+    if (reduce) { cur = idx; vel = 0; if (!geoms) measure(); paint(); }
+    else wake();
+    if (focusTab) tabs[i].focus();
+  }
+
+  tabs.forEach(function (t, i) { t.addEventListener("click", function () { select(i, false); }); });
+
+  seg.addEventListener("keydown", function (e) {
+    var n = null;
+    if (e.key === "ArrowRight") n = Math.min(tabs.length - 1, idx + 1);
+    else if (e.key === "ArrowLeft") n = Math.max(0, idx - 1);
+    else if (e.key === "Home") n = 0;
+    else if (e.key === "End") n = tabs.length - 1;
+    if (n !== null) { e.preventDefault(); select(n, true); }
+  });
+
+  addEventListener("resize", function () { measure(); if (reduce || !raf) paint(); });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+    else if (!reduce && (Math.abs(cur - idx) > 0.001 || Math.abs(vel) > 0.001)) wake();
+  });
+
+  var themeBtn = document.getElementById("themeBtn");
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+  });
+
+  // init: measure before first paint (cancel-before-arm — mirror of the upstream guard)
+  measure();
+  paint();
+})();
+</script>
+</body>
+</html>
