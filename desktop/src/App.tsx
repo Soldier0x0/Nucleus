@@ -34,6 +34,7 @@ import { DropLayer } from "./components/DropLayer";
 import { SupportNudge } from "./components/SupportNudge";
 import { UndoSnackbar } from "./components/UndoSnackbar";
 import { ToastStack } from "./components/ToastStack";
+import { BootSkeleton } from "./components/BootSkeleton";
 import { ScreenToolbar, ToolbarHostProvider } from "./components/ScreenToolbar";
 import { VaultPulse } from "./components/VaultPulse";
 import { startupAutoUpdate } from "./platform/updater";
@@ -453,11 +454,7 @@ function Shell() {
   }
 
   if (!ready) {
-    return (
-      <div className="boot">
-        <p className="muted">Opening your document…</p>
-      </div>
-    );
+    return <BootSkeleton />;
   }
 
   if (themeAsk) {

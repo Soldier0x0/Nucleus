@@ -2478,3 +2478,118 @@ html {
     transition: none;
   }
 }
+
+.fresh-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-size: var(--t-foot);
+  color: var(--ink);
+  max-width: 100%;
+}
+.fresh-pill .dot {
+  flex: none;
+}
+.fresh-pill.fresh .dot {
+  background: var(--ok);
+}
+.fresh-pill.stale .dot {
+  background: var(--warn);
+}
+.fresh-pill b {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- First-paint skeleton (§8): bones from the rows they replace ---------- */
+.boot {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.boot-frame {
+  width: min(520px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.sk-row {
+  --skd: 0ms; /* per-row stagger; icon and lanes phase off it in CSS */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sk-bone {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+}
+/* ≈7% ink sweep — white would glare on warm paper. The hold at 60%/100% is
+   the 40% dwell that keeps this a breath instead of a metronome blink. */
+.sk-bone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ink) 7%, transparent) 50%,
+    transparent 100%
+  );
+  animation: sk-sweep 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes sk-sweep {
+  0% { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(100%); }
+}
+.sk-ic {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+.sk-lane {
+  flex: none;
+  height: 12px;
+  border-radius: 6px;
+}
+.sk-lane.ls {
+  flex: 62 1 0%;
+}
+.sk-lane.ss {
+  flex: 38 1 0%;
+}
+.sk-ic::after {
+  animation-delay: var(--skd);
+}
+.sk-lane.ls::after {
+  animation-delay: calc(var(--skd) + 60ms);
+}
+.sk-lane.ss::after {
+  animation-delay: calc(var(--skd) + 120ms);
+}
+html[data-hidden] .sk-bone::after {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* static bones still read as "loading": panel-2 blocks on panel */
+  .sk-bone::after {
+    animation: none;
+    transform: none;
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+  }
+}

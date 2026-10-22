@@ -30,6 +30,7 @@ export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | 
   const lastDeviceSync = (db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt;
   const seen = lastSeenLine(lastDeviceSync, new Date().toISOString());
   const seenFresh = phoneSeenFresh(lastDeviceSync, new Date().toISOString());
+  const when = seen.startsWith("Phone last seen ") ? seen.slice("Phone last seen ".length) : seen;
   const budgetPct = db.budget.monthly > 0 ? Math.min(100, Math.round((totals.spent / db.budget.monthly) * 100)) : null;
 
   return (
@@ -192,13 +193,17 @@ export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | 
             )}
           </section>
 
-          <section className="card tile s3">
+          <section className="card tile s3" data-testid="today-freshness">
             <span className="tile-lab">With your phone</span>
-            <div className="mini-list" style={{ marginTop: 6 }}>
-              <div className="mini-row pal-row">
-                <span className={`dot ${seenFresh ? "good" : "warn"}`}></span>
-                <span className="m">{seen}</span>
-              </div>
+            <div style={{ marginTop: 6 }}>
+              {/* Reverse freshness (v0.12): the pill states the contract —
+                  what the phone sent is already on this machine. Fresh rides
+                  the --ok dot; stale turns --warn; ink keeps AA on either. */}
+              <span className={`fresh-pill ${seenFresh ? "fresh" : "stale"}`} data-testid="today-fresh-pill">
+                <i className="dot" aria-hidden="true"></i>
+                <span>{seenFresh ? "Already here" : "Not since"}</span>
+                <b>{when}</b>
+              </span>
             </div>
             <div className="tile-note">
               <button className="link" onClick={() => onJump?.("settings")}>Pairing lives in Settings</button>
