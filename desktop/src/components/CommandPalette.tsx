@@ -41,6 +41,9 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
 
   useEffect(() => {
     inputRef.current?.focus();
+    // focus returns to the trigger when the palette closes (ARIA dialog pattern)
+    const prior = document.activeElement as HTMLElement | null;
+    return () => prior?.focus?.();
   }, []);
 
   const cmds = useMemo<Cmd[]>(() => {
@@ -114,17 +117,20 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
   }, [query, db, includeDev, onJump]);
 
   useEffect(() => setCursor(0), [query]);
+  const shown = cmds.slice(0, 12);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") return onClose();
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setCursor((c) => Math.min(c + 1, cmds.length - 1));
+      // wrap-around (the upstream technique's loop, kept): the last row hands
+      // the cursor back to the first.
+      setCursor((c) => (shown.length === 0 ? 0 : (c + 1) % shown.length));
       return;
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setCursor((c) => Math.max(c - 1, 0));
+      setCursor((c) => (shown.length === 0 ? 0 : (c - 1 + shown.length) % shown.length));
       return;
     }
     if (e.key === "Enter" && cmds[cursor]) {
@@ -135,12 +141,39 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
   };
 
   return (
-    <div className="pal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="pal card" data-testid="palette">
-        <input className="pal-input" ref={inputRef} placeholder="Search sections, records, attention…" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={onKeyDown} />
-        <div className="pal-list">
-          {cmds.slice(0, 12).map((c, i) => (
-            <button key={c.id} className={i === cursor ? "pal-row on" : "pal-row"} onMouseEnter={() => setCursor(i)} onClick={() => { c.run(); onClose(); }}>
+    <div
+      className="pal-overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => {
+        // the dialog has one focusable element (the input): keep Tab inside
+        if (e.key === "Tab") e.preventDefault();
+      }}
+    >
+      <div className="pal card" data-testid="palette" role="dialog" aria-modal="true" aria-label="Search anything">
+        <input
+          className="pal-input"
+          ref={inputRef}
+          placeholder="Search sections, records, attention…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onKeyDown}
+          role="combobox"
+          aria-expanded="true"
+          aria-haspopup="listbox"
+          aria-controls="pal-listbox"
+          aria-activedescendant={shown[cursor] ? `pal-row-${shown[cursor].id.replace(/[:.]/g, "-")}` : undefined}
+        />
+        <div className="pal-list" id="pal-listbox" role="listbox" aria-label="Results">
+          {shown.map((c, i) => (
+            <button
+              key={c.id}
+              id={`pal-row-${c.id.replace(/[:.]/g, "-")}`}
+              className={i === cursor ? "pal-row on" : "pal-row"}
+              role="option"
+              aria-selected={i === cursor}
+              onMouseEnter={() => setCursor(i)}
+              onClick={() => { c.run(); onClose(); }}
+            >
               <span className="pal-title">{c.title}</span>
               {c.subtitle ? <span className="pal-sub muted">{c.subtitle}</span> : null}
             </button>

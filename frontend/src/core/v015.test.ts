@@ -36,7 +36,7 @@ test("v015 · styles.css is the Warm Paper board rewrite", () => {
   const css = read(`${DESK}/src/styles.css`);
   assert.ok(css.includes("#f5f1ea"), "paper light background token");
   assert.ok(css.includes("#d8934c"), "paper dark accent");
-  assert.ok(css.includes(".topbar") && css.includes(".caption"), "page topbar");
+  assert.ok(css.includes(".toolbar-shell") && css.includes(".caption"), "page toolbar");
   assert.ok(/\.workcols\s*\{/.test(css), "two-column board grid");
   assert.ok(/\.bento\s*\{/.test(css), "today bento grid on the board");
   assert.ok(css.includes(".tablecard"), "borderless table card");

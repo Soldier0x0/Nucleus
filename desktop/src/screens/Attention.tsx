@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { allAttention, visibleAttention } from "@core/attention";
 import { fmtDate, todayISO } from "@core/format";
@@ -46,7 +47,7 @@ export function Attention() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{open.length === 0 ? "All clear" : `${open.length} things want you · ${marks.done.length} done so far`}</p>
           <h1>Attention</h1>
@@ -57,7 +58,7 @@ export function Attention() {
             <button className={view === "done" ? "on" : ""} onClick={() => setView("done")}>Done &amp; history</button>
           </div>
         </div>
-      </header>
+      </ScreenToolbar>
 
       <div className="workcols">
         <div className="stack">

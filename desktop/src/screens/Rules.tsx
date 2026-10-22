@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import type { Rule, RuleAction, RuleTriggerKind } from "@core/types";
 import { dryRun, evaluateRule, markFired, reminders, ruleSentence, TRIGGERS, triggerMeta } from "@core/rules";
@@ -76,7 +77,13 @@ export function Rules() {
   };
 
   return (
-    <div className="topbar">
+    <>
+      <ScreenToolbar>
+        <div>
+          <p className="caption">Auto-actions on every save</p>
+          <h1>Rules</h1>
+        </div>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="card">
           <div className="row">
@@ -191,7 +198,7 @@ export function Rules() {
       </div>
 
       {edit ? <RuleSheet rule={edit} onClose={() => setEdit(null)} onSaved={() => void applyReminders()} /> : null}
-    </div>
+    </>
   );
 }
 

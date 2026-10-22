@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { todayISO, addDays, fmtDate, monthKey, monthLabel } from "@core/format";
 import type { CycleFlow, CycleState } from "@core/types";
@@ -193,12 +194,12 @@ export function Cycle() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">Journal · calendar · stash · reminders</p>
           <h1>Cycle</h1>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="split">
         <div className="workcol">
         {introDue ? (

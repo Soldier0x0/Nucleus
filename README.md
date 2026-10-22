@@ -3,6 +3,8 @@
 [![Build release APK](https://github.com/Soldier0x0/Nucleus/actions/workflows/android-apk.yml/badge.svg)](https://github.com/Soldier0x0/Nucleus/actions/workflows/android-apk.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 [![Latest release](https://img.shields.io/github/v/release/Soldier0x0/Nucleus)](https://github.com/Soldier0x0/Nucleus/releases/latest)
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsors-Soldier0x0-ea4aaa?logo=github)](https://github.com/sponsors/Soldier0x0)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-soldier0x0-ffdd00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/soldier0x0)
 
 Nucleus is a private, local-first personal platform for vehicles, money, travel, home, notes, media and tools. Records stay on the device, encrypted. An optional Online switch, off by default, can fetch weather, currency rates and holidays without sending those records anywhere.
 

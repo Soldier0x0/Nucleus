@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { MODULES } from "@core/modules";
 import { countsOf } from "@core/merge";
@@ -12,6 +13,7 @@ import { EXPORT_KINDS, exportFileName, exportKindFile } from "../platform/export
 import { passwordStrength } from "../platform/crypto";
 import { isTauri } from "../platform/env";
 import { checkForUpdateNow, friendlyUpdateError } from "../platform/updater";
+import { BMC_URL, SPONSORS_URL, openExternal } from "../platform/support";
 import { APP_VERSION } from "../App";
 import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
@@ -145,12 +147,12 @@ export function Settings() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">Everything the desktop keeps lives here · v{APP_VERSION}</p>
           <h1>Settings</h1>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="settings-grid">
           <section className="card st-general">
@@ -285,6 +287,25 @@ export function Settings() {
                 {updMsg ? <span className="muted small" data-testid="settings-update-msg">{updMsg}</span> : null}
               </div>
             ) : null}
+            <div className="row support-links" style={{ marginTop: 10 }}>
+              <button
+                className="small-btn"
+                onClick={() => void openExternal(BMC_URL)}
+                title="buymeacoffee.com/soldier0x0"
+                data-testid="settings-support-bmc"
+              >
+                ☕ Buy me a coffee
+              </button>
+              <button
+                className="small-btn"
+                onClick={() => void openExternal(SPONSORS_URL)}
+                title="github.com/sponsors/Soldier0x0"
+                data-testid="settings-support-sponsors"
+              >
+                Sponsor on GitHub
+              </button>
+              <span className="muted small">Keeps the builds and updates coming — thank you.</span>
+            </div>
           </section>
         </div>
       </div>

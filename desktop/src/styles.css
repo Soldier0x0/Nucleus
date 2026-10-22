@@ -22,16 +22,26 @@
   --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
   --radius: 16px;
   --r-md: 10px;
+  /* §3 re-tune (v0.17): Warm Paper stays, hairline is one quieter step; the
+     material/blur/elevation tokens below are the depth vocabulary. */
+  --line: rgba(32, 26, 19, 0.10);
+  --accent-line: rgba(190, 122, 46, 0.55);
+  --material: rgba(253, 250, 245, 0.62);
+  --material-strong: rgba(253, 250, 245, 0.78);
+  --blur: blur(20px) saturate(1.8);
+  --elev-2: 0 1px 2px rgba(30, 24, 17, 0.06);
+  --elev-8: 0 8px 30px -12px rgba(30, 24, 17, 0.38);
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #161310;
   --panel: #211d18;
   --panel-2: #1b1713;
-  --ink: #f1ebe0;
-  --muted: #a79b8a;
-  --faint: #786e60;
-  --line: rgba(255, 255, 255, 0.075);
+  /* Dark is the elevated model (§3): brighter hairlines, stepped-in labels. */
+  --ink: #fff4e6;
+  --muted: rgba(255, 244, 230, 0.72);
+  --faint: rgba(255, 244, 230, 0.48);
+  --line: rgba(255, 244, 230, 0.14);
   --accent: #d8934c;
   --accent-strong: #e8a45c;
   --accent-ink: #241708;
@@ -43,6 +53,23 @@
   --error: #d9837a;
   --error-soft: rgba(217, 131, 122, 0.16);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  --accent-line: rgba(232, 164, 92, 0.60);
+  --material: rgba(23, 19, 14, 0.55);
+  --material-strong: rgba(23, 19, 14, 0.74);
+  --elev-2: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --elev-8: 0 8px 30px -10px rgba(0, 0, 0, 0.62);
+}
+/* §2 type scale + §5 motion — Inter everywhere; numbers already tabular via body. */
+:root {
+  --t-large: 28px;
+  --t-title: 20px;
+  --t-head: 15px;
+  --t-body: 13px;
+  --t-foot: 12px;
+  --t-caption: 11px;
+  --fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --spring: 320ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 * {
@@ -57,7 +84,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font: 13px/1.4 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "tnum" 1;
   letter-spacing: -0.005em;
@@ -67,13 +94,16 @@ h2,
 h3 {
   margin: 0 0 10px;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: -0.01em;
 }
 h2 {
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
 }
 h3 {
-  font-size: 13.5px;
+  font-size: 13px;
+  font-weight: 600;
   margin-top: 14px;
 }
 p {
@@ -463,14 +493,14 @@ button {
 /* ---------- shell ---------- */
 .shell {
   display: grid;
-  grid-template-columns: 232px 1fr;
+  grid-template-columns: 240px 1fr;
   height: 100%;
 }
 .side {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 16px 12px 14px;
+  gap: 2px;
+  padding: 14px 12px 12px;
   background: var(--panel-2);
   border-right: 1px solid var(--line);
   min-height: 0;
@@ -506,36 +536,46 @@ button {
   margin-left: auto;
 }
 .slabel {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font: 600 var(--t-caption) "Inter", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--faint);
-  padding: 8px 10px 4px;
+  padding: 10px 10px 4px;
 }
 .nav {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 34px;
+  height: 30px;
   padding: 0 10px;
-  border-radius: 9px;
+  border-radius: 7px;
   background: none;
   border: 0;
   color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
+  font: 400 var(--t-body) "Inter", system-ui, sans-serif;
   position: relative;
   text-align: left;
   width: 100%;
+  transition: background var(--fast), color var(--fast);
 }
 .nav:hover {
   background: var(--panel);
   color: var(--ink);
 }
+.nav > .ic {
+  width: 17px;
+  height: 17px;
+  color: var(--faint);
+  transition: color var(--fast);
+}
 .nav.on {
   background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
   color: var(--ink);
   font-weight: 600;
+}
+.nav.on .ic {
+  color: var(--accent-strong);
 }
 /* Icons: every <svg className="ic"> gets this. Scoped to .nav before, which
    left the sidebar search icon unstyled — a default-size black blob. */
@@ -615,8 +655,165 @@ button {
 .side-note {
   font-size: 10.5px;
   color: var(--faint);
-  padding: 6px 8px 0;
-  line-height: 1.4;
+  padding: 8px 8px 0;
+  margin: 0;
+}
+/* Skip-to-content (§6): the first tabbable element, visually hidden until focused. */
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 40;
+  background: var(--panel);
+  border: 1px solid var(--accent-line);
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: var(--t-foot);
+  padding: 6px 12px;
+  transform: translateY(-64px);
+  transition: transform var(--fast);
+}
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid var(--accent-soft);
+}
+/* The one-time support nudge (§9): one quiet card, one entrance, then never. */
+.support-nudge {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 30;
+  width: 300px;
+  padding: 14px 16px 12px;
+  background: var(--material-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--elev-8);
+  color: var(--ink);
+  animation: nudge-in 240ms var(--spring) both;
+}
+@keyframes nudge-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.support-nudge b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.nudge-copy p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.nudge-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.nudge-open {
+  font-size: 11px;
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+.nudge-later {
+  font-size: 11px;
+  color: var(--muted);
+}
+.nudge-x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: none;
+  color: var(--faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nudge-x:hover {
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .support-nudge {
+    animation: none;
+  }
+}
+/* Sidebar Support row: a .nav-shaped row that leaves the app instead. */
+.nav-support {
+  color: var(--muted);
+}
+.nav-support:hover {
+  color: var(--ink);
+}
+.nav-support kbd {
+  margin-left: auto;
+  font: 600 10px "Inter", system-ui, sans-serif;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+/* The vault fingerprint — the shell's signature moment (§7): a quiet mono pill
+   beside the sync line. Haired hairline; the dot ticks once per change. */
+.vault-pulse {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  margin: 6px 4px 2px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--muted);
+  font: 500 10.5px "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  font-feature-settings: "tnum" 1;
+  cursor: pointer;
+  position: relative;
+  transition: border-color var(--base), color var(--base), transform var(--fast);
+}
+.vault-pulse:hover {
+  border-color: var(--accent-line);
+  color: var(--ink);
+}
+.vault-pulse:active {
+  transform: scale(0.97);
+}
+.vault-pulse:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1.5px;
+}
+.vp-hash {
+  letter-spacing: 0.02em;
+}
+.vp-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: auto;
+  animation: vault-tick 200ms var(--base) both;
+}
+@keyframes vault-tick {
+  0% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  100% { box-shadow: 0 0 0 5px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vault-pulse .vp-dot {
+    animation: none;
+  }
+  .vault-pulse {
+    transition: none;
+  }
+  .nav,
+  .nav > .ic {
+    transition: none;
+  }
 }
 .main {
   overflow: auto;
@@ -624,11 +821,71 @@ button {
   display: flex;
   flex-direction: column;
 }
-.topbar {
+/* §1 toolbar: one sticky 52px material per screen. Content scrolls beneath it,
+   which is what earns the hairline: absent while at the very top, present once
+   anything has scrolled away. Named -shell to stay out of the legacy per-screen
+   .toolbar rows. Sits inside .main's scroll flow. */
+.toolbar-shell {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  min-height: 52px;
   display: flex;
   align-items: center;
-  padding: 22px 28px 4px;
   gap: 12px;
+  padding: 0 28px;
+  background: var(--material-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  box-shadow: 0 1px 0 0 var(--line);
+  transition: box-shadow var(--fast);
+}
+/* hairline only when content passed beneath */
+.main[data-scrolled="false"] .toolbar-shell {
+  box-shadow: none;
+}
+.toolbar-shell h1 {
+  font-size: var(--t-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+  white-space: nowrap;
+}
+.toolbar-shell .sub {
+  font-size: var(--t-foot);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toolbar-shell .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* Screens render their titles/actions into .toolbar-shell by portal — the
+   legacy per-screen .topbar is gone. */
+.toolbar-shell > div {
+  min-width: 0;
+}
+.toolbar-shell .caption {
+  font-size: var(--t-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+@media print {
+  .toolbar-shell {
+    position: static;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    min-height: 0;
+  }
+  .toolbar-shell .right {
+    display: none;
+  }
 }
 .caption {
   font-size: 11px;
@@ -637,18 +894,18 @@ button {
   color: var(--faint);
   margin: 0;
 }
-.topbar h1,
 .page-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   letter-spacing: -0.02em;
   margin: 3px 0 0;
 }
-.topbar .right {
+.toolbar-shell .right {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: none;
 }
 .workcol {
   padding: 18px 28px 96px;
@@ -1636,7 +1893,6 @@ button {
   }
   .no-print,
   .side,
-  .topbar,
   .rail {
     display: none !important;
   }

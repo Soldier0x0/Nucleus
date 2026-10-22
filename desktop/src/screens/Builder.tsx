@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import type { ReactNode } from "react";
 import { useStore } from "../store";
 import type { CustomTool, CustomToolInput } from "@core/types";
@@ -36,7 +37,7 @@ export function Builder({ onJump }: { onJump: (next: SectionId, focusId?: string
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">No code, no internet. Tools live in the shared document.</p>
           <h1>Tool Builder</h1>
@@ -44,7 +45,7 @@ export function Builder({ onJump }: { onJump: (next: SectionId, focusId?: string
         <div className="right">
           <button className="primary" onClick={() => setEdit(emptyTool())} data-testid="builder-add-button">New tool</button>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         {edit ? <ToolEditor tool={edit} onClose={() => setEdit(null)} onJump={onJump} /> : null}
 

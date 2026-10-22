@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { deviceFacts } from "../platform/net";
 import type { DeviceFacts } from "../platform/net";
 
@@ -40,7 +41,13 @@ export function Lab() {
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
 
   return (
-    <div className="topbar">
+    <>
+      <ScreenToolbar>
+        <div>
+          <p className="caption">Diagnostics for this computer · fills · dev yard</p>
+          <h1>Lab</h1>
+        </div>
+      </ScreenToolbar>
       <div className="workcol two-stack">
         <div className="card">
           <h2 style={{ marginTop: 0 }}>This computer</h2>
@@ -123,6 +130,6 @@ export function Lab() {
           click to return
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

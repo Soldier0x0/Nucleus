@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { uid } from "@core/format";
 import type { NetLogEntry } from "@core/types";
@@ -96,7 +97,13 @@ export function Net() {
   };
 
   return (
-    <div className="topbar">
+    <>
+      <ScreenToolbar>
+        <div>
+          <p className="caption">DNS · ping · port checks</p>
+          <h1>Net</h1>
+        </div>
+      </ScreenToolbar>
       <div className="workcol two-stack">
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Checks</h2>
@@ -153,6 +160,6 @@ export function Net() {
           {db.netlog.length === 0 ? <p className="muted small">Nothing yet.</p> : null}
         </div>
       </div>
-    </div>
+    </>
   );
 }

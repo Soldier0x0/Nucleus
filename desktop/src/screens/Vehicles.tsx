@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { PART_LABEL, serviceSchedule } from "@core/serviceCatalog";
 import { vehicleStats } from "@core/intelligence";
@@ -20,12 +21,12 @@ export function Vehicles({ focusId }: { focusId?: string }) {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{db.fuel.length} fills logged · {db.services.length} services · {db.settings.distanceUnit}</p>
           <h1>Vehicles</h1>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol" style={{ padding: "18px 28px 40px" }}>
         <div className="vehicles-grid">
           <aside className="card v-list">

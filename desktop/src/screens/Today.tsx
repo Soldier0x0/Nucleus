@@ -1,4 +1,6 @@
 import { useStore } from "../store";
+import { CountUp } from "../components/CountUp";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { monthTotals, serviceEstimate } from "@core/intelligence";
 import { serviceLeftLine } from "@core/vehicleMath";
 import { odometerEstimate } from "@core/fuelCapture";
@@ -32,18 +34,20 @@ export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | 
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{wants.length} things want you · {fmtDate(today)}</p>
           <h1>Today</h1>
         </div>
         <div className="right"></div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="bento">
           <section className="card tile s3" data-testid="today-spent">
             <span className="tile-lab">Spent this month</span>
-            <div className="tile-val num">{money(totals.spent, db.settings.currency)}</div>
+            <div className="tile-val num">
+              <CountUp to={totals.spent} format={(n) => money(n, db.settings.currency)} testid="today-spent-value" />
+            </div>
             <div className="tile-note">
               {budgetPct === null ? (
                 <span>No budget set yet.</span>

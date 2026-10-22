@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { fromB64, fromUtf8, randomBytes, toB64, toUtf8 } from "../platform/crypto";
 
@@ -48,12 +49,12 @@ export function Dev() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">Base64 yard · sha-256 · generated ids — nothing leaves this computer</p>
           <h1>Dev Tools</h1>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <nav className="tabs" aria-label="Dev tool groups">
           {([["base64", "Base64"], ["hash", "Hash"], ["ids", "Ids"]] as [Kind, string][]).map(([k, l]) => (

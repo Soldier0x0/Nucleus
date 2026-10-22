@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { addTxn, upsertSubscription } from "@core/actions";
 import { addDays, addMonths, daysBetween, fmtDate, money, num, parseISO, parseNum, todayISO, uid } from "@core/format";
@@ -941,12 +942,12 @@ export function Tools({ focusId }: { focusId?: string }) {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{TOOL_LIST.length} built-in tools · {db.customTools.length} of your own · results are saved per tool</p>
           <h1>Tools</h1>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <nav className="tabwrap" aria-label="Tools" data-testid="tools-grid">
           {TOOL_LIST.map((t) => (

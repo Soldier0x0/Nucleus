@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { fmtDate, todayISO, uid } from "@core/format";
 import type { CycleDay, CycleFlow, Medicine, WaterTime } from "@core/types";
@@ -49,7 +50,7 @@ export function Health() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{db.cycle.days.length} cycle days · {medicines.length} medicines · {db.water.times.length} water times</p>
           <h1>Health</h1>
@@ -57,7 +58,7 @@ export function Health() {
         <div className="right no-print">
           <button className="small-btn" onClick={() => window.print()}>Print</button>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="two-stack">
           <section className="card">

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@core/defaults";
 import { categorySplit, monthFlow } from "@core/moneyDesk";
@@ -79,7 +80,7 @@ export function Money() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{monthInMonth.length} transactions · {monthName(month)}</p>
           <h1>Money</h1>
@@ -91,7 +92,7 @@ export function Money() {
             {exporting ? "Saving…" : "Export CSV"}
           </button>
         </div>
-      </header>
+      </ScreenToolbar>
 
       <div className="workcol">
         <div className="filters no-print">

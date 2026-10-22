@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { todayISO, uid } from "@core/format";
 import type { MediaItem, MediaKind, MediaStatus, Settings } from "@core/types";
@@ -63,7 +64,7 @@ export function Media() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{db.media.length} titles on the shelf · {rows.length} shown</p>
           <h1>Media</h1>
@@ -72,7 +73,7 @@ export function Media() {
           <button className="small-btn" onClick={saveView}>Save view</button>
           <button className="small-btn" onClick={() => window.print()}>Print</button>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="filters no-print">
           <div className="seg">

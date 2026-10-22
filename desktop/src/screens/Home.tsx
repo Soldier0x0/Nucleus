@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { daysBetween, money, todayISO, uid } from "@core/format";
 import type { Appliance, Chore, UtilityBill, UtilityKind } from "@core/types";
@@ -44,7 +45,7 @@ export function Home() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{db.appliances.length} appliances · {db.chores.length} chores · {bills.length} bills logged</p>
           <h1>Home</h1>
@@ -52,7 +53,7 @@ export function Home() {
         <div className="right no-print">
           <button className="small-btn" onClick={() => window.print()}>Print</button>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="two-stack">
           <section className="card">

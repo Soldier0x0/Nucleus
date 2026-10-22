@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { fmtDate, todayISO, uid } from "@core/format";
 import type { Settings, Trip } from "@core/types";
@@ -61,7 +62,7 @@ export function Travel() {
 
   return (
     <>
-      <header className="topbar">
+      <ScreenToolbar>
         <div>
           <p className="caption">{db.trips.length} trips · {rows.length} shown</p>
           <h1>Travel</h1>
@@ -71,7 +72,7 @@ export function Travel() {
           <button className="small-btn" onClick={() => window.print()}>Print</button>
           <button className="small-btn" onClick={() => void exportKindFile(db, "calendar")}>Calendar (.ics)</button>
         </div>
-      </header>
+      </ScreenToolbar>
       <div className="workcol">
         <div className="filters no-print">
           <div className="filter grow" style={{ maxWidth: 300 }}>

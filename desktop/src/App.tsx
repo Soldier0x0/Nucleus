@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, type ReactNode } from "react";
+import { useEffect, useState, useCallback, useRef, memo, type ReactNode } from "react";
 import { lastSeenLine } from "@core/syncStatus";
 import { visibleAttention } from "@core/attention";
 import { todayISO } from "@core/format";
@@ -31,7 +31,11 @@ import { CommandPalette } from "./components/CommandPalette";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LookChooser } from "./components/LookChooser";
 import { DropLayer } from "./components/DropLayer";
+import { SupportNudge } from "./components/SupportNudge";
+import { ScreenToolbar, ToolbarHostProvider } from "./components/ScreenToolbar";
+import { VaultPulse } from "./components/VaultPulse";
 import { startupAutoUpdate } from "./platform/updater";
+import { BMC_URL, openExternal } from "./platform/support";
 
 export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "cycle" | "home" | "travel" | "papers" | "notes" | "media" | "tools" | "rules" | "dev" | "builder" | "net" | "lab" | "settings" | "devlab";
 
@@ -68,6 +72,27 @@ const ic = (paths: ReactNode) => (
     {paths}
   </svg>
 );
+
+/** The one Support row in the sidebar foot — leaves the app, marks nothing. */
+const SupportRow = memo(function SupportRow() {
+  return (
+    <button
+      className="nav nav-support"
+      onClick={() => void openExternal(BMC_URL)}
+      title="buymeacoffee.com/soldier0x0"
+      data-testid="sidebar-support"
+    >
+      <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
+        {/* a small coffee cup: honest, not emoji, and it matches the icon set */}
+        <path d="M4 9h11v5.2A4.8 4.8 0 0 1 10.2 19H8.8A4.8 4.8 0 0 1 4 14.2Z" />
+        <path d="M15 10.4h2.1a2.4 2.4 0 0 1 0 4.8H15" />
+        <path d="M7.5 5.5v1.8M10.5 5.5v1.8" />
+      </svg>
+      Support Nucleus
+      <kbd>free app</kbd>
+    </button>
+  );
+});
 
 const SECTIONS: SectionDef[] = [
   {
@@ -391,6 +416,20 @@ function Shell() {
   }
 
   const savedTheme = storedThemePref();
+  // The sticky toolbar's portal host: screens render titles/actions through it.
+  const [toolbarHost, setToolbarHost] = useState<HTMLElement | null>(null);
+  // Scroll-edge cue: the toolbar hairline appears once content passes beneath
+  // it (§1). Written straight onto the element so it does not re-render the app.
+  const mainRef = useRef<HTMLElement | null>(null);
+  const onMainScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const next = el.scrollTop > 2 ? "true" : "false";
+    if (el.dataset.scrolled !== next) el.dataset.scrolled = next;
+  }, []);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (el) el.dataset.scrolled = el.scrollTop > 2 ? "true" : "false";
+  }, [section]);
   const navBtn = (s: SectionDef) => {
     const i = SECTIONS.findIndex((x) => x.id === s.id);
     return (
@@ -415,13 +454,22 @@ function Shell() {
   return (
     <div className="shell" data-app-theme={savedTheme}>
       <SyncBridge />
+      <SupportNudge />
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <nav className="side no-print" aria-label="Sections">
         <div className="brand">
           <span className="logo" aria-hidden="true"></span>
           <b>Nucleus</b>
           <span className="ver">v{APP_VERSION}</span>
         </div>
-        <button className="nav-search" onClick={() => setPalette(true)} title="Ctrl+K" data-testid="open-palette">
+        <button
+          className="nav-search"
+          onClick={() => setPalette(true)}
+          title="Ctrl+K"
+          data-testid="open-palette"
+          aria-haspopup="dialog"
+          aria-expanded={palette || undefined}
+        >
           <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="6.5" />
             <path d="m16 16 4 4" />
@@ -435,6 +483,8 @@ function Shell() {
         {SECTIONS.filter((s) => s.group === "modules" && moduleOn(s.id)).map(navBtn)}
         <div className="side-foot">
           {SECTIONS.filter((s) => s.group === "foot").map(navBtn)}
+          <SupportRow />
+          <VaultPulse db={db} />
           <div className="syncfoot">
             <div className="grow">
               <div className="who">Phone</div>
@@ -447,9 +497,16 @@ function Shell() {
           <p className="side-note">Your data stays on this computer.</p>
         </div>
       </nav>
-      <main className="main">
+      <main className="main" id="main-content" tabIndex={-1} ref={mainRef} onScroll={onMainScroll}>
         <DropLayer />
-        <ErrorBoundary key={section} screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
+        {/* One sticky title bar for every screen; each screen fills it by portal (§1). */}
+        <ToolbarHostProvider value={toolbarHost}>
+          <div
+            className="toolbar-shell"
+            ref={setToolbarHost}
+            data-testid="screen-toolbar"
+          />
+          <ErrorBoundary key={section} screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
           {section === "today" ? <Today onJump={(sec, id) => jump(sec, id)} /> : null}
           {section === "attention" ? <Attention /> : null}
           {section === "money" ? <Money /> : null}
@@ -469,7 +526,8 @@ function Shell() {
           {section === "lab" ? <Lab /> : null}
           {section === "settings" ? <Settings /> : null}
           {section === "devlab" ? <DevLab /> : null}
-        </ErrorBoundary>
+          </ErrorBoundary>
+        </ToolbarHostProvider>
       </main>
       {palette ? <CommandPalette onClose={() => setPalette(false)} onJump={jump} includeDev /> : null}
     </div>
