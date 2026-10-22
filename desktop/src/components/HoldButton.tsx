@@ -9,9 +9,13 @@ import { useEffect, useRef, useState } from "react";
  * per-frame `p += rate·0.65` folded into the total) displayed through a soft
  * spring (k=0.016, d=0.78); commit fires at p ≥ 0.985 (≈1.08s of hold, just
  * beneath the "long" perception boundary). Releasing outside the control
- * counts (pointerup + pointercancel land on the button's release; a
- * pointercancel/blur releases too) and decays along the 0.65·HOLD_MS regress
- * path. The fill ring intensifies toward --error under the finger; commit
+ * counts because the session CAPTURES the pointer on down — mouse has no
+ * implicit capture (that's a touch behaviour), so without setPointerCapture
+ * an off-button release never reaches the button and the hold would keep
+ * filling past the user's cancel (the verification agent's BLOCK); commit
+ * then fires ≈1s after the user let go, on an irreversible delete. An early
+ * release or pointercancel decays along the 0.65·HOLD_MS regress path. The
+ * fill ring intensifies toward --error under the finger; commit
  * pops a check at 1.18 overshoot (cubic-bezier(.34,1.56,.64,1)) in --ok.
  * Keyboard is a full hold — Space/Enter down-up, key autorepeat ignored —
  * and a separate role="status" node narrates hold/cancel/commit. The rAF
@@ -76,7 +80,11 @@ export function HoldButton({
   };
 
   const start = () => {
-    if (phase === "done" || holding.current) return;
+    if (phase === "done") return;
+    // A re-hold during the release decay supersedes the old chain: kill its
+    // rAF and continue from the current fill level. Without this, a supersed-
+    // ed chain keeps rescheduling itself and doubles the fill rate.
+    cancelAnimationFrame(raf.current);
     holding.current = true;
     setPhase("holding");
     setSay("Holding… let go to cancel");
@@ -126,9 +134,12 @@ export function HoldButton({
         className={`hold-btn ${phase === "done" ? "hold-done" : ""}`}
         onPointerDown={(e) => {
           e.preventDefault();
+          // capture so a release anywhere counts — mouse has no implicit capture
+          e.currentTarget.setPointerCapture(e.pointerId);
           start();
         }}
         onPointerUp={release}
+        onPointerCancel={release}
         onKeyDown={(e) => {
           if (e.repeat) return; // autorepeat never counts
           if (e.key === " " || e.key === "Enter") {

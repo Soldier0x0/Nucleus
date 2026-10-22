@@ -2324,13 +2324,12 @@ button {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
 }
-html[data-hidden] .toast-drain {
+html[data-hidden] .toast-drain,
+html[data-hidden] .toast {
   animation-play-state: paused;
 }
-html[data-hidden] .toast-enter,
-html[data-hidden] .toast-leave {
-  animation-play-state: paused;
-}
+/* exit-toasts ride a TRANSITION, which play-state cannot pause; their removal
+   deadline rebases on visible, so a hidden exit simply lands later */
 .toast-err {
   border-color: var(--error);
 }

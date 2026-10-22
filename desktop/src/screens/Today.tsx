@@ -199,11 +199,19 @@ export function Today({ onJump }: { onJump?: (section: "papers" | "attention" | 
               {/* Reverse freshness (v0.12): the pill states the contract —
                   what the phone sent is already on this machine. Fresh rides
                   the --ok dot; stale turns --warn; ink keeps AA on either. */}
-              <span className={`fresh-pill ${seenFresh ? "fresh" : "stale"}`} data-testid="today-fresh-pill">
-                <i className="dot" aria-hidden="true"></i>
-                <span>{seenFresh ? "Already here" : "Not since"}</span>
-                <b>{when}</b>
-              </span>
+              {lastDeviceSync ? (
+                <span className={`fresh-pill ${seenFresh ? "fresh" : "stale"}`} data-testid="today-fresh-pill">
+                  <i className="dot" aria-hidden="true"></i>
+                  <span>{seenFresh ? "Already here" : "Not since"}</span>
+                  <b>{when}</b>
+                </span>
+              ) : (
+                <span className="fresh-pill stale" data-testid="today-fresh-pill">
+                  <i className="dot" aria-hidden="true"></i>
+                  <span>No phone yet</span>
+                  <b>pairing lives in Settings</b>
+                </span>
+              )}
             </div>
             <div className="tile-note">
               <button className="link" onClick={() => onJump?.("settings")}>Pairing lives in Settings</button>
