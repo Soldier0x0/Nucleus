@@ -171,8 +171,14 @@ button {
 
 /* ---------- shared bits ---------- */
 /* §5 section switch: 180ms fade + 8px settle. The App keys .screen-body by the
-   section, so each switch replays it once; reduced motion opts out. */
+   section, so each switch replays it once; reduced motion opts out. The wrapper
+   is layout-neutral: it must give screens the same flex-column parent .main did,
+   or .workcol's flex:1/min-height:0 chains (fill, kan scroll panes) no-op. */
 .screen-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   animation: screen-in 180ms var(--base) both;
 }
 @keyframes screen-in {
