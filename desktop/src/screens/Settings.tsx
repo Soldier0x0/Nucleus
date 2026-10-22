@@ -11,6 +11,7 @@ import { backupFileName, decryptBackup, exportBackup, parseBackup, type BackupFi
 import { EXPORT_KINDS, exportFileName, exportKindFile } from "../platform/exporters";
 import { passwordStrength } from "../platform/crypto";
 import { isTauri } from "../platform/env";
+import { checkForUpdateNow, friendlyUpdateError } from "../platform/updater";
 import { APP_VERSION } from "../App";
 import { Pairing } from "../components/Pairing";
 import type { ModuleId } from "@core/types";
@@ -57,17 +58,9 @@ export function Settings() {
   const checkForUpdate = async () => {
     setUpdBusy(true);
     try {
-      const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
-      if (!update) {
-        setUpdMsg("You are on the newest release.");
-        return;
-      }
-      setUpdMsg(`Downloading v${update.version}…`);
-      await update.downloadAndInstall();
-      setUpdMsg("Installed. Reopen Nucleus when ready.");
+      await checkForUpdateNow(setUpdMsg);
     } catch (err) {
-      setUpdMsg(err instanceof Error ? err.message : "The update check failed.");
+      setUpdMsg(friendlyUpdateError(err));
     } finally {
       setUpdBusy(false);
     }

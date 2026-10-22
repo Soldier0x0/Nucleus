@@ -49,15 +49,36 @@ function sigFor(suffix) {
   return { signature: readFileSync(sigPath, "utf8").trim(), url: download(asset) };
 }
 
+// One key per install flavour plus the old generic ones. The updater matches
+// `{os}-{arch}-{installer}` from how the running app was packaged (deb, AppImage,
+// NSIS), then falls back to `{os}-{arch}`. The deb entry rides along only when
+// the build actually produced its signature; an AppImage payload can never
+// service a deb install, and the plugin rejects mismatched bytes before install.
+const appimage = sigFor("linux-amd64.AppImage.sig");
+const windows = sigFor("windows-x64-setup.exe.sig");
+const platforms = {
+  "linux-x86_64-deb": null,
+  "linux-x86_64-appimage": appimage,
+  "linux-x86_64": appimage,
+  "windows-x86_64-nsis": windows,
+  "windows-x86_64": windows,
+};
+try {
+  platforms["linux-x86_64-deb"] = sigFor("linux-amd64.deb.sig");
+} catch (err) {
+  console.error("No .deb signature on this release; deb installs will not self-update until one ships.");
+}
+
 const manifest = {
   version,
   notes: "",
   pub_date: new Date().toISOString(),
-  platforms: {
-    "linux-x86_64": sigFor("linux-amd64.AppImage.sig"),
-    "windows-x86_64": sigFor("windows-x64-setup.exe.sig"),
-  },
+  platforms: {},
 };
+
+for (const [key, value] of Object.entries(platforms)) {
+  if (value) manifest.platforms[key] = value;
+}
 
 const out = join(dir, "latest.json");
 writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`);

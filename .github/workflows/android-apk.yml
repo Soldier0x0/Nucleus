@@ -454,14 +454,29 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.apk.outputs.tag }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           # The apk job created the release before this job could start.
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" >/dev/null
           mkdir -p release-files
-          cp desktop/src-tauri/target/release/bundle/deb/*.deb "release-files/nucleus-${TAG}-linux-amd64.deb"
           cp desktop/src-tauri/target/release/bundle/appimage/*.AppImage "release-files/nucleus-${TAG}-linux-amd64.AppImage"
           cp desktop/src-tauri/target/release/bundle/appimage/*.AppImage.sig "release-files/nucleus-${TAG}-linux-amd64.AppImage.sig"
+          # A deb install can only self-update with a payload signed for it: an
+          # AppImage manifest entry can never service deb bytes. The deb ships
+          # with its own signature (created here if the bundler produced none)
+          # so the manifest gains the linux-x86_64-deb entry.
+          deb_path="release-files/nucleus-${TAG}-linux-amd64.deb"
+          deb_sig="release-files/nucleus-${TAG}-linux-amd64.deb.sig"
+          cp desktop/src-tauri/target/release/bundle/deb/*.deb "$deb_path"
+          if ls desktop/src-tauri/target/release/bundle/deb/*.deb.sig >/dev/null 2>&1; then
+            cp desktop/src-tauri/target/release/bundle/deb/*.deb.sig "$deb_sig"
+          else
+            echo "No .deb.sig from the bundler; signing the deb with the updater key."
+            desktop/node_modules/.bin/tauri signer sign "$deb_path" --app-version "${{ needs.apk.outputs.name }}"
+          fi
+          test -s "$deb_sig"
           gh release upload "$TAG" release-files/* --clobber
           echo "Attached Linux installers to ${TAG}"
 

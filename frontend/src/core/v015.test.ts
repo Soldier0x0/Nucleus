@@ -220,12 +220,18 @@ test("v015 · the updater is signed, pinned and reachable", () => {
   assert.ok(conf.includes("/releases/latest/download/latest.json"), "moving manifest on GitHub");
   const cargo = read(`${DESK}/src-tauri/Cargo.toml`);
   assert.ok(cargo.includes('tauri-plugin-updater = "2"'));
+  assert.ok(cargo.includes('tauri-plugin-process = "2"'), "relaunch plugin rides along");
   const lib = read(`${DESK}/src-tauri/src/lib.rs`);
   assert.ok(lib.includes("tauri_plugin_updater::Builder"), "plugin initialized");
+  assert.ok(lib.includes("tauri_plugin_process::init()"), "process plugin initialized");
   const caps = read(`${DESK}/src-tauri/capabilities/default.json`);
   assert.ok(caps.includes("updater:default"));
+  assert.ok(caps.includes("process:default"));
+  const updater = read(`${DESK}/src/platform/updater.ts`);
+  assert.ok(updater.includes('@tauri-apps/plugin-updater'), "check() flows through the plugin");
+  assert.ok(updater.includes("startupAutoUpdate") && updater.includes("downloadAndInstall") && updater.includes("relaunch"), "launch-time check applies itself");
   const settings = read(`${DESK}/src/screens/Settings.tsx`);
-  assert.ok(settings.includes('@tauri-apps/plugin-updater'), "check() flows through the plugin");
+  assert.ok(settings.includes("platform/updater"), "the Settings check routes through the shared updater");
   assert.ok(settings.includes('data-testid="settings-check-update"') && settings.includes("Check for updates"), "About card button");
 });
 
@@ -238,10 +244,12 @@ test("v015 · CI signs the build and composes the manifest", () => {
   assert.ok(testAt !== -1 && stampAt !== -1, "both steps exist");
   assert.ok(testAt < stampAt && stampAt < buildAt, "tests run before the version is stamped, build signs after");
   assert.ok(workflow.includes("nucleus-${TAG}-linux-amd64.AppImage.sig"), "signatures ride along");
+  assert.ok(workflow.includes("nucleus-${TAG}-linux-amd64.deb.sig"), "the deb carries its own signature so deb installs self-update");
   assert.ok(workflow.includes("nucleus-${TAG}-windows-x64-setup.exe.sig"));
   assert.ok(workflow.includes("latest-json.js"), "manifest composer");
   const script = read(`${REPO}/.github/scripts/latest-json.js`);
   assert.ok(script.includes("linux-x86_64") && script.includes("windows-x86_64"), "both update targets");
+  assert.ok(script.includes("linux-x86_64-deb"), "the deb flavour is a first-class manifest key");
 });
 
 // ---------- widgets: wallpaper colours ----------

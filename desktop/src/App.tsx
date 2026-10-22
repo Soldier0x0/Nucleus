@@ -28,8 +28,10 @@ import { Lab } from "./screens/Lab";
 import { Settings } from "./screens/Settings";
 import { DevLab } from "./screens/DevLab";
 import { CommandPalette } from "./components/CommandPalette";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LookChooser } from "./components/LookChooser";
 import { DropLayer } from "./components/DropLayer";
+import { startupAutoUpdate } from "./platform/updater";
 
 export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "cycle" | "home" | "travel" | "papers" | "notes" | "media" | "tools" | "rules" | "dev" | "builder" | "net" | "lab" | "settings" | "devlab";
 
@@ -338,6 +340,16 @@ function Shell() {
     setSection(next);
   };
 
+  // Self-update at launch (v0.16.2): once the shell has settled, the updater
+  // quietly checks, downloads and installs, then relaunches into the new
+  // version. Failures stay in the console — the app keeps working.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void startupAutoUpdate();
+    }, 5000);
+    return () => clearTimeout(t);
+  }, []);
+
   if (unreadable) {
     return (
       <div className="boot">
@@ -437,25 +449,27 @@ function Shell() {
       </nav>
       <main className="main">
         <DropLayer />
-        {section === "today" ? <Today onJump={(sec, id) => jump(sec, id)} /> : null}
-        {section === "attention" ? <Attention /> : null}
-        {section === "money" ? <Money /> : null}
-        {section === "vehicles" ? <Vehicles focusId={focus?.id} /> : null}
-        {section === "health" ? <Health /> : null}
-        {section === "home" ? <HomeScreen /> : null}
-        {section === "travel" ? <Travel /> : null}
-        {section === "papers" ? <Papers focusId={focus?.id} /> : null}
-        {section === "notes" ? <NotesKanban focusId={focus?.id} /> : null}
-        {section === "media" ? <Media /> : null}
-        {section === "tools" ? <Tools focusId={focus?.id} /> : null}
-        {section === "rules" ? <Rules /> : null}
-        {section === "dev" ? <Dev /> : null}
-        {section === "builder" ? <Builder onJump={(sec, id) => jump(sec, id)} /> : null}
-        {section === "cycle" ? <Cycle /> : null}
-        {section === "net" ? <Net /> : null}
-        {section === "lab" ? <Lab /> : null}
-        {section === "settings" ? <Settings /> : null}
-        {section === "devlab" ? <DevLab /> : null}
+        <ErrorBoundary key={section} screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
+          {section === "today" ? <Today onJump={(sec, id) => jump(sec, id)} /> : null}
+          {section === "attention" ? <Attention /> : null}
+          {section === "money" ? <Money /> : null}
+          {section === "vehicles" ? <Vehicles focusId={focus?.id} /> : null}
+          {section === "health" ? <Health /> : null}
+          {section === "home" ? <HomeScreen /> : null}
+          {section === "travel" ? <Travel /> : null}
+          {section === "papers" ? <Papers focusId={focus?.id} /> : null}
+          {section === "notes" ? <NotesKanban focusId={focus?.id} /> : null}
+          {section === "media" ? <Media /> : null}
+          {section === "tools" ? <Tools focusId={focus?.id} /> : null}
+          {section === "rules" ? <Rules /> : null}
+          {section === "dev" ? <Dev /> : null}
+          {section === "builder" ? <Builder onJump={(sec, id) => jump(sec, id)} /> : null}
+          {section === "cycle" ? <Cycle /> : null}
+          {section === "net" ? <Net /> : null}
+          {section === "lab" ? <Lab /> : null}
+          {section === "settings" ? <Settings /> : null}
+          {section === "devlab" ? <DevLab /> : null}
+        </ErrorBoundary>
       </main>
       {palette ? <CommandPalette onClose={() => setPalette(false)} onJump={jump} includeDev /> : null}
     </div>

@@ -658,6 +658,13 @@
   dependencies:
     "@tauri-apps/api" "^2.12.0"
 
+"@tauri-apps/plugin-process@^2":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-process/-/plugin-process-2.4.0.tgz#71ce05886bc7b16b0cae4e03309b0d2200f50517"
+  integrity sha512-GddrmsSLAYrLa/yTXlXK/YRDzUgYeeOnUXTbiyvJWkmI424RmDPD3FVLeqcon7rv6O6ZfhBilcrHWnSo7o6hIQ==
+  dependencies:
+    "@tauri-apps/api" "^2.12.0"
+
 "@tauri-apps/plugin-stronghold@^2":
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/@tauri-apps/plugin-stronghold/-/plugin-stronghold-2.4.0.tgz#47b370840be057acd7d8f76046a9978a622cfcbe"

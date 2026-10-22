@@ -87,7 +87,10 @@ const DEFAULT_PAIR: Record<string, [string, string]> = { Length: ["km", "mi"], W
 
 function UnitsTool() {
   const { db, update } = useStore();
-  const [cat, setCat] = useState(db.recents["units:cat"] ?? "Length");
+  // The saved category could carry a stale key from an older build; falling back
+  // to Length keeps the UserDefaults for from/to resolvable instead of crashing.
+  const savedCat = db.recents["units:cat"];
+  const [cat, setCat] = useState<string>(savedCat && UNITS[savedCat] ? savedCat : "Length");
   const [from, setFrom] = useState(DEFAULT_PAIR[cat][0]);
   const [to, setTo] = useState(DEFAULT_PAIR[cat][1]);
   const [val, setVal] = useState(db.recents["units:val"] ?? "1");
@@ -930,6 +933,11 @@ export function Tools({ focusId }: { focusId?: string }) {
 
   const cls = (id: string) => (tool === id ? "tab on" : "tab");
   const customOpen = tool.startsWith("custom:") ? tool.slice(7) : null;
+  // Rendered as an element, never called as a function: each tool owns its own
+  // hooks through its own fibre. Calling e.g. EmiTool() directly during this
+  // render used to register its state inside Tools, so switching pills changed
+  // the hook count and React unmounted the whole tree — the "blank screen" bug.
+  const ToolComp = TOOL_COMPONENTS[tool];
 
   return (
     <>
@@ -952,8 +960,8 @@ export function Tools({ focusId }: { focusId?: string }) {
             </button>
           ))}
         </nav>
-        <section className="card" key={tool} data-testid={`tool-${tool}`}>
-          {customOpen ? <CustomToolRunner toolId={customOpen} /> : TOOL_COMPONENTS[tool] ? TOOL_COMPONENTS[tool]() : null}
+        <section className="card" data-testid={`tool-${tool}`}>
+          {customOpen ? <CustomToolRunner key={tool} toolId={customOpen} /> : ToolComp ? <ToolComp key={tool} /> : null}
         </section>
         {history.length ? (
           <section className="card" data-testid="tools-history">
