@@ -24,3 +24,17 @@ published APK and desktop installers keep their own licenses and notices:
 Full dependency inventories live in `frontend/package.json`,
 `desktop/package.json` and `desktop/src-tauri/Cargo.lock`; every released
 build can be reproduced from those lockfiles.
+
+## Repository agent tooling (not shipped in any build)
+
+`.opencode/skills/` holds agent SKILL.md files vendored from upstream
+repositories at the pinned revisions below. They are developer-facing docs and
+are not bundled into the APK, the installers or the web documents viewer:
+
+| Skill(s) | Source (MIT, pinned revision) |
+| --- | --- |
+| apple-design, animate, animate-expo, find-animation-opportunities | github.com/emilkowalski/skills @ `2d228630ba14` (`skills/<name>/`) |
+| design-review | github.com/garrytan/gstack @ `514fbfdc9799` (`design-review/`) |
+| wcag-audit-patterns | github.com/wshobson/agents @ `0874a27b17a2` (`plugins/accessibility-compliance/skills/wcag-audit-patterns/`) |
+
+Installed 22 October 2026; re-vendor from upstream when updating.
