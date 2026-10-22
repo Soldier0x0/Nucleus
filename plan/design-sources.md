@@ -172,7 +172,7 @@ Desktop wiring when v0.17 lands: every invalid/destructive-rejection flow — Ex
 
 ### Skeleton Shimmer — rebuilt as `plan/design/skeleton-shimmer-nucleus.html` (22 Oct 2026)
 
-*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+*Raw archived: `plan/design/forever/skeleton-shimmer.html` (untracked, licence-unstated — study only).*
 
 Upstream sweeps a white gradient over abstract blob bones. Mechanism ported whole; material retuned for paper, and the bones rebuilt from the layout they stand in for — the cornerstone of the port.
 
@@ -190,7 +190,7 @@ Desktop wiring when v0.17 lands: Money list and Health entries first paint — s
 
 ### Hold to Confirm — rebuilt as `plan/design/hold-to-confirm-nucleus.html` (22 Oct 2026)
 
-*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+*Raw archived: `plan/design/forever/hold-to-confirm.html — fetched verbatim from forevercomponents.com/feedback-states/05 on 22 Oct 2026` (untracked, licence-unstated — study only).*
 
 Upstream blends a linear hold-fill with a soft spring and counts a release outside the control. The model is kept whole and retargeted at a real destructive action, with the semantic palette carrying the meaning.
 
@@ -207,15 +207,15 @@ Desktop wiring when v0.17 lands: destructive confirmations that space "Delete" o
 
 ### Drag Handle — rebuilt as `plan/design/drag-handle-nucleus.html` (22 Oct 2026)
 
-*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+*Raw archived: `plan/design/forever/drag-handle.html` (untracked, licence-unstated — study only).*
 
-Upstream reorders rows with a per-row spring and a lerped lift. Kept as the reorder core; grip-only discipline retained.
+Upstream reorders rows with a per-row spring and a lerped lift — and the pointer grabs the WHOLE row (`closest('.dr09-row')`), the grip being affordance, not the hit target. Kept as the reorder core; grip-only discipline retained (Nucleus hardening, see below).
 
 | Aspect | Forever upstream | Nucleus rebuild |
 | --- | --- | --- |
 | Reorder spring | per-row `k=0.18, damp=0.74` toward slot targets | kept verbatim; targets recompute from ONE `moveSlot(from, to)` — the only reorder path, shared by pointer and keyboard |
 | Lift | offset lerps 0.22 toward cursor; scale 1.035 + −7px | same constants; scale rides the independent `scale` property (composes with the JS-driven translateY); the −7px raise folds into the target |
-| Lift shadow | applied at grab | class swap with NO transition — shadow lands instantly at grab, vanishes instantly at drop (animating shadows janks and re-paints the whole list) |
+| Lift shadow | applied at grab — upstream's own row carries `transition: box-shadow .18s linear` despite upstream's "never animated" comment | class swap with NO transition — shadow lands instantly at grab, vanishes instantly at drop (animating shadows janks and re-paints the whole list) |
 | Swaps | midpoint crossings commit mid-flight | kept — the row moves with the pointer while neighbors already glide aside |
 | A11y | pointer-only | grip focusable; ArrowUp/ArrowDown move through the same `moveSlot`; `role="status"` announces the new order; `list/listitem` semantics + per-grip position labels |
 | Scale | fixed row count | dynamic rows (+ Add) re-seed targets; deck height derives from row count; entering rows spring into seat |
@@ -225,13 +225,13 @@ Desktop wiring when v0.17 lands: Reminders ordering, Settings row groups. grip-o
 
 ### Upload Progress Ring — rebuilt as `plan/design/upload-progress-nucleus.html` (22 Oct 2026)
 
-*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+*Raw archived: `plan/design/forever/upload-progress.html` (untracked, licence-unstated — study only).*
 
-Upstream fills a conic pie with a two-half-circle compositor pair — `rL` covers 0–180°, `rR` un-hides only past 50% — on an easeInOutCubic 2800ms timeline, then auto-restarts for the demo. The technique is kept as strokes instead of conic-fills (cheaper, crisper caps); the loop and glow stack are stripped.
+Upstream is a clip-path half-disc pair, not a conic pie: `rL` reveals 0–180°, and only past 50% does `rR` un-hide by rotating to `rotate(deg−180)` (FILL=2800) — all on an easeInOutCubic 2800ms timeline, then auto-restarts for the demo. The technique is kept as strokes instead of conic-fills (cheaper, crisper caps); the loop and glow stack are stripped.
 
 | Aspect | Forever upstream | Nucleus rebuild |
 | --- | --- | --- |
-| Ring | conic pie via two half-circles + rotation | same left-then-right sequencing as two half-arc strokes; one rAF drives both dashoffsets — a 66px ring re-paints a hairline per frame |
+| Ring | clip-path half-discs (left disc sweeps 0–180°, right disc un-hides past 50%) | same left-then-right sequencing as two half-arc strokes; one rAF drives both dashoffsets — a 66px ring re-paints a hairline per frame |
 | Timeline | easeInOutCubic, 2800ms, loops | kept exactly; single run per event, settle-and-stop |
 | Completion | stays put, stays accent | `--accent` → `--ok` stroke swap (200ms) + center tick draw-in (260ms, 70ms delay), `role="status"` announces "Complete — file saved" |
 | Material | glow-bloomy dark ring | faint track + tabular % in the donut hole on paper; radius matches §4 icon scale |
@@ -241,7 +241,7 @@ Desktop wiring when v0.17 lands: Health export, Money backup/restore, the sync l
 
 ### Command Palette — rebuilt as `plan/design/command-palette-nucleus.html` (22 Oct 2026) — §1 DECISION OPEN
 
-*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass. **Feature-gated:** whether Cmd+K ships in v0.17 is an undecided §1 question — the toolbar Search chip exists either way; the palette is one wiring flag if approved.*
+*Raw archived: `plan/design/forever/command-palette.html` (untracked, licence-unstated — study only). **Feature-gated:** whether Cmd+K ships in v0.17 is an undecided §1 question — the toolbar Search chip exists either way; the palette is one wiring flag if approved.*
 
 Upstream pops a spring dialog with wrap-around arrow navigation and hover-synced selection; their docs concede missing dialog semantics, and the port closes every one of them.
 
@@ -258,9 +258,9 @@ Desktop wiring when v0.17 lands: if approved — palette module keyed off §1 to
 
 ### Elastic Sub-Grid Bento — technique-banked, study-only (22 Oct 2026)
 
-*Raw pending re-archive (paste lost to compaction); logged from the analysis pass.*
+*Raw archived: `plan/design/forever/skeleton-shimmer.html` (untracked, licence-unstated — study only).*
 
-**No rebuild queued.** The elastic sub-grid drag (cells shove their neighbors with soft-spring displacement while resizing/dragging) is banked for the v0.18 streams era alongside Treemap and Live Line Sweep — sub-grid elasticity pairs naturally with data-density changes, which are explicitly out of v0.17 scope per §2. When v0.18 charts open, reference the upstream analysis from `plan/design/forever/` (to be re-added) before designing the bento module.
+**No rebuild queued.** The elastic sub-grid drag (cells shove their neighbors with soft-spring displacement while resizing/dragging) is banked for the v0.18 streams era alongside Treemap and Live Line Sweep — sub-grid elasticity pairs naturally with data-density changes, which are explicitly out of v0.17 scope per §2. When v0.18 charts open, reference the upstream raw `plan/design/forever/elastic-sub-grid-bento.html` before designing the bento module.
 
 ## Format spec: Stitch DESIGN.md
 
