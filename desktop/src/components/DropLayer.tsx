@@ -3,6 +3,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { join } from "@tauri-apps/api/path";
 import { readDir, readFile } from "@tauri-apps/plugin-fs";
 import { useStore } from "../store";
+import { confirmDialog } from "./Dialog";
 import { isTauri } from "../platform/env";
 import { parseBackup } from "../platform/backup";
 import { vault } from "../platform/storage";
@@ -147,7 +148,15 @@ export function DropLayer() {
     const text = new TextDecoder().decode(bytes);
     const picked = parseBackup(text);
     if (picked.kind === "encrypted") throw new Error("encrypted backups import in Settings");
-    if (!window.confirm(`Replace the document on this computer with "${name}"? The current document is overwritten.`)) return false;
+    if (
+      !(await confirmDialog({
+        title: "Replace this document?",
+        body: `The document on this computer is replaced with "${name}". The current one is overwritten.`,
+        confirmLabel: "Replace",
+        danger: true,
+      }))
+    )
+      return false;
     replace(picked.file.data);
     return true;
   };

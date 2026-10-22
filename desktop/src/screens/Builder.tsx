@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { confirmDialog } from "../components/Dialog";
 import type { ReactNode } from "react";
 import { useStore } from "../store";
 import type { CustomTool, CustomToolInput } from "@core/types";
@@ -70,8 +71,15 @@ export function Builder({ onJump }: { onJump: (next: SectionId, focusId?: string
               <button className="small-btn" onClick={() => setEdit(t)} data-testid={`custom-tool-edit-${t.id}`}>Edit</button>
               <button
                 className="small-btn"
-                onClick={() => {
-                  if (window.confirm(`Delete "${t.name}"? Its saved results are removed too.`))
+                onClick={async () => {
+                  if (
+                    await confirmDialog({
+                      title: `Delete "${t.name}"?`,
+                      body: "Its saved results are removed too.",
+                      confirmLabel: "Delete",
+                      danger: true,
+                    })
+                  )
                     update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== t.id) }));
                 }}
                 data-testid={`custom-tool-delete-${t.id}`}
@@ -248,8 +256,15 @@ function ToolEditor({ tool, onClose, onJump }: { tool: CustomTool; onClose: () =
           <button
             className="small-btn"
             style={{ color: "var(--error)" }}
-            onClick={() => {
-              if (window.confirm("Delete this tool? Its saved results are removed too.")) {
+            onClick={async () => {
+              if (
+                await confirmDialog({
+                  title: "Delete this tool?",
+                  body: "Its saved results are removed too.",
+                  confirmLabel: "Delete",
+                  danger: true,
+                })
+              ) {
                 update((d) => ({ ...d, customTools: d.customTools.filter((x) => x.id !== tool.id) }));
                 onClose();
               }

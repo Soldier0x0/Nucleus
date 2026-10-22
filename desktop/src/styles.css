@@ -18,6 +18,8 @@
   --warn: #bc8524;
   --warn-soft: rgba(188, 133, 36, 0.16);
   --error: #b4534b;
+  --error-strong: #a34640;
+  --error-ink: #ffffff;
   --error-soft: rgba(180, 83, 75, 0.14);
   --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
   --radius: 16px;
@@ -52,6 +54,8 @@
   --warn: #d9a94c;
   --warn-soft: rgba(217, 169, 76, 0.18);
   --error: #d9837a;
+  --error-strong: #e49a92;
+  --error-ink: #201712;
   --error-soft: rgba(217, 131, 122, 0.16);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
   --accent-line: rgba(232, 164, 92, 0.60);
@@ -2667,5 +2671,100 @@ html[data-hidden] .sk-bone::after {
     animation: none;
     transform: none;
     background: color-mix(in srgb, var(--ink) 4%, transparent);
+  }
+}
+
+/* ---------- Dialog sheet (§3/§4): native-feeling confirm, replaces window.confirm ----------
+   Blur(20px) saturate(180%) window material at ~62% tint above a dimming layer,
+   11px radius, 8px elevation. Small and centered, never modal-stacked. */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90; /* above the palette (60) and drop layer (80); toasts (200) float over */
+  background: rgba(20, 15, 8, 0.5); /* dimming layer */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: dialog-overlay-in 120ms var(--fast) both;
+}
+.dialog-card {
+  width: min(400px, calc(100vw - 32px));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--line);
+  box-shadow: var(--elev-8);
+  padding: 18px 18px 16px;
+  animation: dialog-in var(--spring) both;
+}
+.dialog-card h2 {
+  margin: 0 0 6px;
+  font-size: var(--t-head);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dialog-card p {
+  margin: 0 0 16px;
+  font-size: var(--t-body);
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: pre-line;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.dialog-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  border-radius: var(--r-sm);
+  padding: 0 14px;
+  font-size: var(--t-body);
+  font-weight: 600;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background var(--fast), border-color var(--fast);
+}
+.dialog-btn:hover {
+  border-color: var(--accent-line);
+}
+.dialog-btn:active {
+  transform: scale(0.97);
+}
+.dialog-btn.is-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+.dialog-btn.is-accent:hover {
+  background: var(--accent-strong);
+}
+.dialog-btn.is-danger {
+  background: var(--error);
+  color: var(--error-ink);
+  border-color: transparent;
+}
+.dialog-btn.is-danger:hover {
+  background: var(--error-strong);
+}
+@keyframes dialog-overlay-in {
+  from { opacity: 0; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay,
+  .dialog-card {
+    animation: none;
+  }
+  .dialog-btn:active {
+    transform: none;
   }
 }

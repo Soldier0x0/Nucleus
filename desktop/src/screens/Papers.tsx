@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { confirmDialog } from "../components/Dialog";
 import { useStore } from "../store";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { fromB64 } from "../platform/crypto";
@@ -90,7 +91,15 @@ export function Papers({ focusId }: { focusId?: string }) {
   };
 
   const removePaper = async (p: Paper) => {
-    if (!window.confirm(`Delete "${p.title}" from this computer?`)) return;
+    if (
+      !(await confirmDialog({
+        title: `Delete "${p.title}"?`,
+        body: "This removes it from this computer.",
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     const uri = paperAttachmentUri(p);
     if (uri?.startsWith("vault:")) await vault.remove(uri.slice("vault:".length));
     update((d) => ({ ...d, papers: d.papers.filter((x) => x.id !== p.id) }));

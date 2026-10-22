@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { confirmDialog } from "../components/Dialog";
 import { useStore } from "../store";
 import { MODULES } from "@core/modules";
 import { countsOf } from "@core/merge";
@@ -102,10 +103,17 @@ export function Settings() {
     }
   };
 
-  const acceptImport = (file: BackupFile, name: string) => {
+  const acceptImport = async (file: BackupFile, name: string) => {
     const counts = file.counts ?? countsOf(file.data);
     const summary = Object.entries(counts).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(", ") || "nothing";
-    if (!window.confirm(`Replace the document on this computer with "${name}"?\n\nIt contains ${summary}. The current document is overwritten.`)) {
+    if (
+      !(await confirmDialog({
+        title: `Restore "${name}"?`,
+        body: `Replaces the document on this computer. It contains ${summary}. The current document is overwritten.`,
+        confirmLabel: "Replace",
+        danger: true,
+      }))
+    ) {
       setPending(null);
       return;
     }

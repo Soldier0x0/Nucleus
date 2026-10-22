@@ -37,6 +37,7 @@ import { ToastStack } from "./components/ToastStack";
 import { BootSkeleton } from "./components/BootSkeleton";
 import { ScreenToolbar, ToolbarHostProvider } from "./components/ScreenToolbar";
 import { VaultPulse } from "./components/VaultPulse";
+import { confirmDialog } from "./components/Dialog";
 import { startupAutoUpdate } from "./platform/updater";
 import { BMC_URL, openExternal } from "./platform/support";
 
@@ -441,8 +442,16 @@ function Shell() {
             <button className="primary" onClick={retryLoad}>Try again</button>
             <button
               className="danger-btn"
-              onClick={() => {
-                if (window.confirm("Start fresh without the old document? The unreadable copy is kept on disk as a backup first.")) void discardUnreadable();
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: "Start fresh?",
+                    body: "Without the old document. The unreadable copy is kept on disk as a backup first.",
+                    confirmLabel: "Start fresh",
+                    danger: true,
+                  })
+                )
+                  void discardUnreadable();
               }}
             >
               Start fresh

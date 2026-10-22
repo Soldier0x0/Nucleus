@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { PIN_MIN_DIGITS, backoffLabel, backoffRemainingMs, isValidPin } from "./platform/security";
 import { WrongPinError, createSecure, readBackoff, registerFailure, clearFailures, resetSecure, unlockSecure } from "./platform/secure";
+import { confirmDialog } from "./components/Dialog";
 
 function digitsOnly(value: string) {
   return value.replace(/\D+/g, "").slice(0, 12);
@@ -71,7 +72,15 @@ export function LockScreen({ mode, onUnlocked }: { mode: "create" | "unlock"; on
   };
 
   const reset = async () => {
-    if (!window.confirm("This erases the PIN, the key and the document on this computer. Backups are not touched. Continue?")) return;
+    if (
+      !(await confirmDialog({
+        title: "Erase this computer?",
+        body: "This erases the PIN, the key and the document on this computer. Backups are not touched.",
+        confirmLabel: "Erase",
+        danger: true,
+      }))
+    )
+      return;
     await resetSecure();
     window.location.reload();
   };

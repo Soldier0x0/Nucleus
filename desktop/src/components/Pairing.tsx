@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import { isTauri } from "../platform/env";
 import { randomBytes } from "../platform/crypto";
 import { QrCode } from "./QrCode";
+import { confirmDialog } from "./Dialog";
 import { newDesktopSyncIdentity, readDesktopSync, rememberPublicIdentity, withDesktopSync } from "../sync/identity";
 import { desktopHostname, ensureSyncServer, type SyncServerStart, type SyncServerStatus } from "../sync/server";
 import { forgetSyncSummary, setPairCode, subscribeSyncSummaries, syncSummaries } from "../sync/runtime";
@@ -80,8 +81,16 @@ export function Pairing() {
     return pairQrPayload({ deviceId: identity.deviceId, name: identity.name, publicKey: identity.publicKey, host: server.host, port: server.port, code });
   }, [identity, server, code]);
 
-  const remove = (device: PairedDevice) => {
-    if (!window.confirm(`Remove ${device.name}? It must be paired again before it can sync.`)) return;
+  const remove = async (device: PairedDevice) => {
+    if (
+      !(await confirmDialog({
+        title: `Remove ${device.name}?`,
+        body: "It must be paired again before it can sync.",
+        confirmLabel: "Remove",
+        danger: true,
+      }))
+    )
+      return;
     update((d) => removePairedDevice(d, device.id));
     forgetSyncSummary(device.id);
   };
