@@ -7,12 +7,12 @@
   --panel-2: #ede7dc;
   --ink: #221c15;
   --muted: #6e6455;
-  --faint: #9c9181;
+  --faint: #766a5c;
   --line: rgba(32, 26, 19, 0.085);
-  --accent: #be7a2e;
-  --accent-strong: #a9661f;
+  --accent: #a35f1b;
+  --accent-strong: #8a4c0f;
   --accent-ink: #fff8ec;
-  --accent-soft: rgba(190, 122, 46, 0.13);
+  --accent-soft: rgba(163, 95, 27, 0.13);
   --ok: #4c8a57;
   --ok-soft: rgba(76, 138, 87, 0.14);
   --warn: #bc8524;
@@ -25,7 +25,7 @@
   /* §3 re-tune (v0.17): Warm Paper stays, hairline is one quieter step; the
      material/blur/elevation tokens below are the depth vocabulary. */
   --line: rgba(32, 26, 19, 0.10);
-  --accent-line: rgba(190, 122, 46, 0.55);
+  --accent-line: rgba(163, 95, 27, 0.55);
   --material: rgba(253, 250, 245, 0.62);
   --material-strong: rgba(253, 250, 245, 0.78);
   --blur: blur(20px) saturate(1.8);
@@ -2115,12 +2115,14 @@ button {
   min-width: 0;
 }
 .kan-grip {
+  /* 24×24: WCAG 2.5.8 target-size floor; the dot mark stays small inside it */
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
+  margin-left: -3px;
   padding: 0;
   border: 0;
-  border-radius: 4px;
+  border-radius: 5px;
   background: none;
   color: var(--faint);
   cursor: grab;
@@ -2400,8 +2402,8 @@ html[data-hidden] .toast-leave {
   transform: translateX(16px) scaleX(1.18);
 }
 .switch input[type="checkbox"]:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-strong) 35%, transparent);
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
 }
 .switch input[type="checkbox"]:disabled {
   opacity: 0.45;
@@ -2427,9 +2429,18 @@ html[data-hidden] .toast-leave {
   color: var(--accent-ink);
   box-shadow: 0 1px 0 color-mix(in srgb, #000 12%, transparent); /* 1px contact shadow */
 }
-.seg button:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent-strong) 35%, transparent);
-  outline-offset: 1px;
+
+/* ---------- AA focus + focus-not-obscured (WCAG 2.4.7/2.4.11) ---------- */
+/* One fallback ring for every control the wave didn't style explicitly;
+   :where() keeps specificity at zero so bespoke rules stay in charge. The
+   solid --accent-strong ring clears 3:1 in both themes. scroll-padding keeps
+   keyboard focus out from under the sticky toolbar when tabbing long pages. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+html {
+  scroll-padding-top: 76px;
 }
 
 /* ---------- Spotlight hover (§6): 6% ink wash, event-driven ---------- */
