@@ -124,10 +124,17 @@ test("the repository changelog records published versions and the cycle calendar
   assert.match(readReleaseNotes("v0.16.2", changelogPath), /completely blank/);
   assert.match(readReleaseNotes("v0.16.2", changelogPath), /black window/);
   assert.match(readReleaseNotes("v0.16.2", changelogPath), /computers? password/);
+  assert.equal(prepareRelease({ changelog, tag: "v0.17" }).publish, true);
+  assert.match(readReleaseNotes("v0.17", changelogPath), /kanban card dragging/);
+  assert.match(readReleaseNotes("v0.17", changelogPath), /undo snackbar/);
+  assert.match(readReleaseNotes("v0.17", changelogPath), /toast rail/);
+  assert.match(readReleaseNotes("v0.17", changelogPath), /silently never run/);
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.7.5" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.1" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.8.4" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.16.3" }), { publish: false, reason: "missing" });
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.17.1" }), { publish: false, reason: "missing" });
+  assert.deepEqual(prepareRelease({ changelog, tag: "v0.18" }), { publish: false, reason: "missing" });
   assert.deepEqual(prepareRelease({ changelog, tag: "v0.11.2" }), { publish: false, reason: "missing" });
   assert.match(readReleaseNotes("v0.9.3", changelogPath), /document viewer hang/);
   assert.match(readReleaseNotes("v0.7", changelogPath), /Activa · 5\.6 L/);
@@ -209,11 +216,12 @@ test("the repository changelog records published versions and the cycle calendar
   assert.doesNotThrow(() =>
     assertThisReleaseOnly({
       changelog,
-      tag: "v0.16.2",
-      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9", "v0.9.1", "v0.9.2", "v0.9.3", "v0.9.4", "v0.9.5", "v0.9.6", "v0.9.7", "v0.9.8", "v0.9.9", "v0.10", "v0.11", "v0.11.1", "v0.12", "v0.13", "v0.14", "v0.15", "v0.15.1", "v0.15.2", "v0.15.3", "v0.15.4", "v0.16", "v0.16.1"],
+      tag: "v0.17",
+      publishedTags: ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "v0.6", "v0.6.1", "v0.6.2", "v0.6.3", "v0.7", "v0.7.1", "v0.7.2", "v0.7.3", "v0.7.4", "v0.8", "v0.8.2", "v0.8.3", "v0.9", "v0.9.1", "v0.9.2", "v0.9.3", "v0.9.4", "v0.9.5", "v0.9.6", "v0.9.7", "v0.9.8", "v0.9.9", "v0.10", "v0.11", "v0.11.1", "v0.12", "v0.13", "v0.14", "v0.15", "v0.15.1", "v0.15.2", "v0.15.3", "v0.15.4", "v0.16", "v0.16.1", "v0.16.2"],
     }),
   );
   assert.doesNotMatch(changelogSection(changelog, "v0.16.2"), /overdue|\bmissed\b|behind|\blate\b|\bfail/i);
+  assert.doesNotMatch(changelogSection(changelog, "v0.17"), /overdue|\bmissed\b|behind|\blate\b|\bfail/i);
 });
 
 test("v0.8.3 and later bullets start with Fixed, Added, or Changed", () => {

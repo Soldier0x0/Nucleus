@@ -10,6 +10,20 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.17
+
+- Added kanban card dragging: grab a card by its grip and the neighbours glide out of the way with spring physics, or press the grip's arrow keys — keyboard and pointer go through the same reorder commit, and the board is written once at the drop.
+- Added press-and-hold to delete a board or column: hold about a second while the error ring charges — let go early and nothing happens. Deleting a note or a single card now shows a 6-second undo snackbar instead.
+- Added the Cmd/Ctrl+K command palette to the desktop with typed search, wrap-around arrow keys and proper focus handling.
+- Added a bottom toast rail for small confirmations — fingerprint copied, buddy line copied, the CSV export saved or refused — capped at three notices, draining hairlines paused when the window is hidden.
+- Added the sidebar vault fingerprint pill that copies the full SHA-256 on click, and an "Already here" pill on Today that says when the phone last synced — fresh rides a green dot, stale an amber one.
+- Added a first-paint skeleton while your document opens, built from the same row shapes as the real list, so nothing jumps when the data lands.
+- Added empty-state vessels to Money and Notes, a one-time Support nudge, and Support links (GitHub Sponsors, Buy Me a Coffee) in the sidebar and About card.
+- Added the liquid look to every settings toggle, the flat amber leaf to segmented controls, and a faint ink spotlight that follows the pointer across Today and Money tiles.
+- Changed every screen to share one sticky title bar with its own tools, added a skip link past the sidebar, and let Today's spent figure count up once on first paint.
+- Fixed five animations that had silently never run (the support nudge entrance, the vault tick, the error shake, and the empty-vessel settle and rim) — an invalid CSS shorthand had been discarding them.
+- Fixed colour-contrast and focus issues for accessibility in the light theme: the faint text tones and the amber accent were darkened to AA, every control got a solid visible focus ring, the kanban grip grew to a 24px target, drag reorder and undo speak to screen readers, and reduced-motion preferences are honoured throughout.
+
 ## v0.16.2
 
 - Fixed the Tools page going completely blank the moment any tool pill was opened (date, EMI, or any other — each tool now mounts on its own).
