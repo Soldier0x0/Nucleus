@@ -863,6 +863,7 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: none;
 }
 /* Screens render their titles/actions into .toolbar-shell by portal — the
    legacy per-screen .topbar is gone. */
@@ -899,13 +900,6 @@ button {
   font-weight: 600;
   letter-spacing: -0.02em;
   margin: 3px 0 0;
-}
-.toolbar-shell .right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: none;
 }
 .workcol {
   padding: 18px 28px 96px;
@@ -1923,5 +1917,195 @@ button {
   table td,
   table th {
     color: #111 !important;
+  }
+}
+
+/* ---------- Undo snackbar (§7): the one reversed-destructive surface ---------- */
+:root {
+  --undo-left: 252px; /* clear of the 240px sidebar */
+}
+.undo-bar {
+  position: fixed;
+  left: var(--undo-left);
+  bottom: 18px;
+  z-index: 34;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 380px;
+  padding: 10px 12px;
+  background: var(--material-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--elev-8);
+  animation: undo-in 320ms var(--spring) both;
+}
+@keyframes undo-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.undo-ring {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  transform: rotate(-90deg);
+}
+.undo-ring .track,
+.undo-ring .drain {
+  fill: none;
+  stroke-width: 3.4;
+}
+.undo-ring .track {
+  stroke: var(--line);
+}
+.undo-ring .drain {
+  stroke: var(--warn);
+  transition: stroke var(--base);
+  stroke-linecap: round;
+}
+.undo-bar[data-danger] .drain {
+  stroke: var(--error);
+}
+.undo-bar[data-danger] {
+  border-color: var(--accent-line);
+}
+.undo-copy {
+  min-width: 0;
+}
+.undo-copy b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.undo-copy span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.undo-btn {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 7px;
+  background: none;
+  color: var(--accent-strong);
+  font: 600 12px "Inter", system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform var(--fast), background var(--fast);
+}
+.undo-btn:hover {
+  background: var(--accent-soft);
+}
+.undo-btn:active {
+  transform: scale(0.96);
+}
+.undo-btn:focus-visible {
+  outline: 3px solid rgba(190, 122, 46, 0.35);
+  outline-offset: 1.5px;
+}
+@media (max-width: 720px) {
+  .undo-bar {
+    left: 18px;
+  }
+}
+@media print {
+  .undo-bar {
+    display: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .undo-bar {
+    animation: none;
+  }
+  .undo-ring .drain {
+    transition: none;
+  }
+}
+
+/* ---------- Error shake (§7): invalid input feedback ---------- */
+/* The 180/200ms border flush + a decaying-sine wobble baked here (the rebuild's
+   shaped track, AMP 13px, DECAY 7.5 per unit t); key remount restarts the run. */
+@keyframes err-shake {
+  0% { transform: translateX(0); }
+  17% { transform: translateX(7.2px); }
+  33% { transform: translateX(-11.4px); }
+  50% { transform: translateX(8.3px); }
+  67% { transform: translateX(-4.3px); }
+  83% { transform: translateX(1.9px); }
+  100% { transform: translateX(0); }
+}
+.w-amount[data-bad] {
+  border-color: var(--error) !important;
+  box-shadow: 0 0 0 3px var(--error-soft);
+  animation: err-shake 550ms var(--base);
+}
+@media (prefers-reduced-motion: reduce) {
+  .w-amount[data-bad] {
+    animation: none;
+  }
+}
+
+/* ---------- Empty-state vessel (§7): still after one settle ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26px 24px 30px;
+  text-align: center;
+}
+.empty-state .fig svg {
+  display: block;
+  width: 164px;
+  margin: 0 auto;
+  animation: ves-settle 460ms var(--spring) both;
+}
+@keyframes ves-settle { from { transform: translateY(-5px); } to { transform: translateY(0); } }
+.v-void { fill: var(--panel-2); }
+.v-back { fill: none; stroke: var(--muted); stroke-opacity: 0.45; stroke-width: 2; }
+.v-walls { fill: none; stroke: var(--muted); stroke-width: 2.2; stroke-linecap: round; }
+.v-rim {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 76 24; /* front arc only (pathLength=100) */
+  opacity: 0.25;
+  animation: ves-rim 520ms var(--spring) 160ms both;
+}
+@keyframes ves-rim { from { opacity: 0.25; } to { opacity: 1; } }
+.v-ground {
+  fill: none;
+  stroke: var(--faint);
+  stroke-opacity: 0.55;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 4 7;
+}
+.es-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 0;
+}
+.es-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 5px auto 0;
+  max-width: 32ch;
+}
+.es-action {
+  margin-top: 14px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .empty-state .fig svg,
+  .v-rim {
+    animation: none;
+  }
+  .v-rim {
+    opacity: 1;
   }
 }

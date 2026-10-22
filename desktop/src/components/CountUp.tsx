@@ -56,9 +56,5 @@ export const CountUp = memo(function CountUp({
     return () => cancelAnimationFrame(raf.current);
   }, [to]);
 
-  return (
-    <span data-testid={testid} aria-label={format(to)} role="text">
-      {format(Math.round(shown))}
-    </span>
-  );
+  return <span data-testid={testid}>{format(Math.round(shown))}</span>;
 });

@@ -287,14 +287,25 @@ export function Settings() {
                 {updMsg ? <span className="muted small" data-testid="settings-update-msg">{updMsg}</span> : null}
               </div>
             ) : null}
-            <div className="row support-links" style={{ marginTop: 10 }}>
+            <div className="row" style={{ marginTop: 10 }}>
               <button
                 className="small-btn"
                 onClick={() => void openExternal(BMC_URL)}
                 title="buymeacoffee.com/soldier0x0"
                 data-testid="settings-support-bmc"
               >
-                ☕ Buy me a coffee
+                <svg
+                  className="ic"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  style={{ width: 13, height: 13, verticalAlign: -2, marginRight: 5 }}
+                >
+                  {/* the same cup as the sidebar row — glyphs, not emoji */}
+                  <path d="M4 9h11v5.2A4.8 4.8 0 0 1 10.2 19H8.8A4.8 4.8 0 0 1 4 14.2Z" />
+                  <path d="M15 10.4h2.1a2.4 2.4 0 0 1 0 4.8H15" />
+                  <path d="M7.5 5.5v1.8M10.5 5.5v1.8" />
+                </svg>
+                Buy me a coffee
               </button>
               <button
                 className="small-btn"

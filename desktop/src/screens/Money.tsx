@@ -5,6 +5,8 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@core/defaults";
 import { categorySplit, monthFlow } from "@core/moneyDesk";
 import { monthSeries } from "@core/intelligence";
 import { fmtDate, money, monthKey, todayISO, uid } from "@core/format";
+import { undoBus } from "../platform/undo";
+import { EmptyState } from "../components/EmptyState";
 import type { Settings, Txn } from "@core/types";
 import { Bars, Donut, PALETTE } from "../components/Charts";
 import { readViews, type SavedView } from "../platform/savedViews";
@@ -24,6 +26,7 @@ export function Money() {
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [draft, setDraft] = useState(blank);
+  const [bad, setBad] = useState(0); // error-shake counter — increments per bad add
   const [exporting, setExporting] = useState(false);
   const views = useMemo(() => readViews(db).filter((v) => v.section === "money"), [db]);
 
@@ -45,14 +48,28 @@ export function Money() {
 
   const add = () => {
     const amount = Number.parseFloat(draft.amount.replace(/,/g, ""));
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0) {
+      // error-shake (§7): border flushes to --error, decaying-sine wobble,
+      // and the cause is spoken, not silent.
+      setBad((n) => n + 1);
+      return;
+    }
     const row: Txn = { id: uid(), type: draft.type, amount, category: draft.category.trim() || "Other", date: draft.date || todayISO() };
     if (draft.note.trim()) row.note = draft.note.trim().slice(0, 200);
     update((d) => ({ ...d, txns: [row, ...d.txns] }));
+    setBad(0);
     setDraft({ ...blank, type: draft.type, category: draft.category, date: draft.date });
   };
 
-  const remove = (id: string) => update((d) => ({ ...d, txns: d.txns.filter((t) => t.id !== id) }));
+  const remove = (id: string) => {
+    const t = db.txns.find((x) => x.id === id);
+    if (!t) return;
+    update((d) => ({ ...d, txns: d.txns.filter((x2) => x2.id !== id) }));
+    undoBus.request({
+      title: `Deleted ${money(t.amount, db.settings.currency)} · ${t.category}`,
+      onUndo: () => update((d) => ({ ...d, txns: [...d.txns, t] })),
+    });
+  };
 
   const writeViews = (views: SavedView[]) => setSettings({ ...db.settings, desktopViews: [...readViews(db).filter((v) => v.section !== "money"), ...views] } as Partial<Settings>);
   const saveView = () => {
@@ -143,7 +160,24 @@ export function Money() {
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
               </select>
-              <input className="filter w-amount" inputMode="decimal" placeholder="Amount" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} />
+              <input
+                className="filter w-amount"
+                id="money-amount"
+                inputMode="decimal"
+                placeholder="Amount"
+                value={draft.amount}
+                onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
+                key={bad}
+                data-bad={bad ? "true" : undefined}
+                aria-invalid={bad ? true : undefined}
+                aria-describedby={bad ? "money-amt-err" : undefined}
+                data-testid="money-amount"
+              />
+              {bad ? (
+                <span className="small" id="money-amt-err" role="alert" style={{ color: "var(--error)" }}>
+                  Type an amount above zero
+                </span>
+              ) : null}
               <input list="money-categories" className="filter w-cat" placeholder="Category" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
               <datalist id="money-categories">
                 {namedCategories.map((c) => <option key={c} value={c} />)}
@@ -152,10 +186,26 @@ export function Money() {
               <input className="filter grow" placeholder="Note (optional)" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
               <button className="primary" onClick={add}>{draft.type === "income" ? "Add income" : "Add expense"}</button>
             </div>
-            <table className="table">
-              <thead>
-                <tr><th>Date</th><th>Category</th><th>Note</th><th className="right">Amount</th><th className="no-print"></th></tr>
-              </thead>
+            {db.txns.length === 0 ? (
+              <EmptyState
+                title="The ledger is empty"
+                hint="Add your first expense or income above — everything stays in one encrypted file on this computer."
+                action={
+                  <button
+                    className="small-btn"
+                    onClick={() => document.getElementById("money-amount")?.focus()}
+                    data-testid="money-empty-focus"
+                  >
+                    {draft.type === "income" ? "Add income" : "Add expense"}
+                  </button>
+                }
+                testid="money-empty"
+              />
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr><th>Date</th><th>Category</th><th>Note</th><th className="right">Amount</th><th className="no-print"></th></tr>
+                </thead>
               <tbody>
                 {rows.map((t) => (
                   <tr key={t.id}>
@@ -175,7 +225,8 @@ export function Money() {
                   </td>
                 </tr>
               </tfoot>
-            </table>
+              </table>
+            )}
           </section>
 
           <div className="rail">

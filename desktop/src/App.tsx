@@ -32,6 +32,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { LookChooser } from "./components/LookChooser";
 import { DropLayer } from "./components/DropLayer";
 import { SupportNudge } from "./components/SupportNudge";
+import { UndoSnackbar } from "./components/UndoSnackbar";
 import { ScreenToolbar, ToolbarHostProvider } from "./components/ScreenToolbar";
 import { VaultPulse } from "./components/VaultPulse";
 import { startupAutoUpdate } from "./platform/updater";
@@ -375,6 +376,23 @@ function Shell() {
     return () => clearTimeout(t);
   }, []);
 
+  // Hooks BEFORE any early return (React rules-of-hooks: the boot and
+  // lock screens render fewer nodes but must run the same hook count).
+  // Scroll-edge cue: the toolbar hairline appears once content passes beneath
+  // it (§1). Written straight onto the element so it does not re-render the app.
+  const mainRef = useRef<HTMLElement | null>(null);
+  const onMainScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const next = el.scrollTop > 2 ? "true" : "false";
+    if (el.dataset.scrolled !== next) el.dataset.scrolled = next;
+  }, []);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (el) el.dataset.scrolled = el.scrollTop > 2 ? "true" : "false";
+  }, [section]);
+  // The sticky toolbar's portal host: screens render titles/actions through it.
+  const [toolbarHost, setToolbarHost] = useState<HTMLElement | null>(null);
+
   if (unreadable) {
     return (
       <div className="boot">
@@ -416,20 +434,7 @@ function Shell() {
   }
 
   const savedTheme = storedThemePref();
-  // The sticky toolbar's portal host: screens render titles/actions through it.
-  const [toolbarHost, setToolbarHost] = useState<HTMLElement | null>(null);
-  // Scroll-edge cue: the toolbar hairline appears once content passes beneath
-  // it (§1). Written straight onto the element so it does not re-render the app.
-  const mainRef = useRef<HTMLElement | null>(null);
-  const onMainScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
-    const el = e.currentTarget;
-    const next = el.scrollTop > 2 ? "true" : "false";
-    if (el.dataset.scrolled !== next) el.dataset.scrolled = next;
-  }, []);
-  useEffect(() => {
-    const el = mainRef.current;
-    if (el) el.dataset.scrolled = el.scrollTop > 2 ? "true" : "false";
-  }, [section]);
+
   const navBtn = (s: SectionDef) => {
     const i = SECTIONS.findIndex((x) => x.id === s.id);
     return (
@@ -455,6 +460,7 @@ function Shell() {
     <div className="shell" data-app-theme={savedTheme}>
       <SyncBridge />
       <SupportNudge />
+      <UndoSnackbar />
       <a className="skip-link" href="#main-content">Skip to content</a>
       <nav className="side no-print" aria-label="Sections">
         <div className="brand">
@@ -497,7 +503,7 @@ function Shell() {
           <p className="side-note">Your data stays on this computer.</p>
         </div>
       </nav>
-      <main className="main" id="main-content" tabIndex={-1} ref={mainRef} onScroll={onMainScroll}>
+      <main className="main" id="main-content" tabIndex={-1} data-scrolled="false" ref={mainRef} onScroll={onMainScroll}>
         <DropLayer />
         {/* One sticky title bar for every screen; each screen fills it by portal (§1). */}
         <ToolbarHostProvider value={toolbarHost}>

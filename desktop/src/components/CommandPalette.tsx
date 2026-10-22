@@ -40,9 +40,10 @@ export function CommandPalette({ onClose, onJump, includeDev }: { onClose: () =>
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
-    // focus returns to the trigger when the palette closes (ARIA dialog pattern)
+    // focus returns to the trigger when the palette closes (ARIA dialog
+    // pattern) — capture it BEFORE the input steals focus
     const prior = document.activeElement as HTMLElement | null;
+    inputRef.current?.focus();
     return () => prior?.focus?.();
   }, []);
 

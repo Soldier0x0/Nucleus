@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { fromB64 } from "../platform/crypto";
@@ -99,7 +100,14 @@ export function Papers({ focusId }: { focusId?: string }) {
   const patch = (p: Paper, changes: Partial<Paper>) => update((d) => ({ ...d, papers: d.papers.map((x) => (x.id === p.id ? { ...x, ...changes } : x)) }));
 
   return (
-    <div className="papers-grid">
+    <>
+      <ScreenToolbar>
+        <div>
+          <p className="caption">{db.papers.length} paper{db.papers.length === 1 ? "" : "s"} on this computer</p>
+          <h1>Papers</h1>
+        </div>
+      </ScreenToolbar>
+      <div className="papers-grid">
       <aside className="card p-list">
         <div className="row spread">
           <h2>Vault</h2>
@@ -138,7 +146,8 @@ export function Papers({ focusId }: { focusId?: string }) {
         <button className="small-btn no-print self-end" onClick={() => window.print()}>Print</button>
         {paper ? <PaperDetail paper={paper} onPatch={(c) => patch(paper, c)} onDelete={() => removePaper(paper)} /> : <section className="card"><p className="muted">Pick a paper, or create one.</p></section>}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

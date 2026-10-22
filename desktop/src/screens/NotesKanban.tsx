@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
+import { EmptyState } from "../components/EmptyState";
 import { useStore } from "../store";
 import { uid } from "@core/format";
 import type { KanbanBoard, KanbanCard, Note } from "@core/types";
@@ -18,8 +20,15 @@ export function NotesKanban({ focusId }: { focusId?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId]);
   return (
-    <div className="stack">
-      <div className="tabs">
+    <>
+      <ScreenToolbar>
+        <div>
+          <p className="caption">{tab === "notes" ? `${db.notes.length} notes` : `${db.kanban.length} boards`}</p>
+          <h1>{tab === "notes" ? "Notes" : "Kanban"}</h1>
+        </div>
+      </ScreenToolbar>
+      <div className="stack">
+        <div className="tabs">
         {(["notes", "kanban"] as Tab[]).map((t) => (
           <button key={t} className={tab === t ? "tab on" : "tab"} onClick={() => setTab(t)}>
             {t === "notes" ? "Notes" : "Kanban"}
@@ -28,7 +37,8 @@ export function NotesKanban({ focusId }: { focusId?: string }) {
       </div>
       {tab === "notes" ? <Notes focusId={focusId} /> : null}
       {tab === "kanban" ? <Board focusId={focusId} /> : null}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -62,7 +72,16 @@ function Notes({ focusId }: { focusId?: string }) {
   };
 
   return (
-    <div className="notes-grid">
+    <>
+      {db.notes.length === 0 ? (
+        <EmptyState
+          title="No notes yet"
+          hint="A private place for anything — plain text, checklists, pinned sometime-soons."
+          action={<button className="primary" onClick={addNote} data-testid="notes-empty-new">New note</button>}
+          testid="notes-empty"
+        />
+      ) : (
+      <div className="notes-grid">
       <aside className="card p-list">
         <div className="row spread"><h2>Notes</h2><button className="small-btn" onClick={addNote}>New</button></div>
         <div className="doc-list">
@@ -111,7 +130,9 @@ function Notes({ focusId }: { focusId?: string }) {
           <section className="card"><p className="muted">Pick a note, or create one.</p></section>
         )}
       </div>
-    </div>
+      </div>
+      )}
+    </>
   );
 }
 

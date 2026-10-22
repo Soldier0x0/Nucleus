@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { countsOf } from "@core/merge";
 import { JOURNAL_CAP, JOURNAL_DAYS } from "@core/journal";
@@ -72,7 +73,14 @@ export function DevLab() {
   ];
 
   return (
-    <div className="two-stack">
+    <>
+      <ScreenToolbar>
+        <div>
+          <p className="caption">Read-only developer view · Ctrl+Alt+D</p>
+          <h1>Dev Lab</h1>
+        </div>
+      </ScreenToolbar>
+      <div className="two-stack">
       <section className="card">
         <h2>Dev Lab</h2>
         <p className="muted small">Read-only developer view. Ctrl+Alt+D or the palette opens this; it is never in the sidebar.</p>
@@ -94,6 +102,7 @@ export function DevLab() {
         <h3>Debug snapshot</h3>
         <pre className="debug-pre">{debug}</pre>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
