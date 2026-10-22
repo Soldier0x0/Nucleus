@@ -29,6 +29,29 @@ Status: research reference for the v0.17 Apple-inspired redesign (`plan/desktop-
 - Relevance to v0.17: independently confirms our four bets — single interactive accent, reserved-dark scarcity, hairlines as dividers, "restraint lands" (same conclusion as the awwwards cross-check). Semantic ramp mapping matches our §3 exactly; JetBrains Mono flavor for code surfaces already ships.
 - Deliberately NOT adopted (that's a landing page, ours is a dense daily tool): all-mono chrome (Inter earns its place for readability and hierarchy at 13px), no-shadow absolutism (we keep 0/1/2px elevation tokens), 0px container radius vs our 7px, and the 96px marketing section rhythm (ours runs 12px table rhythm). ASCII bracket bullets remain an option for Dev-Tools/empty-state flavor, not chrome.
 
+## Pattern rebuilds: Forever Components (technique extraction)
+
+- Source: forevercomponents.com — 767 zero-dependency animated components. Free account copies 3/day; the site does not state an open code license, so **upstream files are study references only** and never tracked: raw copies live in `plan/design/forever/` (gitignored), rebuilds are Nucleus-native files checked in here. Every shipped rebuild must keep `prefers-reduced-motion` support, focus discipline and `role="status"`/`aria-live` — the upstream metadata lists them, we own them in the port.
+- Skill pairing for rebuild reviews: `animate` (motion decisions in order) → `design-review` (spacing/hierarchy polish) → `find-animation-opportunities` (boundaries — reject the rest).
+
+### Undo Snackbar — rebuilt as `plan/design/undo-snackbar-nucleus.html` (22 Oct 2026)
+
+What was extracted (kept): SN state machine `idle→counting→confirmed|restored`; single rAF loop owning **all** state transitions (wall-clock timers sit on that clock); `visibilitychange` clock rebase (`t0+=gap`, `timer.due+=gap`) so hidden time never fast-forwards the countdown; ring = stroke-dashoffset only (r=12.5, stroke 3.4, rotate −90°), flipped under 28% remaining; ledger row dims `.12` + slides 18px as the deletion cue; UNDO button press = scale keyframe with overshoot; restore flash = border tint + checkmark pop; reduced motion = static legible ring frame while timers still run.
+
+What changed (Nucleus-native), table of upstream → ours:
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Palette | mint/rose accents on dark navy `#0b0d12`; brand `--fb12-acc` drives the ring | real desktop tokens (`desktop/src/styles.css`); semantics: ring drains in `--warn` (attention) → `--error` (destructive) under 28%; flash borders via `--error`/`--accent` mixes |
+| Motion | entrance 620ms `cubic-bezier(.18,1.5,.3,1)`, exit 420ms `(.5,0,.7,.2)`, icon pop 500ms `(.2,1.6,.3,1)` | v0.17 token tier: entrance 320ms spring `(.32,.72,0,1)`, exit 160ms ease-in (`--fast`), icon/press 320ms with ≤1.4 overshoot |
+| Materials | opaque gradient bar, big dark shadow | dialog-tier translucent panel (`panel` 88% + `blur(20px) saturate(180%)`), token shadow only — no stacked depth cues |
+| Controls | 13px UNDO, radius 9, double-ring focus (bg+accent) | compact 24px control, radius 7, single 3px accent 35% focus ring; `--accent-strong` text |
+| Copy / thermostat | "Item moved to trash", 4.2s | real record names, 6s window; sub-line goes "Deleting for good soon" on the red stretch |
+| Keyboard | UNDO is the only focusable (Enter/Space) | + Esc commits (matches timeout; UNDO stays the explicit restore), focus lands on UNDO at spawn |
+| Not ported | idle auto-press demo loop, `forever:` preview/theme hooks, fake ledger as content, per-cycle label rotation | production is event-driven; theming via the app's `[data-theme]`; the ledger row **is** the real record (delete → snackbar, restore → tombstone un-gone); one window at a time |
+
+Desktop wiring when v0.17 lands: pairs with the §4 dialog sheet — destructive confirms split into **dialog** (busy-, bulk-, cascade-deletes) vs **undo snackbar** (single-record optimistic delete, e.g. the audit-punchlist M12/H5/M4-class deletes). App has no toast system yet on desktop; this component seeds it (next rebuild: Toast Stack reference → same `role="status"` discipline).
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.

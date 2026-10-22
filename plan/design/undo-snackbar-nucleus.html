@@ -1,0 +1,286 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Undo Snackbar" technique.
+     Upstream reference: plan/design/forever/undo-snackbar.html (untracked, licence-unstated — study only).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds".
+     Differences vs upstream: Nucleus tokens from desktop/src/styles.css, warn→error drain instead of
+     accent→rose, v0.17 motion tier (120/200/320ms, spring .32,.72,0,1), no idle demo loop (production
+     is event-driven), 6s window, Esc commits, focus lands on UNDO, translucent dialog-tier material. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native undo snackbar: record rows delete optimistically with a warn→error countdown ring and UNDO restore, rebuilt from the Forever Components technique.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Undo Snackbar (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --warn: #bc8524; --error: #b4534b;
+    --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --warn: #d9a94c; --error: #d9837a;
+    --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0,1fr); place-items: center; }
+
+  /* Ledger — in the app these are the real record rows; here they stand in for a deck/table. */
+  #ledger { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; opacity: .5; pointer-events: none; }
+  .ledger-row {
+    width: min(62%, 360px); height: clamp(8px, 2.1vw, 12px); border-radius: 99px;
+    background: var(--panel-2); position: relative; overflow: hidden; transform: translateZ(0);
+    transition: opacity var(--base) ease, transform var(--base) var(--spring);
+  }
+  .ledger-row::after {
+    content: ""; position: absolute; inset: 0; width: 38%;
+    background: var(--faint); opacity: .28; border-radius: 99px; transform-origin: left;
+  }
+  .ledger-row.gone { opacity: .12; transform: translateX(18px); }
+
+  /* Snackbar — dialog-tier translucent material (v0.17: blur on dialogs only). */
+  #bar {
+    position: relative; width: min(82%, 420px); min-height: 54px; z-index: 2;
+    padding: 0 10px 0 16px; display: flex; align-items: center; gap: 12px;
+    border-radius: 11px; color: var(--ink);
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+    transform: translateY(140%); opacity: 0; will-change: transform, opacity;
+    transition: border-color var(--fast) ease;
+  }
+  #bar.in  { animation: pop 320ms cubic-bezier(.32,.72,0,1) forwards; }      /* spring tier */
+  #bar.out { animation: dismiss 160ms ease-in forwards; }                    /* exit = fast tier, accelerating */
+  @keyframes pop { from { transform: translateY(140%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes dismiss { to { transform: translateY(160%); opacity: 0; } }
+  #bar.restored { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  #bar.confirmed { border-color: color-mix(in srgb, var(--error) 38%, transparent); }
+
+  /* Countdown ring — rAF drains stroke-dashoffset; warn → error under 28% left. */
+  .ring { flex: 0 0 auto; width: 28px; height: 28px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+  .ring .track { stroke: var(--line); }
+  .ring .prog { stroke: var(--warn); transition: stroke var(--base) ease; }
+  .check {
+    position: absolute; left: 16px; width: 28px; height: 28px;
+    display: grid; place-items: center; opacity: 0; transform: scale(.4); pointer-events: none;
+  }
+  .check.show { animation: chk 320ms cubic-bezier(.32,1.4,0,1) forwards; }    /* small overshoot inside spring tier */
+  @keyframes chk { to { opacity: 1; transform: scale(1); } }
+
+  .msg { flex: 1 1 auto; min-width: 0; line-height: 1.25; }
+  .msg .t { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .msg .s { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* UNDO — v0.17 compact control: 24px, radius 7, accent-soft fill, 3px accent-ring focus. */
+  #undo {
+    flex: 0 0 auto; appearance: none; border: 0; cursor: pointer; font: inherit; outline: none;
+    height: 24px; padding: 0 10px; margin: 15px 0; border-radius: 7px;
+    font-size: 12px; font-weight: 600; color: var(--accent-strong);
+    background: var(--accent-soft);
+    transition: background var(--fast) ease, transform var(--fast) var(--spring);
+  }
+  #undo:hover { background: color-mix(in srgb, var(--accent-soft) 140%, transparent); }
+  #undo:active { transform: scale(.92); }
+  #undo:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+  #undo.pressed { animation: press 320ms cubic-bezier(.32,1.3,0,1); }
+  @keyframes press { 0% { transform: scale(1); } 40% { transform: scale(.88); } 100% { transform: scale(1); } }
+
+  /* Harness control — this is the demo trigger, not part of the component. */
+  #replay {
+    position: fixed; right: 14px; bottom: 12px; appearance: none; border: 0; cursor: pointer;
+    font: 600 11px/1 "Inter", system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 8px 14px;
+    transition: color var(--fast) ease, background var(--fast) ease;
+  }
+  #replay:hover { color: var(--ink); }
+
+  .cap { position: fixed; left: 10px; bottom: 16px; font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    /* Ring holds one legible static frame; timers still run (see script). */
+  }
+</style>
+</head>
+<body>
+<div id="stage" role="img" aria-label="Demo: a Nucleus record is deleted and an undo snackbar lets you restore it before the warn to red countdown drains.">
+  <div id="ledger" aria-hidden="true">
+    <div class="ledger-row" style="--w: .92"></div>
+    <div class="ledger-row"></div>
+    <div class="ledger-row" style="--w: .78"></div>
+    <div class="ledger-row"></div>
+  </div>
+  <div id="bar" role="status" aria-live="polite">
+    <svg class="ring" viewBox="0 0 28 28" aria-hidden="true"><circle class="track" cx="14" cy="14" r="11.5"/><circle class="prog" id="prog" cx="14" cy="14" r="11.5"/></svg>
+    <span class="check" id="check" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-strong)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg></span>
+    <div class="msg">
+      <div class="t" id="title">Deleted Fuel ₹3,120</div>
+      <div class="s" id="sub">Undo restores it — sits for 6 seconds</div>
+    </div>
+    <button id="undo" type="button">Undo</button>
+  </div>
+</div>
+<div class="cap">Nucleus · Undo Snackbar (rebuilt)</div>
+<button id="replay" type="button">Replay delete</button>
+<script>
+"use strict";
+/* Ported architecture from upstream:
+   - all state transitions fire from ONE rAF loop; wall-clock timers sit on that clock
+   - visibilitychange rebases t0 and timer dues, so hidden time never fast-forwards
+   - reduced motion keeps the loop (so Esc/Enter/confirm still work) but holds a static ring
+   Not ported (on purpose):
+   - idle auto-press demo loop and forever:preview/theme hooks (production is event-driven;
+     theming comes from the app's [data-theme] attribute) */
+(function () {
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var bar = document.getElementById("bar"), prog = document.getElementById("prog"),
+      check = document.getElementById("check"), title = document.getElementById("title"),
+      sub = document.getElementById("sub"), undo = document.getElementById("undo"),
+      replay = document.getElementById("replay"),
+      rows = Array.prototype.slice.call(document.querySelectorAll(".ledger-row"));
+
+  var R = 11.5, C = 2 * Math.PI * R;
+  prog.style.strokeDasharray = C;
+  prog.style.strokeDashoffset = 0;
+
+  var DURATION = 6000; // upstream 4200; desktop records get 6s (v0.17 note)
+  var WARN_CUT = 0.28; // upstream-overturned 28% drain flip kept, colors are warn→error
+
+  var records = ["Fuel ₹3,120", "Service · 48,102 km", "Trip — Pune, Day 2", "Note — Home log", "Bill — Wi-Fi ₹649"];
+  var state = "idle"; // idle | counting | confirmed | restored
+  var idx = 0, t0 = 0, raf = 0, hiddenAt = 0;
+  var timers = []; // {due, fn, done} — on the rAF clock, pauses with the loop
+
+  function wake() { if (document.hidden || raf) return; raf = requestAnimationFrame(loop); }
+  function schedule(ms, fn) { wake(); timers.push({ due: performance.now() + ms, fn: fn, done: false }); }
+
+  function setProgress(p) { // p: 1 full → 0 empty
+    prog.style.strokeDashoffset = (1 - p) * C;
+    prog.style.stroke = p < WARN_CUT ? "var(--error)" : "var(--warn)";
+    if (state === "counting" && p < WARN_CUT && title.textContent.indexOf("Deleted") === 0) {
+      sub.textContent = "Deleting for good soon";
+    }
+  }
+
+  function spawn() {
+    if (state === "counting") return; // one undo window at a time (real app: queue or merge)
+    var name = records[idx % records.length];
+    var row = rows[idx % rows.length];
+    idx++;
+
+    bar.classList.remove("out", "restored", "confirmed");
+    check.classList.remove("show");
+    title.textContent = "Deleted " + name;
+    sub.textContent = "Undo restores it";
+    void bar.offsetWidth; // restart entrance animation
+
+    row.classList.add("gone");
+    bar.classList.add("in");
+    state = "counting";
+    t0 = performance.now();
+    setProgress(reduce ? 0.55 : 1); // reduced motion: legible static frame, countdown still runs
+    undo.focus({ preventScroll: true }); // focus the restorative choice, not the danger
+  }
+
+  function commit() {
+    if (state !== "counting") return;
+    state = "confirmed";
+    bar.classList.add("confirmed");
+    title.textContent = "Deleted for good";
+    sub.textContent = "This record is gone";
+    setProgress(0);
+    schedule(820, dismiss);
+  }
+
+  function restorePress() {
+    if (state !== "counting") return;
+    state = "restored";
+    bar.classList.add("restored");
+    check.classList.add("show");
+    title.textContent = "Restored";
+    sub.textContent = "Back where it was";
+    setProgress(1);
+    schedule(980, dismiss);
+    // NOTE: in the app this is where the record actually returns (delete → tombstone ungone pattern).
+  }
+
+  function press() {
+    undo.classList.remove("pressed");
+    void undo.offsetWidth;
+    undo.classList.add("pressed");
+    restorePress();
+  }
+
+  function dismiss() {
+    bar.classList.remove("in");
+    bar.classList.add("out");
+    state = "idle";
+  }
+
+  function loop(now) {
+    raf = 0;
+    if (document.hidden) return;
+    var live = false;
+    if (state === "counting") { // drain
+      var p = 1 - (now - t0) / DURATION;
+      live = true;
+      if (p <= 0) { setProgress(0); commit(); }
+      else if (!reduce) setProgress(p);
+    }
+    for (var i = 0; i < timers.length; i++) {
+      var t = timers[i];
+      if (!t.done && now >= t.due) { t.done = true; live = true; t.fn(); }
+    }
+    if (timers.length > 40) timers = timers.filter(function (t) { return !t.done; });
+    if (timers.some(function (t) { return !t.done; })) live = true;
+    if (live) wake();
+  }
+
+  undo.addEventListener("click", press);
+  undo.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); press(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && state === "counting") commit(); // Esc commits, undo stays the explicit restore
+  });
+  replay.addEventListener("click", spawn);
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      hiddenAt = performance.now();
+    } else {
+      var gap = performance.now() - hiddenAt; // rebase clocks so nothing fast-forwards
+      t0 += gap;
+      for (var i = 0; i < timers.length; i++) timers[i].due += gap;
+      wake();
+    }
+  });
+})();
+</script>
+</body>
+</html>
