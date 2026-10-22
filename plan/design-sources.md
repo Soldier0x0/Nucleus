@@ -52,6 +52,35 @@ What changed (Nucleus-native), table of upstream → ours:
 
 Desktop wiring when v0.17 lands: pairs with the §4 dialog sheet — destructive confirms split into **dialog** (busy-, bulk-, cascade-deletes) vs **undo snackbar** (single-record optimistic delete, e.g. the audit-punchlist M12/H5/M4-class deletes). App has no toast system yet on desktop; this component seeds it (next rebuild: Toast Stack reference → same `role="status"` discipline).
 
+### Toast Stack — rebuilt as `plan/design/toast-stack-nucleus.html` (22 Oct 2026)
+
+Their own docs say "needs refactoring before shipping" (no live region, rAF drain frame cost, auto-cycle demo). Kept: bottom-rail `column-reverse` stack, MAX 3 with oldest-retire rule, enter from 26px/scale .94 with spring overshoot, progress hairline draining left over the toast's life, smoothstep slide-right exit, reduced-motion static 3-toast snapshot, visibility pause. Changed in the port:
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Animation driver | per-toast rAF loop (`spring()` overshoot fn, smoothstep exit fn) | **zero rAF for visuals**: CSS keyframes entrance (320ms spring + overshoot in the curve), linear `scaleX` drain, 160ms ease-in exit transition on the compositor; JS only schedules |
+| Scheduling | rAF clock for everything + separate setTimeout demo tick | one shared visibility-rebased timer (same architecture as the undo snackbar) plus CSS `animation-play-state: paused` under `html[data-hidden]`, so the JS deadline and the CSS drain cannot drift apart |
+| A11y | rail `aria-hidden` (demo convenience), their docs admit the gap | rail = `role="status" aria-live="polite" aria-relevant="additions text"` (exits never re-announce); failure toasts are `role="alert"` |
+| Palette / kind set | ok/err/warn/neutral mint-rose-amber (dark navy) | `--ok` success, `--error` failures, `--warn` attention, neutral border-only glyph; icon circle ink `--accent-ink`; subtitle in JetBrains Mono (sync/status lines) |
+| Content | abstract demo kinds | real payloads (backup written, sync paused, export failed, empty view) |
+| Not ported | idle auto-push cycle, forever: hooks, `space ↵` stage trigger | event-driven dispatch buttons (the app's exports/sync/reminders will call `push()`); constants: 320/160/4200ms knobs up front |
+
+### Odometer Count-Up — rebuilt as `plan/design/odometer-nucleus.html` (22 Oct 2026)
+
+This is the v0.17 §7 hero motion: "Numbers: count-up animation on KPI change". Kept: continuous fractional reel math (per decimal place: `frac` + `top`, digits roll through carries like a real odometer), 3-cell viewport with distance falloff `1 − 1.3·dist`, DPR-independence trivially replaced by DOM, visibilitychange pause that never fast-forwards, reduced-motion snap straight to target. Changed:
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Renderer | `<canvas>` redraw loop | DOM reels — real font tokens (Inter 26/700 `tabular-nums`, plan §2 `t.num`), selectable, and re-theming is instant via CSS vars (no `syncTheme()`/`getComputedStyle` cache to invalidate — theme flips are free) |
+| Chase easing | `cur += (tgt−cur)·0.045` per frame (60fps-dependent) | `cur = tgt + (cur−tgt)·e^(−dt/τ)`, δt-normalized, **τ ≈ 360ms** (derivation: ln(0.955)·60 ≈ −2.76/s) — same feel, frame-rate independent, dt clamped ≤100ms post-resume |
+| Loop discipline | runs forever (hold-idle re-randomizes every ~1.3s) | settles and **stops the rAF loop** when `|tgt−cur| < 0.5` (calm rule; wakes only on new data) — their own "wire external data" limitation answered |
+| Data | random target, tap = new random | `setTarget(value)` API; harness cycles Nucleus-flavoured preset amounts |
+| Numerals | mono mint digits, leading zeros equal weight | leading zeros dimmed to 0.3 with a `.dim` slot (mechanical idle, not data); western grouping separators; `en-IN` render in the accessible name |
+| A11y | canvas text invisible to screen readers | `role="img"` + `aria-label` ("Week left: ₹12,450") maintained on settle; reels `aria-hidden` |
+| Not ported | sheen line, mono canvas label, demo hold counter, forever: hooks | styling lives on the KPI card (panel/hairline/shadow); label is a `t.caption`-tier mono row |
+
+Desktop wiring when v0.17 lands: becomes the `CountUp` numeric helper for Today/Money KPI tiles (one hero motion moment per screen — this is it), the toast stack pairs with the undo snackbar as the desktop's two-layer feedback system (transient status = toast, dangerous-reversible = undo snackbar, blocking decisions = dialog sheet).
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.

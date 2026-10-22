@@ -1,0 +1,221 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Odometer Count-Up" technique.
+     Upstream reference: plan/design/forever/odometer-countup.html (untracked, licence-unstated — study only).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds".
+     Differences vs upstream: canvas → DOM reels (Nucleus is HTML; digits get real font tokens,
+     selection, instant token re-theming), per-frame 0.045 chase normalized to a time constant
+     (τ≈360ms, frame-rate independent), idle randomize → external data binding (their own
+     known limitation), loop stops when settled, Inter tabular numerals per v0.17 §2 t.num. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native KPI count-up: rolling digit reels with continuous carry cascade, Inter tabular numerals, settle-and-stop rAF.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Odometer KPI (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage { position: fixed; inset: 0; display: grid; place-items: center; }
+
+  /* KPI card — the hero number surface (plan §7: "count-up on KPI change"). */
+  .kpi {
+    display: grid; justify-items: center; gap: 14px;
+    padding: 26px 30px 22px; border-radius: var(--r-md, 10px);
+    background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .kpi .lbl {
+    font: 600 11px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+    color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+  }
+
+  /* Reels — slots + rolling digits. All motion is compose-only (transform/opacity). */
+  .reels { display: flex; align-items: center; gap: 3px; }
+  .slot {
+    width: 24px; height: 36px; border-radius: 6px; overflow: hidden;
+    background: var(--panel-2); border: 1px solid var(--line);
+    transition: opacity var(--fast) ease;
+  }
+  .slot.dim { opacity: .3; } /* unreached leading zeros read as mechanical idle, not data */
+  .sep { font: 700 26px/36px "Inter", sans-serif; color: var(--faint); }
+  .cell {
+    position: absolute; left: 0; top: calc(50% - 18px); width: 100%;
+    font: 700 26px/36px "Inter", sans-serif; font-variant-numeric: tabular-nums;
+    text-align: center; color: var(--ink); will-change: transform, opacity;
+  }
+
+  #replay {
+    position: fixed; right: 14px; bottom: 12px; appearance: none; border: 0; cursor: pointer;
+    font: 600 11px/1 "Inter", system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 8px 14px;
+    transition: color var(--fast) ease, background var(--fast) ease;
+  }
+  #replay:hover { color: var(--ink); }
+
+  .cap { position: fixed; left: 12px; bottom: 16px; font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .001ms !important; }
+    /* Snap straight to the target (upstream contracts); rendering stays numeric. */
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="kpi" id="kpi" role="img" aria-label="Week left: ₹12,450">
+    <span class="lbl">Week left · ₹</span>
+    <div class="reels" id="reels" aria-hidden="true"></div>
+  </div>
+</div>
+<div class="cap">Nucleus · Odometer KPI (rebuilt)</div>
+<button id="replay" type="button">Next value</button>
+<script>
+"use strict";
+/* Kept from upstream: continuous fractional reel math (frac + top per decimal place),
+   3-cell viewport with distance falloff (1 - dist*1.3), visibilitychange pause that
+   never fast-forwards, reduced-motion snap.
+   Changed: DOM reels (Inter 26/700 tabular-nums), time-constant chase (τ≈360ms — upstream's
+   0.045/frame factor at 60fps, made frame-rate independent), settle-and-stop wake loop,
+   leading-zero dimming, western grouping separators (grouping is caller-owned in the app),
+   external data binding via setTarget(). */
+(function () {
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var DIG = 6;
+  var PLACES = [100000, 10000, 1000, 100, 10, 1];
+  var TAU = 360; // ms; upstream 0.045/frame ≈ e^(-0.0461·60/s) → τ ≈ 362ms
+
+  var reelsEl = document.getElementById("reels");
+  var kpiEl = document.getElementById("kpi");
+
+  // slots with 3 rolling cells each; group separators after the thousands pair
+  var sepHTML = '<span class="sep">,</span>';
+  var slots = [];
+  var frag = document.createDocumentFragment();
+  for (var d = 0; d < DIG; d++) {
+    var slot = document.createElement("div");
+    slot.className = "slot";
+    slot.style.position = "relative";
+    for (var k = -1; k <= 1; k++) {
+      var c = document.createElement("span");
+      c.className = "cell";
+      c.textContent = "0";
+      slot.appendChild(c);
+    }
+    slots.push(slot.childNodes); // [upper, middle, lower]
+    frag.appendChild(slot);
+    if (d === 2) frag.insertAdjacentHTML("beforeend", sepHTML); // 12450 → "012,450"
+  }
+  reelsEl.appendChild(frag);
+
+  var cur = 0, tgt = 12450, last = 0, raf = 0, resumedAt = 0;
+
+  function chase(dt) {
+    cur = tgt + (cur - tgt) * Math.exp(-dt / TAU);
+    if (Math.abs(tgt - cur) < 0.5) cur = tgt; // snap at half a unit
+  }
+
+  function sigDigits(v) { return String(Math.round(v)).length; }
+
+  function render() {
+    var sig = reduce ? String(tgt).length : sigDigits(cur);
+    for (var d = 0; d < DIG; d++) {
+      var reel = cur / PLACES[d];
+      var frac = reel - Math.floor(reel);
+      var top = ((Math.floor(reel) % 10) + 10) % 10;
+      var idleDim = d < DIG - sig; // leading zero this cycle → mechanical idle
+      var cellSet = slots[d];
+      for (var k = -1; k <= 1; k++) {
+        var cell = cellSet[k + 1];
+        var dy = (k - frac) * 36;
+        var dist = Math.abs(k - frac);
+        var alpha = Math.max(0, 1 - dist * 1.3); // upstream falloff kept
+        cell.textContent = String(((top + k) % 10 + 10) % 10);
+        cell.style.transform = "translateY(" + dy.toFixed(2) + "px)";
+        cell.style.opacity = (alpha * (idleDim ? 0.3 : 1)).toFixed(3);
+      }
+    }
+  }
+
+  function settleLabel() {
+    kpiEl.setAttribute("aria-label", "Week left: ₹" + tgt.toLocaleString("en-IN"));
+  }
+
+  function frame(now) {
+    raf = 0;
+    if (document.hidden) { last = now; return; }
+    var dt = Math.min(100, now - (last || now)); // clamp post-resume jump
+    last = now;
+    chase(dt);
+    render();
+    if (cur !== tgt) raf = requestAnimationFrame(frame); // calm: stop when settled
+    else settleLabel();
+  }
+
+  function wake() {
+    if (document.hidden || reduce || raf) return;
+    last = 0;
+    raf = requestAnimationFrame(frame);
+  }
+
+  function setTarget(v) {
+    tgt = v;
+    if (reduce) { cur = tgt; render(); settleLabel(); switchIdleMarkers(); return; }
+    switchIdleMarkers();
+    wake();
+  }
+
+  function switchIdleMarkers() {
+    var sig = String(tgt).length;
+    for (var d = 0; d < DIG; d++) {
+      var slot = slots[d][0].parentNode;
+      if (d < DIG - sig) slot.classList.add("dim"); else slot.classList.remove("dim");
+    }
+  }
+
+  var presets = [12450, 8215, 31480, 4890, 99750];
+  var pi = 0;
+  document.getElementById("replay").addEventListener("click", function () {
+    pi = (pi + 1) % presets.length;
+    setTarget(presets[pi]);
+  });
+  kpiEl.addEventListener("pointerdown", function () { // direct interaction, like upstream tap
+    pi = (pi + 1) % presets.length;
+    setTarget(presets[pi]);
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+    else wake(); // dt clamp handles the rebase — no fast-forward (upstream pattern)
+  });
+
+  // initial paint: from a rolling start so the first impression IS the hero moment
+  cur = 0; setTarget(presets[0]);
+})();
+</script>
+</body>
+</html>

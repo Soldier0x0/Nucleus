@@ -1,0 +1,245 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Toast Stack" technique.
+     Upstream reference: plan/design/forever/toast-stack.html (untracked, licence-unstated — study only).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds".
+     Differences vs upstream: production morphology (no idle auto-push, no forever: hooks),
+     zero rAF (CSS keyframes for entrance, linear drain and exit transitions on the compositor;
+     JS scheduling rides the same visibility-rebased timer pattern as the undo snackbar),
+     aria-live added (their own docs flag it as missing), Nucleus tokens + semantics. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native toast stack: springs up bottom-right, drains a semantic progress hairline, exits right; CSS-driven, zero rAF, aria-live from day one.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Toast Stack (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --ok: #4c8a57; --ok-soft: rgba(76, 138, 87, 0.14);
+    --warn: #bc8524; --warn-soft: rgba(188, 133, 36, 0.16);
+    --error: #b4534b; --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --ok: #7fb98a; --ok-soft: rgba(127, 185, 138, 0.16);
+    --warn: #d9a94c; --warn-soft: rgba(217, 169, 76, 0.18);
+    --error: #d9837a; --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hint { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+          font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+          color: var(--faint); letter-spacing: .08em; text-transform: uppercase; }
+
+  /* Rail — one list, polite by default; per-item role="alert" promotes an error. */
+  #rail {
+    position: fixed; right: 22px; bottom: 24px;
+    width: min(30%, 340px); display: flex; flex-direction: column-reverse; gap: 9px;
+    /* a11y: announce additions only — exits never re-announce */
+  }
+  .toast {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 11px 13px; border-radius: 10px;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+    contain: layout style; will-change: transform, opacity;
+    transform: translate3d(0, 26px, 0) scale(.94); opacity: 0;
+  }
+  .toast.in  { animation: pop 320ms cubic-bezier(.32,1.25,0,1) forwards; }    /* spring tier + small overshoot */
+  .toast.out { transform: translate3d(24px, 0, 0) scale(.96); opacity: 0;    /* fast-tier exit */
+               transition: transform 160ms ease-in, opacity 160ms ease-in; }
+  .toast.in.drain .drain { animation: drain var(--life) linear forwards; }
+  @keyframes pop { 0% { transform: translate3d(0,26px,0) scale(.94); opacity: 0; }
+                   70% { opacity: 1; } 100% { transform: translate3d(0,0,0) scale(1); opacity: 1; } }
+  @keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  /* Freeze the drain + the queue clock while hidden: same pause/recording idea
+     as the undo snackbar's rebased rAF clock, split across CSS and JS halves. */
+  html[data-hidden="1"] .toast.in.drain .drain { animation-play-state: paused; }
+
+  .ic { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%;
+        display: grid; place-items: center; background: var(--c); color: var(--accent-ink); }
+  .ic svg { width: 14px; height: 14px; display: block; }
+  .toast.neutral .ic { background: transparent; color: var(--muted);
+                       box-shadow: 0 0 0 1.5px var(--muted) inset; }
+  .bd { flex: 1 1 auto; min-width: 0; }
+  .ti { font-size: 13px; font-weight: 600; letter-spacing: .01em; line-height: 1.15; }
+  .sb { margin-top: 2px; font: 500 11px/1.3 "JetBrains Mono", ui-monospace, Menlo, monospace;
+        color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drain { position: absolute; left: 12px; right: 12px; bottom: 5px; height: 2px;
+           border-radius: 2px; background: var(--c); opacity: .5;
+           transform-origin: left center; transform: scaleX(1); }
+
+  /* Kind → semantic color (Nucleus palette, per v0.17 §3) */
+  .toast.ok      { --c: var(--ok); }
+  .toast.fail    { --c: var(--error); }
+  .toast.attent  { --c: var(--warn); }
+  .toast.neutral { --c: var(--muted); }
+
+  /* Harness — four real triggers, like the app will dispatch them. */
+  #chips { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+           display: flex; gap: 8px; }
+  #chips button { appearance: none; border: 1px solid var(--line); cursor: pointer;
+                  background: var(--panel-2); color: var(--muted); border-radius: 999px;
+                  padding: 8px 14px; font: 600 11px/1 "Inter", system-ui, sans-serif;
+                  letter-spacing: .04em; text-transform: uppercase;
+                  transition: color var(--fast) ease, background var(--fast) ease; }
+  #chips button:hover { color: var(--ink); }
+  #chips button:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); outline: none; }
+
+  .cap { position: fixed; left: 12px; bottom: 16px; font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    .toast { transform: none; opacity: 1; }
+    .toast .drain { transform: scaleX(.6); } /* static legible frame, timers still run */
+  }
+</style>
+</head>
+<body>
+<div class="hint" aria-hidden="true">space ⇥⇤ tests stack cap of 3</div>
+<div id="rail" role="status" aria-live="polite" aria-relevant="additions text"
+     aria-label="Notifications"></div>
+<div id="chips" role="group" aria-label="Dispatch a toast">
+  <button type="button" data-k="ok">Backup written</button>
+  <button type="button" data-k="attent">Sync paused</button>
+  <button type="button" data-k="fail">Export failed</button>
+  <button type="button" data-k="neutral">Nothing here yet</button>
+</div>
+<div class="cap">Nucleus · Toast Stack (rebuilt)</div>
+<script>
+"use strict";
+/* Upstream technique kept: bottom-rail column-reverse stack, MAX 3 with oldest-retire,
+   entrance from 26px/94%, progress hairline draining over the life, exit right with ease,
+   reduced-motion static 3-toast snapshot, visibility pause/resume.
+   Upstream technique changed:
+   - rAF per-toast loop → CSS keyframes/transitions (their own doc calls the rAF drain a frame cost)
+   - drain duration + dismissal ride the SAME visibility-rebased clock (undo-snackbar architecture),
+     and the CSS drain pauses with the JS timer via html[data-hidden], so they cannot drift apart
+   - rail is a real announced region now; error toasts are role=alert (upstream aria-hidden'd it)
+   - idle auto-push demo, forever: hooks: gone — production dispatches events */
+(function () {
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var rail = document.getElementById("rail");
+  var ENTER = 320, EXIT = 160, MAX = 3, LIFE = 4200; // their editable knobs at Nucleus tempo
+
+  // Real Nucleus payloads; subtitle rides JetBrains Mono like sync/status lines.
+  var KIND = {
+    ok:     { c: "ok", g: "ok", t: "Backup written", s: "vault · 4 files · just now", alert: false },
+    attent: { c: "attent", g: "dn", t: "Sync paused", s: "pair radio away · resuming", alert: false },
+    fail:   { c: "fail", g: "er", t: "Export failed", s: "papers cabinet · disk full", alert: true },
+    neutral:{ c: "neutral", g: "em", t: "Nothing here yet", s: "no items in this view", alert: false }
+  };
+  var G = {
+    ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    er: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    em: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 8h14M5 12h9M5 16h6"/></svg>',
+    dn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>'
+  };
+
+  var live = []; // {el, leaveDeadline, leaving}
+  var timers = []; // {due, fn, done} — rAF-rebased, pauses with visibility (undo-snackbar pattern)
+  var raf = 0, hiddenAt = 0;
+
+  function wake() { if (document.hidden || raf) return; raf = requestAnimationFrame(loop); }
+  function schedule(ms, fn) { wake(); timers.push({ due: performance.now() + ms, fn: fn, done: false }); }
+
+  function make(kindKey) {
+    var k = KIND[kindKey];
+    var el = document.createElement("div");
+    el.className = "toast " + k.c;
+    if (k.alert) el.setAttribute("role", "alert");
+    el.style.setProperty("--life", LIFE + "ms");
+    el.innerHTML =
+      '<span class="ic" aria-hidden="true">' + G[k.g] + '</span>' +
+      '<span class="bd"><span class="ti"></span><span class="sb"></span></span>' +
+      '<span class="drain" aria-hidden="true"></span>';
+    el.querySelector(".ti").textContent = k.t;
+    el.querySelector(".sb").textContent = k.s;
+
+    if (reduce) { // static legible frame; timers still dismiss
+      el.style.setProperty("transform", "none");
+      el.style.setProperty("opacity", "1");
+      rail.appendChild(el);
+      schedule(LIFE, function () { leave({ el: el, leaving: false }); });
+      return el;
+    }
+
+    rail.appendChild(el);
+    void el.offsetWidth;                 // flush, so .in restarts cleanly
+    el.classList.add("in", "drain");
+    var o = { el: el, leaving: false };
+    schedule(ENTER + LIFE, function () { leave(o); });
+    return o;
+  }
+
+  function leave(o) {
+    if (o.leaving) return;
+    o.leaving = true;
+    if (reduce) { o.el.remove(); return; }
+    o.el.classList.add("out");           // fast-tier exit
+    schedule(EXIT + 60, function () { o.el.remove(); }); // +60ms guard past transitionend
+  }
+
+  function push(kindKey) {
+    if (live.length >= MAX) leave(live[0]); // oldest retires early, upstream MAX rule
+    var o = make(kindKey);
+    live.push(o);
+  }
+
+  function loop(now) {
+    raf = 0;
+    if (document.hidden) return;
+    var pending = false;
+    for (var i = 0; i < timers.length; i++) {
+      var t = timers[i];
+      if (!t.done && now >= t.due) { t.done = true; pending = true; t.fn(); }
+    }
+    if (timers.length > 40) timers = timers.filter(function (t) { return !t.done; });
+    if (timers.some(function (t) { return !t.done; })) pending = true;
+    if (pending) wake();
+  }
+
+  var chips = document.getElementById("chips");
+  chips.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-k]");
+    if (b) push(b.getAttribute("data-k"));
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      hiddenAt = performance.now();
+      document.documentElement.setAttribute("data-hidden", "1"); // freeze CSS drains
+    } else {
+      var gap = performance.now() - hiddenAt; // rebase every timer due
+      for (var i = 0; i < timers.length; i++) timers[i].due += gap;
+      document.documentElement.removeAttribute("data-hidden");
+      wake();
+    }
+  });
+})();
+</script>
+</body>
+</html>
