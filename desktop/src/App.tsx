@@ -33,6 +33,7 @@ import { LookChooser } from "./components/LookChooser";
 import { DropLayer } from "./components/DropLayer";
 import { SupportNudge } from "./components/SupportNudge";
 import { UndoSnackbar } from "./components/UndoSnackbar";
+import { ToastStack } from "./components/ToastStack";
 import { ScreenToolbar, ToolbarHostProvider } from "./components/ScreenToolbar";
 import { VaultPulse } from "./components/VaultPulse";
 import { startupAutoUpdate } from "./platform/updater";
@@ -338,6 +339,40 @@ function Shell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db.settings.modules, section]);
 
+  // Spotlight hover (§6): one delegated pointermove writes --mx/--my onto the
+  // hovered tile; rects are cached per card and lazily re-read only after a
+  // scroll/resize (the rebuild's layout-cost rule — never per move).
+  useEffect(() => {
+    const rects = new WeakMap<HTMLElement, { top: number; left: number; epoch: number }>();
+    let epoch = 0;
+    const bump = () => {
+      epoch++;
+    };
+    window.addEventListener("scroll", bump, { capture: true, passive: true });
+    window.addEventListener("resize", bump, { passive: true });
+    const rectOf = (t: HTMLElement) => {
+      const hit = rects.get(t);
+      if (hit && hit.epoch === epoch) return hit;
+      const r = t.getBoundingClientRect();
+      const next = { top: r.top, left: r.left, epoch };
+      rects.set(t, next);
+      return next;
+    };
+    const onMove = (e: PointerEvent) => {
+      const t = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(".tile, .kpi");
+      if (!t) return;
+      const r = rectOf(t);
+      t.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      t.style.setProperty("--my", `${e.clientY - r.top}px`);
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("scroll", bump, { capture: true });
+      window.removeEventListener("resize", bump);
+    };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "d" || e.key === "D")) {
@@ -461,6 +496,7 @@ function Shell() {
       <SyncBridge />
       <SupportNudge />
       <UndoSnackbar />
+      <ToastStack />
       <a className="skip-link" href="#main-content">Skip to content</a>
       <nav className="side no-print" aria-label="Sections">
         <div className="brand">

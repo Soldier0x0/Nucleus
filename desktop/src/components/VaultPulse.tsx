@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { sha256 } from "@noble/hashes/sha2";
+import { toast } from "../platform/toast";
 
 /**
  * The vault fingerprint (the shell's signature moment): the desktop document's
@@ -24,7 +25,6 @@ function canonical(db: unknown): string {
 
 export const VaultPulse = memo(function VaultPulse({ db }: { db: unknown }) {
   const [hash, setHash] = useState<string>(() => digestOf(canonical(db)));
-  const [, setTick] = useState(0); // re-render only for the pill pulse
   const lastHash = useRef(hash);
 
   useEffect(() => {
@@ -33,7 +33,6 @@ export const VaultPulse = memo(function VaultPulse({ db }: { db: unknown }) {
       if (next !== lastHash.current) {
         lastHash.current = next;
         setHash(next);
-        setTick((n) => n + 1);
       }
     }, 400);
     return () => clearTimeout(t);
@@ -42,9 +41,9 @@ export const VaultPulse = memo(function VaultPulse({ db }: { db: unknown }) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(lastHash.current);
-      setTick((n) => n + 1);
+      toast({ kind: "ok", title: "Fingerprint copied", sub: "SHA-256 · full digest" });
     } catch {
-      /* clipboard can refuse; the pill is not critical */
+      toast({ kind: "err", title: "The clipboard refused", sub: "Copy manually from the pulse" });
     }
   };
 

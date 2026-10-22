@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { toast } from "../platform/toast";
 import { useStore } from "../store";
 import { todayISO, addDays, fmtDate, monthKey, monthLabel } from "@core/format";
 import type { CycleFlow, CycleState } from "@core/types";
@@ -239,8 +240,9 @@ export function Cycle() {
                   }
                   try {
                     await navigator.clipboard.writeText(shareLine);
+                    toast({ kind: "ok", title: "Buddy line copied", sub: fmtDate(today) });
                   } catch {
-                    /* nothing else to try */
+                    toast({ kind: "err", title: "The clipboard refused", sub: "Share is unavailable" });
                   }
                 }}
               >

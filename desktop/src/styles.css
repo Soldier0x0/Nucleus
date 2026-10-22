@@ -2109,3 +2109,367 @@ button {
     opacity: 1;
   }
 }
+
+/* ---------- Drag handle (§4): grip-only hit, spring via refs ---------- */
+.kan-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kan-head input {
+  flex: 1;
+  min-width: 0;
+}
+.kan-grip {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--faint);
+  cursor: grab;
+  touch-action: none;
+  display: grid;
+  place-items: center;
+  transition: color var(--fast), background var(--fast);
+}
+.kan-grip svg {
+  width: 10px;
+  height: 14px;
+  fill: currentColor;
+}
+.kan-grip:hover,
+.kan-grip:focus-visible {
+  color: var(--ink);
+  background: var(--panel-2);
+}
+.kan-grip:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 1px;
+}
+.kan-grip:active {
+  cursor: grabbing;
+  color: var(--accent-strong);
+}
+/* the lifted card: shadow lands instantly (no transition — moving shadows
+   jank), everything else rides the ref-driven transforms */
+.kan-card.dragging {
+  position: relative;
+  z-index: 2;
+  box-shadow: var(--elev-8);
+  border-color: var(--accent-line);
+  background: var(--material-strong);
+}
+.kan-card.dragging input,
+.kan-card.dragging textarea {
+  pointer-events: none;
+}
+.dragging .kan-grip svg {
+  color: var(--accent-strong);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Hold-to-confirm (§7): the explicit destructive path ---------- */
+.hold-btn {
+  position: relative;
+  overflow: hidden;
+  --hp: 0;
+}
+.hold-btn .hold-fill {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--error) 16%, transparent);
+  transform: translateX(calc((var(--hp) - 1) * 100%));
+  pointer-events: none;
+}
+.hold-btn {
+  border-color: color-mix(in srgb, var(--error) calc(var(--hp) * 55%), var(--line));
+  box-shadow: 0 0 0 calc(var(--hp) * 3px) color-mix(in srgb, var(--error) 35%, transparent);
+}
+.hold-btn .hold-check {
+  display: none;
+  position: absolute;
+  margin: auto;
+  inset: 0;
+  width: 14px;
+  height: 14px;
+  stroke: var(--ok);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  fill: none;
+}
+.hold-btn.hold-done .hold-check {
+  display: block;
+  animation: hold-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes hold-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1.18); opacity: 1; }
+}
+.hold-btn.hold-done .hold-fill {
+  background: color-mix(in srgb, var(--ok) 22%, transparent);
+}
+.hold-btn.hold-done {
+  border-color: var(--ok);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hold-btn.hold-done .hold-check {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ---------- Toast rail (§7): bottom stack, zero-rAF visuals ---------- */
+.toast-rail {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 36;
+  display: flex;
+  flex-direction: column-reverse; /* newest lands at the bottom edge */
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(420px, 92vw);
+}
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  background: var(--material-strong);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--elev-8);
+  animation: toast-in 320ms cubic-bezier(0.18, 1.5, 0.3, 1) both;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(26px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+.toast-leave {
+  transition: opacity 160ms ease-in, transform 160ms ease-in;
+  opacity: 0;
+  transform: translateX(12px);
+}
+.toast-glyph {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font: 600 11px "Inter", system-ui, sans-serif;
+}
+.toast-ok .toast-glyph {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.toast-warn .toast-glyph {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.toast-err .toast-glyph {
+  border-color: var(--error);
+  color: var(--error);
+}
+.toast-copy {
+  min-width: 0;
+  display: block;
+}
+.toast-copy b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast-drain {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.55;
+  transform-origin: left center;
+  animation-name: toast-drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes toast-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+html[data-hidden] .toast-drain {
+  animation-play-state: paused;
+}
+html[data-hidden] .toast-enter,
+html[data-hidden] .toast-leave {
+  animation-play-state: paused;
+}
+.toast-err {
+  border-color: var(--error);
+}
+@media print {
+  .toast-rail {
+    display: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+  .toast-leave {
+    transition: opacity 160ms ease-in;
+    transform: none;
+  }
+  .toast-drain {
+    animation: none;
+    transform: scaleX(0.34); /* a static frame still reads as "expiring" */
+  }
+}
+
+/* ---------- Liquid toggle retarget (§4): the pill knob, CSS-only ---------- */
+/* The .switch label markup is untouched: appearance-none turns the native
+   checkbox into the 40×24 track, its ::after is the 20px knob. 200ms spring
+   crossfade to --accent; an :active squash nods to the droplet lag the goo
+   filter would have had. role/aria stays valid: switch semantics land in the
+   About pass, not by hacking every label here. */
+.switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  position: relative;
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(0.32, 0.72, 0, 1), border-color 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.switch input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 22%, transparent);
+  transform: translateX(0) scaleX(1);
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.switch input[type="checkbox"]:active::after {
+  transform: translateX(0) scaleX(1.18);
+}
+.switch input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent-strong);
+}
+.switch input[type="checkbox"]:checked::after {
+  transform: translateX(16px) scaleX(1);
+  border-color: color-mix(in srgb, var(--accent-strong) 60%, var(--line));
+}
+.switch input[type="checkbox"]:checked:active::after {
+  transform: translateX(16px) scaleX(1.18);
+}
+.switch input[type="checkbox"]:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-strong) 35%, transparent);
+}
+.switch input[type="checkbox"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch input[type="checkbox"],
+  .switch input[type="checkbox"]::after {
+    transition: none;
+  }
+}
+
+/* ---------- Segmented pill retarget (§4): flat accent leaf ---------- */
+.seg {
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.seg button {
+  transition: color var(--fast), background var(--fast);
+}
+.seg button.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 1px 0 color-mix(in srgb, #000 12%, transparent); /* 1px contact shadow */
+}
+.seg button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-strong) 35%, transparent);
+  outline-offset: 1px;
+}
+
+/* ---------- Spotlight hover (§6): 6% ink wash, event-driven ---------- */
+/* Content feedback, not ornament: ink, never accent (single-accent rule for
+   focus). The pair --mx/--my is written by one delegated pointermove; focus
+   centers the wash so keyboard users get the same affordance. */
+.tile,
+.kpi {
+  position: relative;
+}
+.tile::after,
+.kpi::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    130px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--ink) 6%, transparent),
+    transparent 72%
+  );
+  opacity: 0;
+  transition: opacity 200ms var(--base);
+  pointer-events: none;
+}
+.tile:hover::after,
+.kpi:hover::after,
+.tile:focus-within::after,
+.kpi:focus-within::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile::after,
+  .kpi::after {
+    transition: none;
+  }
+}

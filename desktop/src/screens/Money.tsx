@@ -6,6 +6,7 @@ import { categorySplit, monthFlow } from "@core/moneyDesk";
 import { monthSeries } from "@core/intelligence";
 import { fmtDate, money, monthKey, todayISO, uid } from "@core/format";
 import { undoBus } from "../platform/undo";
+import { toast } from "../platform/toast";
 import { EmptyState } from "../components/EmptyState";
 import type { Settings, Txn } from "@core/types";
 import { Bars, Donut, PALETTE } from "../components/Charts";
@@ -90,6 +91,9 @@ export function Money() {
     setExporting(true);
     try {
       await exportKindFile(db, "transactions");
+      toast({ kind: "ok", title: "CSV saved", sub: "transactions" });
+    } catch {
+      toast({ kind: "err", title: "The export did not save", sub: "Check the picked folder and try again" });
     } finally {
       setExporting(false);
     }
