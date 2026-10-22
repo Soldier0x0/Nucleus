@@ -692,7 +692,7 @@ button {
   border-radius: 14px;
   box-shadow: var(--elev-8);
   color: var(--ink);
-  animation: nudge-in 240ms var(--spring) both;
+  animation: nudge-in 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 @keyframes nudge-in {
   from { opacity: 0; transform: translateY(10px); }
@@ -754,7 +754,7 @@ button {
 }
 .nav-support kbd {
   margin-left: auto;
-  font: 600 10px "Inter", system-ui, sans-serif;
+  font: 600 10.5px "Inter", system-ui, sans-serif;
   color: var(--faint);
   letter-spacing: 0.04em;
 }
@@ -797,7 +797,7 @@ button {
   border-radius: 50%;
   background: var(--accent);
   margin-left: auto;
-  animation: vault-tick 200ms var(--base) both;
+  animation: vault-tick 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 @keyframes vault-tick {
   0% { box-shadow: 0 0 0 0 var(--accent-soft); }
@@ -894,12 +894,6 @@ button {
   letter-spacing: 0.08em;
   color: var(--faint);
   margin: 0;
-}
-.page-title {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  margin: 3px 0 0;
 }
 .workcol {
   padding: 18px 28px 96px;
@@ -1940,7 +1934,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--elev-8);
-  animation: undo-in 320ms var(--spring) both;
+  animation: undo-in var(--spring) both;
 }
 @keyframes undo-in {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
@@ -2042,7 +2036,7 @@ button {
 .w-amount[data-bad] {
   border-color: var(--error) !important;
   box-shadow: 0 0 0 3px var(--error-soft);
-  animation: err-shake 550ms var(--base);
+  animation: err-shake 550ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 @media (prefers-reduced-motion: reduce) {
   .w-amount[data-bad] {
@@ -2062,7 +2056,7 @@ button {
   display: block;
   width: 164px;
   margin: 0 auto;
-  animation: ves-settle 460ms var(--spring) both;
+  animation: ves-settle 460ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 @keyframes ves-settle { from { transform: translateY(-5px); } to { transform: translateY(0); } }
 .v-void { fill: var(--panel-2); }
@@ -2075,7 +2069,7 @@ button {
   stroke-linecap: round;
   stroke-dasharray: 76 24; /* front arc only (pathLength=100) */
   opacity: 0.25;
-  animation: ves-rim 520ms var(--spring) 160ms both;
+  animation: ves-rim 520ms cubic-bezier(0.32, 0.72, 0, 1) 160ms both;
 }
 @keyframes ves-rim { from { opacity: 0.25; } to { opacity: 1; } }
 .v-ground {
@@ -2087,7 +2081,7 @@ button {
   stroke-dasharray: 4 7;
 }
 .es-title {
-  font-size: 14px;
+  font-size: var(--t-head);
   font-weight: 600;
   margin: 12px 0 0;
 }
@@ -2255,7 +2249,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: var(--elev-8);
-  animation: toast-in 320ms cubic-bezier(0.18, 1.5, 0.3, 1) both;
+  animation: toast-in var(--spring) both;
 }
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(26px) scale(0.94); }
