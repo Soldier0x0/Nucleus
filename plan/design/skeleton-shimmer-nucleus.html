@@ -1,0 +1,212 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Skeleton Shimmer" technique.
+     Upstream reference: plan/design/forever/skeleton-shimmer.html
+     (RAW PENDING RE-ARCHIVE — paste lost in context compaction; licence-unstated, study
+     only. Technique values below come from the documented extraction pass in the digest).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Skeleton Shimmer".
+     Kept: sweep keyframe that HOLDS at 60%,100% before restart (no metronome blink),
+     1.8s cycle on cubic-bezier(.65,0,.35,1), per-row stagger .15/.2/.35s.
+     Ported to Nucleus: bones are cloned from the REAL finished layout (same columns, same
+     40px icon square, same amount lane) so the swap never shifts layout; the shimmer is
+     ink-tinted ≈7% because pure white would glare on warm paper. Wait-swap contract:
+     aria-busy + role="status". Pause convention: html[data-hidden] (our house pattern).
+     Initial paint runs one converging load; afterwards Reload replays it — no idle loop. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native skeleton shimmer: ink-tinted sweep over real-layout bones, holds at end of cycle before restart, aria-busy wait-swaps to content — zero layout jump.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Skeleton Shimmer (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --ok: #4c8a57; --ok-soft: rgba(76, 138, 87, 0.14);
+    --warn: #bc8524; --warn-soft: rgba(188, 133, 36, 0.16);
+    --error: #b4534b; --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --ok: #7fb98a; --ok-soft: rgba(127, 185, 138, 0.16);
+    --warn: #d9a94c; --warn-soft: rgba(217, 169, 76, 0.18);
+    --error: #d9837a; --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    display: grid; place-items: center;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    width: min(100%, 396px); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .hd { display: flex; align-items: flex-start; gap: 10px; }
+  .hd .t { flex: 1; }
+  .hd h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  .hd p  { font-size: 12px; color: var(--muted); margin: 3px 0 12px; }
+  .rbtn {
+    appearance: none; cursor: pointer; flex: none;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    border-radius: 999px; padding: 7px 13px; font: 600 11px/1 "Inter", sans-serif;
+    transition: color var(--fast) ease, opacity var(--fast) ease;
+  }
+  .rbtn:hover { color: var(--ink); }
+  .rbtn[disabled] { opacity: .45; cursor: default; }
+  .rbtn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  .list { border-top: 1px solid var(--line); }
+  .row {
+    display: grid; grid-template-columns: 40px 1fr auto;
+    align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .row:last-child { border-bottom: 0; }
+  .ic {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--panel-2);
+    display: grid; place-items: center;
+    font: 600 11px/1 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--muted);
+  }
+  .lbl { min-width: 0; }
+  .lbl b   { display: block; font-size: 13px; font-weight: 600; letter-spacing: -.005em; }
+  .lbl span{ display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .amt { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; }
+  .amt.pos { color: var(--ok); }
+
+  /* Bones occupy the exact same grid as real rows — the swap cannot shift layout. */
+  .sk { position: relative; overflow: hidden; background: var(--panel-2); border-radius: 6px; }
+  .sk::after {
+    content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 7%, transparent), transparent);
+    /* hold at the end: 60% travel, 40% dwell — a slow breath, never a metronome blink */
+    animation: sweep 1.8s cubic-bezier(.65,0,.35,1) infinite;
+  }
+  @keyframes sweep {
+    0%       { transform: translateX(-100%); }
+    60%,100% { transform: translateX(100%); }
+  }
+  .sk.ic   { border-radius: 10px; }
+  .sk.l1   { height: 11px; margin: 2px 0 6px; width: 62%; }
+  .sk.l2   { height: 9px; width: 38%; }
+  .sk.amt  { height: 13px; width: 48px; justify-self: end; }
+  /* top-heavier stagger reads first */
+  .row:nth-child(2) .sk::after { animation-delay: .15s; }
+  .row:nth-child(3) .sk::after { animation-delay: .2s; }
+  .row:nth-child(4) .sk::after { animation-delay: .35s; }
+  .swap { transition: opacity var(--fast) ease; }
+  [hidden] { display: none !important; }
+
+  .stat { font: 500 11px/1.4 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--muted); margin: 10px 0 0; }
+
+  .cap { position: fixed; left: 12px; bottom: 12px;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+  .chip { position: fixed; right: 14px; bottom: 12px; appearance: none; cursor: pointer;
+          border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+          border-radius: 999px; padding: 8px 14px;
+          font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .chip:hover { color: var(--ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  /* House pause convention: the visibilitychange handler toggles html[data-hidden];
+     browsers throttle background tabs anyway, but this makes the pause contractual. */
+  html[data-hidden] .sk::after { animation-play-state: paused; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk::after { animation: none; }   /* static bones still read as "loading" */
+    .swap { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" id="region" aria-label="Money recent list" aria-busy="true">
+    <div class="hd">
+      <div class="t">
+        <h2>Recent</h2>
+        <p>Money · this week</p>
+      </div>
+      <button class="rbtn" type="button" id="reload">Reload</button>
+    </div>
+
+    <div class="list swap" id="skeleton" aria-hidden="true">
+      <div class="row"><span class="sk ic"></span><span class="lbl"><span class="sk l1"></span><span class="sk l2"></span></span><span class="sk amt"></span></div>
+      <div class="row"><span class="sk ic"></span><span class="lbl"><span class="sk l1"></span><span class="sk l2"></span></span><span class="sk amt"></span></div>
+      <div class="row"><span class="sk ic"></span><span class="lbl"><span class="sk l1"></span><span class="sk l2"></span></span><span class="sk amt"></span></div>
+      <div class="row"><span class="sk ic"></span><span class="lbl"><span class="sk l1"></span><span class="sk l2"></span></span><span class="sk amt"></span></div>
+    </div>
+
+    <div class="list swap" id="loaded" hidden>
+      <div class="row"><span class="ic">TS</span><span class="lbl"><b>Tea break</b><span>Food · Tue</span></span><span class="amt">−₹40</span></div>
+      <div class="row"><span class="ic">MC</span><span class="lbl"><b>Metro card</b><span>Transit · Mon</span></span><span class="amt">−₹120</span></div>
+      <div class="row"><span class="ic">FB</span><span class="lbl"><b>Fruit box</b><span>Groceries · Mon</span></span><span class="amt">−₹85</span></div>
+      <div class="row"><span class="ic">FR</span><span class="lbl"><b>Freelance</b><span>Income · Sun</span></span><span class="amt pos">+₹4,200</span></div>
+    </div>
+
+    <p class="stat" id="stat" role="status" aria-live="polite">Loading recent transactions…</p>
+  </main>
+  <div class="cap">Nucleus · Skeleton shimmer (rebuilt)</div>
+  <button class="chip" type="button" id="themeBtn">Light / Dark</button>
+<script>
+(function () {
+  "use strict";
+  var region = document.getElementById("region");
+  var skeleton = document.getElementById("skeleton");
+  var loaded = document.getElementById("loaded");
+  var stat = document.getElementById("stat");
+  var btn = document.getElementById("reload");
+  var pend = 0;
+
+  // The 1.4s gap simulated here is the only "demo latency" — it is exactly what
+  // skeletons exist for; everything else is event-driven (Reload button, initial load).
+  function load() {
+    if (pend) return;
+    btn.disabled = true;
+    region.setAttribute("aria-busy", "true");
+    skeleton.hidden = false; loaded.hidden = true;
+    stat.textContent = "Loading recent transactions…";
+    pend = setTimeout(function () {
+      pend = 0;
+      region.setAttribute("aria-busy", "false");
+      skeleton.hidden = true; loaded.hidden = false;
+      stat.textContent = "4 transactions · updated just now";
+      btn.disabled = false;
+    }, 1400);
+  }
+
+  btn.addEventListener("click", load);
+  load(); // initial paint runs ONE converging load, then the page is still
+
+  // house pause convention
+  document.addEventListener("visibilitychange", function () {
+    document.documentElement.toggleAttribute("data-hidden", document.hidden);
+  });
+
+  var themeBtn = document.getElementById("themeBtn");
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+  });
+})();
+</script>
+</body>
+</html>

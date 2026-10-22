@@ -1,0 +1,255 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Hold to Confirm" technique.
+     Upstream reference: plan/design/forever/hold-to-confirm.html
+     (RAW PENDING RE-ARCHIVE — paste lost in context compaction; licence-unstated, study
+     only. Technique values below come from the documented extraction pass in the digest).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Hold to Confirm".
+     Kept: HOLD_MS ≈ 1100ms linear fill blended with a soft spring (k=0.016, d=0.78);
+     commit at p ≥ 0.985 (≈1.08s of hold — matches); release OUTSIDE the button still
+     cancels (window pointerup, kept verbatim + pointercancel); release decays back.
+     Retargeted at a real destructive action with the semantic palette carrying meaning:
+     the ring intensifies toward --error while holding; commit pops a check at ~1.18
+     overshoot in --ok. Keyboard hold parity (Space/Enter down-up). role="status" narrates
+     hold/cancel/commit. Event-driven: rAF runs only while motion exists (settle-and-stop). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native hold to confirm: 1100ms hold with spring-blended fill, error ring under the finger, ok check pop on commit, release outside counts, full keyboard parity.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Hold to Confirm (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --ok: #4c8a57; --ok-soft: rgba(76, 138, 87, 0.14);
+    --warn: #bc8524; --warn-soft: rgba(188, 133, 36, 0.16);
+    --error: #b4534b; --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --ok: #7fb98a; --ok-soft: rgba(127, 185, 138, 0.16);
+    --warn: #d9a94c; --warn-soft: rgba(217, 169, 76, 0.18);
+    --error: #d9837a; --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    display: grid; place-items: center;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    width: min(100%, 396px); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .hd h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  .hd p  { font-size: 12px; color: var(--muted); margin: 3px 0 12px; }
+
+  .target {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+  }
+  .target .t { flex: 1; }
+  .target b   { display: block; font-size: 13px; font-weight: 600; letter-spacing: -.005em; }
+  .target span{ display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .target .amt { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
+
+  /* The hold button: fill layer under the label, ring intensifies while pressed. */
+  .holdbtn {
+    position: relative; appearance: none; cursor: pointer; user-select: none;
+    touch-action: none; -webkit-user-select: none;
+    display: block; width: 100%; margin-top: 12px; padding: 15px 16px;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+    color: var(--ink); font: 600 13px/1 "Inter", sans-serif; overflow: hidden;
+    transition: border-color var(--base) ease, box-shadow var(--base) ease;
+  }
+  .holdbtn .fill {
+    position: absolute; top: 0; left: 0; bottom: 0; width: 0%;
+    background: var(--error-soft); border-radius: inherit; pointer-events: none;
+  }
+  .holdbtn .lab { position: relative; z-index: 1; }
+  .holdbtn.pressing {
+    border-color: color-mix(in srgb, var(--error) 55%, var(--line));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 35%, transparent);
+  }
+  .holdbtn.done {
+    border-color: color-mix(in srgb, var(--ok) 55%, var(--line));
+    box-shadow: 0 0 0 3px var(--ok-soft);
+  }
+  .holdbtn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .holdbtn.done:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 35%, transparent);
+  }
+  /* Commit pop: check draws at ~1.18 overshoot */
+  .holdbtn .chk { position: relative; z-index: 1; display: none; width: 18px; height: 18px;
+                  margin-right: 8px; vertical-align: -3px; overflow: visible; }
+  .holdbtn .chk path { fill: none; stroke: var(--ok); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .holdbtn.done .chk { display: inline-block; animation: chkpop 240ms cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes chkpop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .stat { font: 500 11px/1.4 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--muted); margin: 10px 0 0; }
+
+  .cap { position: fixed; left: 12px; bottom: 12px;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+  .chip { position: fixed; right: 14px; bottom: 12px; appearance: none; cursor: pointer;
+          border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+          border-radius: 999px; padding: 8px 14px;
+          font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .chip:hover { color: var(--ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .holdbtn, .holdbtn .fill, .holdbtn .chk { transition: none; }
+    .holdbtn.done .chk { animation: steps(1) 0ms; }
+    .stat { transition: none; }
+    .holdbtn:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" aria-label="Recurring expense delete preview">
+    <div class="hd">
+      <h2>Recurring</h2>
+      <p>Money · 1 active — hold keeps destructive taps honest</p>
+    </div>
+    <div class="target">
+      <span class="t"><b>Delivery</b><span>Weekly groceries · renews Mon, Oct 26</span></span>
+      <span class="amt">₹499/mo</span>
+    </div>
+    <button class="holdbtn" type="button" id="hold">
+      <span class="fill" aria-hidden="true" id="fill"></span>
+      <span class="lab" id="lab">
+        <svg class="chk" viewBox="0 0 18 18" aria-hidden="true"><path d="M3.5 9.5 L7.5 13.5 L14.5 5"/></svg>
+        Hold to delete · Delivery
+      </span>
+    </button>
+    <p class="stat" id="stat" role="status" aria-live="polite">Hold for about a second to confirm — releasing early cancels.</p>
+  </main>
+  <div class="cap">Nucleus · Hold to confirm (rebuilt)</div>
+  <button class="chip" type="button" id="themeBtn">Light / Dark</button>
+<script>
+(function () {
+  "use strict";
+  var HOLD_MS = 1100;                 // upstream constant, kept
+  var COMMIT_P = 0.985;               // upstream: commit threshold, kept
+  var K = 0.016, D = 0.78;            // upstream display spring, kept
+  var REGRESS = HOLD_MS * 0.65;       // release decays back a touch faster than it fills
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var btn = document.getElementById("hold");
+  var fill = document.getElementById("fill");
+  var lab = document.getElementById("lab");
+  var stat = document.getElementById("stat");
+  var themeBtn = document.getElementById("themeBtn");
+
+  var holding = false, done = false, inFlight = false;
+  var p = 0, disp = 0, vel = 0, raf = 0, last = 0, resetT = 0;
+
+  function wake() {
+    if (raf || done && !inFlight) return;
+    last = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+  function frame(now) {
+    raf = 0;
+    var dt = Math.min(50, now - last); last = now;
+
+    if (!done) {
+      if (holding) p = Math.min(1, p + dt / HOLD_MS);       // linear fill toward commit
+      else         p = Math.max(0, p - dt / REGRESS);       // release: decay back
+    }
+    if (reduce) {
+      disp = p;                                             // no spring under reduced motion
+    } else {
+      vel += (p - disp) * K; vel *= D; disp += vel;         // soft spring display blend
+    }
+    paint();
+
+    if (holding && !done && p >= COMMIT_P) commit();
+
+    // settle-and-stop: the loop only lives while there is motion or a hold in progress
+    if (holding || Math.abs(p - disp) > 0.001 || Math.abs(vel) > 0.001) wake();
+    else vel = 0;
+  }
+  function paint() {
+    fill.style.width = (disp * 100).toFixed(2) + "%";
+    btn.classList.toggle("pressing", !done && (holding || disp > 0.04));
+  }
+
+  function press() {
+    if (done || inFlight || btn.disabled) return;
+    if (!holding) { holding = true; stat.textContent = "Holding… keep holding to confirm"; }
+    wake();
+  }
+  function release() {
+    if (!holding || done) return;
+    holding = false;
+    if (p < COMMIT_P) stat.textContent = "Cancelled — hold for about a second to confirm";
+    wake();
+  }
+  function commit() {
+    holding = false; done = true; inFlight = true;
+    p = 1; disp = 1; vel = 0;
+    btn.classList.remove("pressing");
+    btn.classList.add("done");
+    lab.lastChild.textContent = "Deleted — Delivery stopped";
+    stat.textContent = "Recurring “Delivery” deleted — ₹499/mo stopped.";
+    // release the final paint, then converge back to idle (still counts as settled — no loop)
+    resetT = setTimeout(function () {
+      done = false; inFlight = false; p = 0; disp = 0; vel = 0;
+      btn.classList.remove("done");
+      lab.lastChild.textContent = "Hold to delete · Delivery";
+      stat.textContent = "Reset — hold for about a second to confirm.";
+      paint(); wake();
+    }, 1500);
+    raf = 0;
+  }
+
+  // pointer: press on the button, RELEASE ANYWHERE still counts (windows pointerup)
+  btn.addEventListener("pointerdown", function (e) { e.preventDefault(); press(); });
+  addEventListener("pointerup", release);
+  addEventListener("pointercancel", release);
+
+  // keyboard hold parity: Space/Enter down-up, ignoring autorepeat
+  btn.addEventListener("keydown", function (e) {
+    if (e.key !== " " && e.key !== "Enter") return;
+    if (e.repeat) { e.preventDefault(); return; }
+    e.preventDefault(); press();
+  });
+  btn.addEventListener("keyup", function (e) {
+    if (e.key === " " || e.key === "Enter") release();
+  });
+
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>

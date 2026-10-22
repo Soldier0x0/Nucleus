@@ -170,6 +170,59 @@ Upstream shakes a ghost-email field with a rAF decaying sine. The envelope is ke
 
 Desktop wiring when v0.17 lands: every invalid/destructive-rejection flow — Expense save, Transfer form, wrong-pin unlock. Reduced motion keeps the static error frame (border + mark + message) so meaning survives without motion; pairs with the undo snackbar (forgiving path) rather than replacing it.
 
+### Skeleton Shimmer — rebuilt as `plan/design/skeleton-shimmer-nucleus.html` (22 Oct 2026)
+
+*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+
+Upstream sweeps a white gradient over abstract blob bones. Mechanism ported whole; material retuned for paper, and the bones rebuilt from the layout they stand in for — the cornerstone of the port.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Sweep cycle | gradient slides, restarts immediately | `::after` keyframe holds at `60%,100%` before restart — 40% dwell per 1.8s cycle on `cubic-bezier(.65,0,.35,1)`: a slow breath, never a metronome blink |
+| Bones | abstract hand-placed rectangles | same grid as the loaded rows they replace (40px icon square, 62%/38% text lanes, right amount) — swap shifts zero layout |
+| Material | white over grey | ≈7% ink sweep over `--panel-2` — white would glare on warm paper |
+| Stagger | slight | .15 / .2 / .35s per row, top-heavier reads first |
+| Wait contract | none | `aria-busy` on the region + `role="status"` announcing loading → resolved; swap fades 120ms |
+| Pause | JS class hack | house `html[data-hidden]` convention: `visibilitychange` toggles the attribute, shimmer pauses `animation-play-state` — contractual, beyond browser background-tab throttling |
+| Not ported | idle auto-reload demo | event-driven: initial paint runs one converging load, Reload replays; the 1.4s simulated gap is the only latency |
+
+Desktop wiring when v0.17 lands: Money list and Health entries first paint — skeleton markup ships BESIDE real row markup so resolution never reflows. Reduced motion: static bones still read as "loading".
+
+### Hold to Confirm — rebuilt as `plan/design/hold-to-confirm-nucleus.html` (22 Oct 2026)
+
+*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+
+Upstream blends a linear hold-fill with a soft spring and counts a release outside the control. The model is kept whole and retargeted at a real destructive action, with the semantic palette carrying the meaning.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Fill | linear `p += rate·0.65` under a spring display | kept exactly: linear 1100ms fill (`HOLD_MS`) under the display spring `k=0.016, d=0.78` |
+| Commit | fires at p ≥ 0.985 | kept — ≈1.08s of hold, beneath the "long" perception boundary |
+| Release | releasing outside counts via window `pointerup` | kept verbatim + `pointercancel`; early release decays the fill back (regress path 0.65·HOLD_MS) |
+| Feedback | fill color shifts as it charges | error ring intensifies under the finger (border → 55% `--error`, 3px 35% ring); commit pops a check at ~1.18 overshoot (`cubic-bezier(.34,1.56,.64,1)`) in `--ok` |
+| A11y | button + partial live text | full keyboard hold (Space/Enter down-up, autorepeat ignored), `role="status"` narrates hold/cancel/commit, focus rings both idle and done states |
+| Not ported | demo auto-run | event-driven demo on a real Money recurring-expense delete; rAF lives only while motion exists |
+
+Desktop wiring when v0.17 lands: destructive confirmations that space "Delete" one tap away — recurring expense removal, reminder deletion. It pairs with the undo snackbar as a system: undo = forgiving path for common items, hold = explicit path for costly ones. Never both on the same action in one surface.
+
+### Drag Handle — rebuilt as `plan/design/drag-handle-nucleus.html` (22 Oct 2026)
+
+*Raw pending re-archive (paste lost to compaction); technique values from the extraction pass.*
+
+Upstream reorders rows with a per-row spring and a lerped lift. Kept as the reorder core; grip-only discipline retained.
+
+| Aspect | Forever upstream | Nucleus rebuild |
+| --- | --- | --- |
+| Reorder spring | per-row `k=0.18, damp=0.74` toward slot targets | kept verbatim; targets recompute from ONE `moveSlot(from, to)` — the only reorder path, shared by pointer and keyboard |
+| Lift | offset lerps 0.22 toward cursor; scale 1.035 + −7px | same constants; scale rides the independent `scale` property (composes with the JS-driven translateY); the −7px raise folds into the target |
+| Lift shadow | applied at grab | class swap with NO transition — shadow lands instantly at grab, vanishes instantly at drop (animating shadows janks and re-paints the whole list) |
+| Swaps | midpoint crossings commit mid-flight | kept — the row moves with the pointer while neighbors already glide aside |
+| A11y | pointer-only | grip focusable; ArrowUp/ArrowDown move through the same `moveSlot`; `role="status"` announces the new order; `list/listitem` semantics + per-grip position labels |
+| Scale | fixed row count | dynamic rows (+ Add) re-seed targets; deck height derives from row count; entering rows spring into seat |
+| Long lists | — | FLIP note: beyond ~10 rows, cache rects once per order change and transform-diff instead of full re-target loops |
+
+Desktop wiring when v0.17 lands: Reminders ordering, Settings row groups. grip-only is the guardrail — whole-row dragging inside dense settings lists invites accidental reorders.
+
 ## Format spec: Stitch DESIGN.md
 
 - <https://stitch.withgoogle.com/docs/design-md/overview/> — plain markdown at project root describing the visual system.

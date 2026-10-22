@@ -1,0 +1,331 @@
+<!doctype html>
+<!-- Nucleus-native rebuild of the Forever Components "Drag Handle" technique.
+     Upstream reference: plan/design/forever/drag-handle.html
+     (RAW PENDING RE-ARCHIVE — paste lost in context compaction; licence-unstated, study
+     only. Technique values below come from the documented extraction pass in the digest).
+     Extraction notes: plan/design-sources.md → "Pattern rebuilds" → "Drag Handle".
+     Kept: per-row reorder spring (K=0.18, D=0.74) toward slot targets; lift lerp 0.22
+     toward the cursor with scale 1.035 + a −7px raise; lift shadow swaps via class with
+     NO transition (animating shadows janks); grip-only handles (whole-row dragging invites
+     accidental reorders); midpoint crossings commit swaps mid-flight.
+     Production core: ONE moveSlot(from, to) is the only reorder path — pointer and
+     keyboard (ArrowUp/ArrowDown on a focused grip, announced via role="status") share it.
+     Dynamic rows: add-row re-seeds targets. >10 rows note: cache rects once per order
+     change and transform-diff (FLIP) instead of assuming fixed pitch — see digest.
+     Nucleus tokens + v0.17 motion tier; reduced motion jumps straight to targets. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="description" content="Nucleus-native drag handle reordering: grip-only handles, per-row 0.18/0.74 spring, lerped lift 1.035 scale, keyboard arrows share the same moveSlot path, live announcements.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus — Drag Handle (rebuilt)</title>
+<style>
+  /* Tokens carried verbatim from desktop/src/styles.css (v0.16.1 stage). */
+  :root, :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f5f1ea; --panel: #ffffff; --panel-2: #ede7dc;
+    --ink: #221c15; --muted: #6e6455; --faint: #9c9181;
+    --line: rgba(32, 26, 19, 0.085);
+    --accent: #be7a2e; --accent-strong: #a9661f; --accent-ink: #fff8ec;
+    --accent-soft: rgba(190, 122, 46, 0.13);
+    --ok: #4c8a57; --ok-soft: rgba(76, 138, 87, 0.14);
+    --warn: #bc8524; --warn-soft: rgba(188, 133, 36, 0.16);
+    --error: #b4534b; --error-soft: rgba(180, 83, 75, 0.14);
+    --shadow: 0 1px 2px rgba(30, 24, 17, 0.05), 0 10px 26px -20px rgba(30, 24, 17, 0.28);
+    /* v0.17 motion tokens (plan/desktop-uix-v017.md §5) */
+    --fast: 120ms; --base: 200ms; --spring: 320ms cubic-bezier(.32,.72,0,1);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #161310; --panel: #211d18; --panel-2: #1b1713;
+    --ink: #f1ebe0; --muted: #a79b8a; --faint: #786e60;
+    --line: rgba(255, 255, 255, 0.075);
+    --accent: #d8934c; --accent-strong: #e8a45c; --accent-ink: #241708;
+    --accent-soft: rgba(216, 147, 76, 0.16);
+    --ok: #7fb98a; --ok-soft: rgba(127, 185, 138, 0.16);
+    --warn: #d9a94c; --warn-soft: rgba(217, 169, 76, 0.18);
+    --error: #d9837a; --error-soft: rgba(217, 131, 122, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -22px rgba(0, 0, 0, 0.65);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--ink); overflow: hidden;
+    display: grid; place-items: center;
+    font: 14px/1.5 "Inter", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    width: min(100%, 396px); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .hd { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+  .hd .t { flex: 1; }
+  .hd h2 { font-size: 15px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+  .hd p  { font-size: 12px; color: var(--muted); margin: 3px 0 10px; }
+  .rbtn {
+    appearance: none; cursor: pointer; flex: none;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+    border-radius: 999px; padding: 7px 13px; font: 600 11px/1 "Inter", sans-serif;
+    transition: color var(--fast) ease;
+  }
+  .rbtn:hover { color: var(--ink); }
+  .rbtn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  .deck { position: relative; margin-top: 8px; }   /* height managed by JS = n·pitch */
+  .row {
+    position: absolute; left: 0; right: 0; top: 0; height: 40px;
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 0 10px 0 4px;
+  }
+  /* Lift: the shadow appears via class swap with NO transition — it lands instantly at
+     grab and vanishes instantly at drop (extraction rule, not an oversight). */
+  .row.lift {
+    box-shadow: 0 1px 2px rgba(30, 24, 17, 0.08), 0 14px 28px -14px rgba(30, 24, 17, 0.45);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    z-index: 2;
+  }
+  .row.lift { scale: 1.035; transition: scale var(--base) var(--spring); }
+  .row:not(.lift) { scale: 1; transition: scale var(--base) var(--spring); }
+
+  .grip {
+    appearance: none; border: 0; background: transparent; cursor: grab; touch-action: none;
+    width: 26px; height: 40px; display: grid; place-items: center; border-radius: 6px;
+  }
+  .grip:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .grip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .row.lift .grip { cursor: grabbing; }
+  .grip svg { display: block; }
+  .grip circle { fill: var(--faint); }
+  .row.lift .grip circle { fill: var(--muted); }
+
+  .row .t { min-width: 0; padding-right: 8px; }
+  .row b    { display: block; font-size: 13px; font-weight: 600; letter-spacing: -.005em;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row span { display: block; font: 500 10.5px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+              color: var(--faint); margin-top: 2px; }
+  .row .due { font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+              color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+  .stat { font: 500 11px/1.4 "JetBrains Mono", ui-monospace, Menlo, monospace; color: var(--muted); margin: 14px 0 0; }
+
+  .cap { position: fixed; left: 12px; bottom: 12px;
+         font: 600 10px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+         color: var(--faint); letter-spacing: .08em; text-transform: uppercase; user-select: none; }
+  .chip { position: fixed; right: 14px; bottom: 11px; appearance: none; cursor: pointer;
+          border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+          border-radius: 999px; padding: 8px 14px;
+          font: 600 11px/1 "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+  .chip:hover { color: var(--ink); }
+  .chip:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .row.lift, .row:not(.lift) { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="card" aria-label="Reminders reorder preview">
+    <div class="hd">
+      <div class="t">
+        <h2>Reminders</h2>
+        <p>Drag a grip or focus it and use ↑/↓ — add one to see rows stay dynamic</p>
+      </div>
+      <button class="rbtn" type="button" id="add">+ Add</button>
+    </div>
+    <div class="deck" id="deck" role="list" aria-label="Reminders in order"></div>
+    <p class="stat" id="stat" role="status" aria-live="polite">Reordering — every pointer and keyboard move shares one path.</p>
+  </main>
+  <div class="cap">Nucleus · Drag handle (rebuilt)</div>
+  <button class="chip" type="button" id="themeBtn">Light / Dark</button>
+<script>
+(function () {
+  "use strict";
+  var K = 0.18, D = 0.74;          // upstream reorder spring constants, kept verbatim
+  var LIFT_LERP = 0.22;            // upstream: lift offset lerps toward the cursor at 0.22
+  var LIFT_RAISE = -7;             // upstream: −7px raise while lifted
+  var REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var deck = document.getElementById("deck");
+  var stat = document.getElementById("stat");
+  var themeBtn = document.getElementById("themeBtn");
+
+  var PITCH = 48, ROW_H = 40;
+  var items = [
+    { title: "Pay rent",         sub: "Money · auto",   due: "MON" },
+    { title: "Water plants",     sub: "Home",           due: "TUE" },
+    { title: "Call lab reports", sub: "Health",         due: "WED" },
+    { title: "Renew license",    sub: "Wallet",         due: "FRI" },
+    { title: "Book dentist",     sub: "Health",         due: "SAT" }
+  ];
+  var order = items.map(function (_, i) { return i; });  // order[slot] = item index
+  var rows = [];                       // rows[itemIndex] = element
+  var cy = [], vy = [];                // spring state per item
+  var target = [];                     // per item: slot*PITCH while free
+
+  var liftedItem = -1, dragY = 0, liftDy = 0, startY = 0, dragging = false;
+  var raf = 0;
+
+  function seat(i, slot) { target[i] = slot * PITCH; }
+  function reseat() { order.forEach(function (item, slot) { seat(item, slot); }); }
+  function deckHeight(n) { deck.style.height = (n * PITCH - (PITCH - ROW_H)) + "px"; }
+
+  function renderRow(item, i) {
+    var row = document.createElement("div");
+    row.className = "row";
+    row.setAttribute("role", "listitem");
+    row.innerHTML =
+      '<button class="grip" type="button" aria-describedby="stat">' +
+        '<svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true">' +
+          '<circle cx="2.5" cy="2" r="1.4"/><circle cx="7.5" cy="2" r="1.4"/>' +
+          '<circle cx="2.5" cy="7" r="1.4"/><circle cx="7.5" cy="7" r="1.4"/>' +
+          '<circle cx="2.5" cy="12" r="1.4"/><circle cx="7.5" cy="12" r="1.4"/>' +
+        "</svg></button>" +
+      '<span class="t"><b></b><span></span></span>' +
+      '<span class="due"></span>';
+    row.querySelector("b").textContent = item.title;
+    row.querySelector(".t span").textContent = item.sub;
+    row.querySelector(".due").textContent = item.due;
+    var grip = row.querySelector(".grip");
+    grip.addEventListener("pointerdown", function (e) { startDrag(e, i); });
+    grip.addEventListener("keydown", function (e) { keyMove(e, i); });
+    return row;
+  }
+
+  function buildAll() {
+    deck.textContent = "";
+    rows = items.map(function (item, i) { return renderRow(item, i); });
+    rows.forEach(function (row, i) { deck.appendChild(row); cy[i] = target[i]; vy[i] = 0; });
+    deckHeight(items.length);
+    labels();
+  }
+  function labels() {
+    order.forEach(function (item, slot) {
+      rows[item].querySelector(".grip").setAttribute(
+        "aria-label", "Reorder " + items[item].title + " — position " + (slot + 1) + " of " + items.length);
+    });
+  }
+
+  /* THE reorder path: pointer and keyboard both land here. */
+  function moveSlot(from, to, announce) {
+    if (from === to) return;
+    var it = order.splice(from, 1);
+    order.splice(to, 0, it[0]);
+    reseat();
+    labels();
+    if (announce) {
+      stat.textContent = order.map(function (item, s) { return (s + 1) + ". " + items[item].title; }).join(" · ");
+      rows[order[to]].querySelector(".grip").setAttribute("aria-label",
+        "Reorder " + items[order[to]].title + " — position " + (to + 1) + " of " + items.length);
+    }
+    wake();
+  }
+
+  function startDrag(e, i) {
+    if (dragging) return;
+    dragging = true; liftedItem = i; startY = e.clientY; dragY = 0; liftDy = 0;
+    rows[i].classList.add("lift");
+    if (rows[i].querySelector(".grip").setPointerCapture) {
+      try { rows[i].querySelector(".grip").setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    e.preventDefault();
+  }
+  addEventListener("pointermove", function (e) {
+    if (!dragging || liftedItem < 0) return;
+    dragY = e.clientY - startY;
+    var slot = order.indexOf(liftedItem);
+    var lo = -slot * PITCH, hi = (items.length - 1 - slot) * PITCH;
+    dragY = Math.max(lo, Math.min(hi, dragY));
+    // lerped lift toward the cursor
+    liftDy += (dragY - liftDy) * (REDUCE ? 1 : LIFT_LERP);
+    // midpoint crossings commit the swap mid-flight (upstream behaviour)
+    var prospective = Math.max(0, Math.min(items.length - 1,
+      slot + Math.round((liftDy - LIFT_RAISE) / PITCH)));
+    if (prospective !== slot) {
+      startY += (slot - prospective) * PITCH;
+      moveSlot(slot, prospective, false);
+    }
+    wake();
+  });
+  addEventListener("pointerup", endDrag);
+  addEventListener("pointercancel", endDrag);
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    if (liftedItem >= 0) {
+      var slot = order.indexOf(liftedItem);
+      moveSlot(slot, slot, false);      // settle targets
+      stat.textContent = "Moved " + items[liftedItem].title + " to position " + (slot + 1) + " of " + items.length;
+      rows[liftedItem].classList.remove("lift");
+      liftedItem = -1; liftDy = 0;
+      wake();
+    }
+  }
+
+  function keyMove(e, i) {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    var slot = order.indexOf(i);
+    var to = e.key === "ArrowUp" ? slot - 1 : slot + 1;
+    if (to < 0 || to >= items.length) return;
+    moveSlot(slot, to, true);
+  }
+
+  function frame() {
+    raf = 0;
+    var maxErr = 0;
+    order.forEach(function (item) {
+      // lifted row: seat + clamped lerped cursor offset + the −7px raise
+      var t = target[item] + (liftedItem === item ? slotMax(item) + LIFT_RAISE : 0);
+      if (REDUCE) { cy[item] = t; vy[item] = 0; }
+      else { vy[item] = (vy[item] + (t - cy[item]) * K) * D; cy[item] += vy[item]; }
+      var err = Math.abs(cy[item] - t);
+      if (err > maxErr) maxErr = err;
+      rows[item].style.transform = "translateY(" + cy[item].toFixed(2) + "px)";
+    });
+    if (maxErr > 0.4 || dragging) wake();
+  }
+  function slotMax(item) {
+    var slot = order.indexOf(item);
+    return Math.max(-slot * PITCH, Math.min((items.length - 1 - slot) * PITCH, liftDy));
+  }
+  function wake() { if (!raf && !document.hidden) raf = requestAnimationFrame(frame); }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+    else wake();
+  });
+
+  document.getElementById("add").addEventListener("click", function () {
+    items.push({ title: "New reminder " + (items.length + 1), sub: "Added in demo", due: "THU" });
+    var i = items.length - 1;
+    order.push(i);
+    cy[i] = null; vy[i] = 0;
+    var row = renderRow(items[i], i);
+    rows.push(row);
+    deck.appendChild(row);
+    cy[i] = items.length * PITCH;   // enters from below, springs to its seat
+    reseat(); deckHeight(items.length); labels(); wake();
+    stat.textContent = "Added — now " + items.length + " reminders.";
+  });
+
+  themeBtn.addEventListener("click", function () {
+    var el = document.documentElement;
+    var dark = el.getAttribute("data-theme") === "dark";
+    el.setAttribute("data-theme", dark ? "light" : "dark");
+    themeBtn.textContent = dark ? "Light / Dark" : "Dark / Light";
+  });
+
+  // init: seat targets first (reseat + labels), then build rows once —
+  // no rAF at boot; the loop only exists while an interaction is in motion
+  reseat();
+  buildAll();
+  order.forEach(function (item) {
+    rows[item].style.transform = "translateY(" + cy[item].toFixed(2) + "px)";
+  });
+})();
+</script>
+</body>
+</html>
