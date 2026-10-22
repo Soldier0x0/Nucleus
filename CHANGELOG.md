@@ -10,6 +10,13 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.16.2
+
+- Fixed the Tools page going completely blank the moment any tool pill was opened (date, EMI, or any other — each tool now mounts on its own).
+- Fixed every screen crash from turning into a black window — a broken screen now shows a recovery card with a Try again button, and the sidebar stays alive.
+- Fixed automatic updates never being installed on the desktop: Nucleus now checks shortly after launch, then downloads, installs and reopens itself.
+- Fixed the .deb flavour of the update feed: the Linux .deb ships with its own signature, so a .deb install applies its own updates — the computer password prompt during install is the system installing Nucleus, once per update.
+
 ## v0.16.1
 
 - Fixed the desktop Cycle page floating its calendar halfway down a blank column. The calendar and the details now sit side by side, top aligned like the other modules.

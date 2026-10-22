@@ -56,9 +56,9 @@ export async function checkForUpdateNow(setMsg: (msg: string) => void): Promise<
     setMsg("Installed. Nucleus will reopen on its own.");
     return;
   }
+  setMsg("Installed. Reopening Nucleus.");
   const { relaunch } = await import("@tauri-apps/plugin-process");
   await relaunch();
-  setMsg("Installed. Reopening Nucleus.");
 }
 
 export function friendlyUpdateError(err: unknown): string {

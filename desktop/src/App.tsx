@@ -340,7 +340,7 @@ function Shell() {
     setSection(next);
   };
 
-  // Self-update at launch (v0.16.2): once the shell has settled, the updater
+  // Self-update at launch: once the shell has settled, the updater
   // quietly checks, downloads and installs, then relaunches into the new
   // version. Failures stay in the console — the app keeps working.
   useEffect(() => {
