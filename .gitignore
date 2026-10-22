@@ -11,3 +11,10 @@ keystore.properties
 google-services.json
 GoogleService-Info.plist
 
+# Forever Components reference copies (sign-in gated, no open code license —
+# technique study only, rebuilt Nucleus-native before use; never track upstream code)
+plan/design/forever/
+
+# Agent-local build artifact
+.vite/
+
