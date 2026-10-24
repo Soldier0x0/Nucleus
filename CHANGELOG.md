@@ -25,12 +25,12 @@ From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed
 - Added a collapsible icon-rail sidebar (Remembered across restarts) with lucide icons, amber active pill, tooltips and grouped WORKSPACE/MODULES headings.
 - Added a custom Select dropdown — a frosted, spring-open popover menu anchored to its field, with keyboard support (arrows, Home/End, Enter, Esc, first-letter cycling), an amber check on the current item and proper listbox roles — replacing the bare native select everywhere, including Settings and Money.
 - Added labelled −/+ Steppers with hold-to-repeat for the Cycle stash (Home/Bag/Pack) and the change timer (with unit suffix), replacing the bare ± counters.
-- Fixed the dropdown menu disappearing behind screen cards and drifting away from its field — the popover now lives in the top layer via a portal, so no scroll, stamp or zoom can reposition it.
+- Fixed the dropdown menu getting hidden under screen cards and drifting away from its field — the popover now lives in the top layer via a portal, so no scroll, stamp or zoom can reposition it.
 - Fixed Enter-to-type focus loss after opening a select, and the palette rows centering themselves (the shared button reset must not touch menus).
 - Fixed typed rupee amounts with paise silently rounding for display (₹499.50 now reads correctly); the "N categories touched" caption uses the right singular for one.
 - Changed the Money screen: KPI cards, frosted filter capsules, add-row fields on a single line, vessel empty state with a 6-month trend strip.
 - Changed Cycle on the desktop: month pager, day-detail chips, quick symptom pills, stash rows with per-store steppers and warm low-mark hinting.
-- Dark mode now applies instantly from Settings → Look, and every surface was re-mapped to the warm-black material scale.
+- Changed dark mode to apply instantly from Settings → Look, and every surface was re-mapped to the warm-black material scale.
 
 - Added kanban card dragging: grab a card by its grip and the neighbours glide out of the way with spring physics, or press the grip's arrow keys — keyboard and pointer go through the same reorder commit, and the board is written once at the drop.
 - Added press-and-hold to delete a board or column: hold about a second while the error ring charges — let go early and nothing happens. Deleting a note or a single card now shows a 6-second undo snackbar instead.
