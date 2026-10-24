@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { PIN_MIN_DIGITS, backoffLabel, backoffRemainingMs, isValidPin } from "./platform/security";
 import { WrongPinError, createSecure, readBackoff, registerFailure, clearFailures, resetSecure, unlockSecure } from "./platform/secure";
 import { confirmDialog } from "./components/Dialog";
+import { WinControls } from "./components/WinControls";
 
 function digitsOnly(value: string) {
   return value.replace(/\D+/g, "").slice(0, 12);
@@ -87,6 +88,7 @@ export function LockScreen({ mode, onUnlocked }: { mode: "create" | "unlock"; on
 
   return (
     <div className="lock-wrap">
+      <WinControls overlay />
       <form className="lock-card" onSubmit={submit}>
         <div className="lock-brand">Nucleus</div>
         <p className="muted">{mode === "create" ? "Choose a PIN for this computer. It is asked every time Nucleus opens." : "Enter your PIN to unlock."}</p>

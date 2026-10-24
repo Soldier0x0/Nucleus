@@ -76,7 +76,10 @@ export const CURRENCIES = Object.keys(SYMBOLS);
 export function money(n: number, cur: string, opts: { decimals?: boolean } = {}) {
   const sym = SYMBOLS[cur] ?? `${cur} `;
   const abs = Math.abs(n);
-  const dec = ZERO_DECIMALS.has(cur) ? false : (opts.decimals ?? abs < 100);
+  // Show paise/cents whenever the value actually has them (a typed ₹499.50 must
+  // not silently round to ₹500), or when the amount is small enough that
+  // decimals are the natural reading. Zero-decimal currencies stay whole.
+  const dec = ZERO_DECIMALS.has(cur) ? false : (opts.decimals ?? (abs < 100 || !Number.isInteger(abs)));
   const locale = cur === "INR" ? "en-IN" : "en-US";
   let body: string;
   try {

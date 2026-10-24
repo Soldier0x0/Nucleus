@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { Select } from "../components/Select";
+
+const HOURS = Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: `${h}:00` }));
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import type { Rule, RuleAction, RuleTriggerKind } from "@core/types";
@@ -178,21 +181,13 @@ export function Rules() {
           </div>
           <div className="row">
             <span>From</span>
-            <select value={quiet.from} onChange={(e) => setQuietHours({ from: Number(e.target.value) })}>
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>
-                  {h}:00
-                </option>
-              ))}
-            </select>
+            <span className="add-row-field" style={{ width: 92 }}>
+              <Select value={String(quiet.from)} onChange={(h) => setQuietHours({ from: Number(h) })} ariaLabel="Quiet from" options={HOURS} />
+            </span>
             <span>to</span>
-            <select value={quiet.to} onChange={(e) => setQuietHours({ to: Number(e.target.value) })}>
-              {Array.from({ length: 24 }, (_, h) => (
-                <option key={h} value={h}>
-                  {h}:00
-                </option>
-              ))}
-            </select>
+            <span className="add-row-field" style={{ width: 92 }}>
+              <Select value={String(quiet.to)} onChange={(h) => setQuietHours({ to: Number(h) })} ariaLabel="Quiet to" options={HOURS} />
+            </span>
           </div>
         </div>
       </div>

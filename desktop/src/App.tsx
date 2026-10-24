@@ -1,13 +1,40 @@
 import { useEffect, useState, useCallback, useRef, memo, type ReactNode } from "react";
+import {
+  Bell,
+  CalendarDays,
+  Car,
+  Code,
+  Settings as SettingsIcon,
+  FlaskConical,
+  Flower2,
+  Heart as HeartIcon,
+  House,
+  Images,
+  Luggage,
+  Notebook,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plane,
+  Search,
+  SlidersHorizontal,
+  Hammer,
+  FileText,
+  Wifi,
+  Wrench,
+  Wallet,
+  Coffee,
+} from "lucide-react";
 import { lastSeenLine } from "@core/syncStatus";
 import { visibleAttention } from "@core/attention";
 import { todayISO } from "@core/format";
 import { StoreProvider, useStore } from "./store";
 import { LockScreen } from "./LockScreen";
 import { SyncBridge } from "./sync/SyncBridge";
+import { WinControls } from "./components/WinControls";
 import { secureStatus, lockSecure } from "./platform/secure";
 import { localPrefs } from "./platform/storage";
 import { storedThemePref, THEME_KEY } from "./platform/theme";
+import { isTauri } from "./platform/env";
 import { Today } from "./screens/Today";
 import { Attention } from "./screens/Attention";
 import { Money } from "./screens/Money";
@@ -44,7 +71,7 @@ import { BMC_URL, openExternal } from "./platform/support";
 export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "cycle" | "home" | "travel" | "papers" | "notes" | "media" | "tools" | "rules" | "dev" | "builder" | "net" | "lab" | "settings" | "devlab";
 
 /** Bumped per release; also shown as the sidebar chip. */
-export const APP_VERSION = "0.16.1";
+export const APP_VERSION = "0.17.0";
 
 /** Idle time before the desktop locks itself, like the phone does. */
 const IDLE_LOCK_MS = 15 * 60_000;
@@ -69,13 +96,14 @@ function useIdleLock(enabled: boolean, onIdle: () => void): void {
   }, [enabled, onIdle]);
 }
 
-type SectionDef = { id: SectionId; label: string; icon: ReactNode; group: "workspace" | "modules" | "foot" };
+const ic = (Icon: React.ComponentType<{ size?: number | string; strokeWidth?: number; className?: string }>) => {
+  const Glyph = memo(function Glyph() {
+    return <Icon className="ic" size={17} strokeWidth={1.65} aria-hidden="true" />;
+  });
+  return <Glyph />;
+};
 
-const ic = (paths: ReactNode) => (
-  <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-    {paths}
-  </svg>
-);
+type SectionDef = { id: SectionId; label: string; icon: ReactNode; group: "workspace" | "modules" | "foot" };
 
 /** The one Support row in the sidebar foot — leaves the app, marks nothing. */
 const SupportRow = memo(function SupportRow() {
@@ -86,13 +114,8 @@ const SupportRow = memo(function SupportRow() {
       title="buymeacoffee.com/soldier0x0"
       data-testid="sidebar-support"
     >
-      <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-        {/* a small coffee cup: honest, not emoji, and it matches the icon set */}
-        <path d="M4 9h11v5.2A4.8 4.8 0 0 1 10.2 19H8.8A4.8 4.8 0 0 1 4 14.2Z" />
-        <path d="M15 10.4h2.1a2.4 2.4 0 0 1 0 4.8H15" />
-        <path d="M7.5 5.5v1.8M10.5 5.5v1.8" />
-      </svg>
-      Support Nucleus
+      {ic(Coffee)}
+      <span className="nav-label">Support Nucleus</span>
       <kbd>free app</kbd>
     </button>
   );
@@ -103,179 +126,116 @@ const SECTIONS: SectionDef[] = [
     id: "today",
     label: "Today",
     group: "workspace",
-    icon: ic(<path d="M3 10.8 12 4l9 6.8M5.5 9.6V20h13V9.6M9.8 20v-5.4h4.4V20" />),
+    icon: ic(CalendarDays),
   },
   {
     id: "attention",
     label: "Attention",
     group: "workspace",
-    icon: ic(
-      <>
-        <path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z" />
-        <path d="M10 19a2 2 0 0 0 4 0" />
-      </>,
-    ),
+    icon: ic(Bell),
   },
   {
     id: "money",
     label: "Money",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
-        <path d="M15.5 12h5.5M12.2 12h.01" />
-      </>,
-    ),
+    icon: ic(Wallet),
   },
   {
     id: "vehicles",
     label: "Vehicles",
     group: "modules",
-    icon: ic(
-      <>
-        <path d="M4.5 13.5 6.2 8.4a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.7 5.1" />
-        <path d="M4.5 13.5h15M4.5 13.5V17h3v-1.3h9V17h3v-3.5M7.6 13.5h.01M16.4 13.5h.01" />
-      </>,
-    ),
+    icon: ic(Car),
   },
   {
     id: "health",
     label: "Health",
     group: "modules",
-    icon: ic(<path d="M12 19s-6.6-4.2-8.4-8A4.65 4.65 0 0 1 12 7.7 4.65 4.65 0 0 1 20.4 11c-1.8 3.8-8.4 8-8.4 8Z" />),
+    icon: ic(HeartIcon),
   },
   {
     id: "cycle",
     label: "Cycle",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
-        <path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" />
-      </>,
-    ),
+    icon: ic(Flower2),
   },
   {
     id: "home",
     label: "Home",
     group: "modules",
-    icon: ic(<path d="M4 11 12 5l8 6M6.5 9.8V19h11V9.8M9.6 19v-4.2h4.8V19" />),
+    icon: ic(House),
   },
   {
     id: "travel",
     label: "Travel",
     group: "modules",
-    icon: ic(<path d="M3.5 12 20 4l-2.2 16-6-6.2-7.6-1.6ZM18.6 5.4 11.8 13.8" />),
+    icon: ic(Luggage),
   },
   {
     id: "papers",
     label: "Papers",
     group: "modules",
-    icon: ic(
-      <>
-        <path d="M7 3h7l4 4v14H7ZM14 3.5V8h4.5M9.5 12h5M9.5 15.5h5" />
-      </>,
-    ),
+    icon: ic(FileText),
   },
   {
     id: "notes",
     label: "Notes",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="4" y="4" width="16" height="16" rx="3" />
-        <path d="M8 9h8M8 12.5h8M8 16h5" />
-      </>,
-    ),
+    icon: ic(Notebook),
   },
   {
     id: "media",
     label: "Media",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
-        <path d="M3.5 8.5h17M7.5 5.5v3M16.5 5.5v3M8 16h4" />
-      </>,
-    ),
+    icon: ic(Images),
   },
   {
     id: "tools",
     label: "Tools",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="5" y="3.5" width="14" height="17" rx="2" />
-        <path d="M8.5 8h7M8 11.5h8M9 15h6" />
-      </>,),
+    icon: ic(Wrench),
   },
   {
     id: "rules",
     label: "Rules",
     group: "modules",
-    icon: ic(
-      <>
-        <circle cx="6" cy="6" r="2.2" />
-        <circle cx="6" cy="18" r="2.2" />
-        <circle cx="17" cy="7" r="2.2" />
-        <path d="M6 8.2v7.6M13 6.5a8.5 8.5 0 0 1-5.4 8" />
-      </>,
-    ),
+    icon: ic(SlidersHorizontal),
   },
   {
     id: "dev",
     label: "Dev Tools",
     group: "modules",
-    icon: ic(<path d="m9 8-4 4 4 4M15 8l4 4-4 4" />),
+    icon: ic(Code),
   },
   {
     id: "builder",
     label: "Tool Builder",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="3.5" y="8" width="17" height="11" rx="2" />
-        <path d="M8 8V5.5h8V8M9.5 12.5h5" />
-      </>,
-    ),
+    icon: ic(Hammer),
   },
   {
     id: "net",
     label: "Network",
     group: "modules",
-    icon: ic(
-      <>
-        <path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0" />
-        <circle cx="12" cy="18.5" r="1.3" />
-      </>,
-    ),
+    icon: ic(Wifi),
   },
   {
     id: "lab",
     label: "Lab",
     group: "modules",
-    icon: ic(
-      <>
-        <rect x="6.5" y="6.5" width="11" height="11" rx="2" />
-        <path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3" />
-      </>,
-    ),
+    icon: ic(FlaskConical),
   },
   {
     id: "settings",
     label: "Settings",
     group: "foot",
-    icon: ic(
-      <>
-        <circle cx="12" cy="12" r="3.2" />
-        <path d="M12 3.5v2.6M12 17.9v2.6M3.5 12h2.6M17.9 12h2.6M6 6l1.9 1.9M16.1 16.1 18 18M6 18l1.9-1.9M16.1 7.9 18 6" />
-      </>,
-    ),
+    icon: ic(SettingsIcon),
   },
 ];
 
 /** Dev Lab stays out of the sidebar; the palette and Ctrl+Alt+D reach it. */
 const HIDDEN_SECTIONS: SectionId[] = ["devlab"];
+
+const RAIL_KEY = "nucleus.desktop.rail";
 
 /**
  * Desktop shell. The PIN opens the key store first; only then is the
@@ -306,6 +266,7 @@ export function App() {
   if (!lockMode) {
     return (
       <div className="boot">
+        <WinControls overlay />
         <div className="lock-brand">Nucleus</div>
         <p className="muted">Starting…</p>
       </div>
@@ -319,14 +280,36 @@ export function App() {
   );
 }
 
+/** What the sidebar foot adds up to: a glanceable sync line, not a panel. */
 function Shell() {
   const { db, ready, unreadable, retryLoad, discardUnreadable } = useStore();
-  const [section, setSection] = useState<SectionId>("today");
+  const [section, setSection] = useState<SectionId>(() => {
+    const h = window.location.hash.replace("#/", "");
+    return SECTIONS.some((s) => s.id === h) ? (h as SectionId) : "today";
+  });
   const [focus, setFocus] = useState<{ id?: string } | null>(null);
   const [palette, setPalette] = useState(false);
   const [themeAsk, setThemeAsk] = useState(!localPrefs.get(THEME_KEY));
+  const [rail, setRail] = useState(localPrefs.get(RAIL_KEY) === "true");
+  const [maxed, setMaxed] = useState(false);
   const lastDeviceSync = (db.settings.pairedDevices ?? []).map((d) => d.lastSyncAt).filter(Boolean).sort().pop() ?? db.settings.lastSyncAt;
   const attentionCount = visibleAttention(db, todayISO()).length;
+
+  // Hash deep-links: #/money opens Money (also how external docs link, and a
+  // no-mouse route to any screen). Keys raised to the same ids SECTIONS uses.
+  useEffect(() => {
+    const onHash = () => {
+      const h = window.location.hash.replace("#/", "");
+      if (SECTIONS.some((s) => s.id === h)) setSection(h as SectionId);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  useEffect(() => {
+    const want = `#/${section}`;
+    if (window.location.hash !== want) window.history.replaceState(null, "", want);
+  }, [section]);
+
 
   // A module switched off in Settings takes its section with it: the sidebar row,
   // the palette entry and (if it was the open screen) this very panel.
@@ -403,6 +386,13 @@ function Shell() {
     setSection(next);
   };
 
+  const toggleRail = useCallback(() => {
+    setRail((p) => {
+      localPrefs.set(RAIL_KEY, String(!p));
+      return !p;
+    });
+  }, []);
+
   // Self-update at launch: once the shell has settled, the updater
   // quietly checks, downloads and installs, then relaunches into the new
   // version. Failures stay in the console — the app keeps working.
@@ -411,6 +401,46 @@ function Shell() {
       void startupAutoUpdate();
     }, 5000);
     return () => clearTimeout(t);
+  }, []);
+
+  // Window lifestyle: keep the zoom glyph state in sync so the double-click
+  // zoom affordance stays truthful. Browser preview ignores the whole cluster.
+  useEffect(() => {
+    if (!isTauri()) return;
+    let alive = true;
+    let unlisten: (() => void) | null = null;
+    void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
+      const win = getCurrentWindow();
+      void win.isMaximized().then((m) => alive && setMaxed(m));
+      void win
+        .onResized(() => {
+          void win.isMaximized().then((m) => alive && setMaxed(m));
+        })
+        .then((fn) => {
+          unlisten = fn;
+          if (!alive) fn();
+        })
+        .catch(() => {});
+    });
+    return () => {
+      alive = false;
+      unlisten?.();
+    };
+  }, []);
+  // The window header drags from anywhere non-interactive; double-click zooms.
+  // Handled here (not via data-tauri-drag-region) so every screen's portalled
+  // title inherits the behaviour without touching twenty screen files.
+  const onHeaderMouseDown = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (!isTauri() || e.button !== 0) return;
+    const t = e.target as HTMLElement;
+    if (t.closest("button, a, input, select, textarea, label, [role='listbox'], kbd")) return;
+    void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => getCurrentWindow().startDragging());
+  }, []);
+  const onHeaderDoubleClick = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    if (!isTauri()) return;
+    const t = e.target as HTMLElement;
+    if (t.closest("button, a, input, select, textarea, label, [role='listbox'], kbd")) return;
+    void import("@tauri-apps/api/window").then(({ getCurrentWindow }) => getCurrentWindow().toggleMaximize());
   }, []);
 
   // Hooks BEFORE any early return (React rules-of-hooks: the boot and
@@ -433,6 +463,7 @@ function Shell() {
   if (unreadable) {
     return (
       <div className="boot">
+        <WinControls overlay />
         <div className="card wide-card">
           <h2>The document could not be opened</h2>
           <p className="muted">
@@ -469,6 +500,7 @@ function Shell() {
   if (themeAsk) {
     return (
       <>
+        <WinControls overlay />
         <LookChooser onChosen={() => setThemeAsk(false)} />
       </>
     );
@@ -483,12 +515,14 @@ function Shell() {
         key={s.id}
         className={s.id === section ? "nav on" : "nav"}
         onClick={() => jump(s.id)}
-        title={i < 9 ? `Ctrl+${i + 1}` : undefined}
+        title={rail ? s.label : i < 9 ? `Ctrl+${i + 1}` : undefined}
         data-testid={`nav-${s.id}`}
+        aria-current={s.id === section ? "true" : undefined}
       >
         {s.icon}
-        {s.label}
+        <span className="nav-label">{s.label}</span>
         {s.id === "attention" && attentionCount > 0 ? <span className="nav-badge" data-testid="attention-badge">{attentionCount}</span> : null}
+        {rail && s.id === section ? <span className="nav-rail-dot" aria-hidden="true" /> : null}
       </button>
     );
   };
@@ -498,7 +532,7 @@ function Shell() {
   const dotCls = !lastDeviceSync || seenMins === null || !Number.isFinite(seenMins) ? "" : seenMins < 1440 ? "good" : "warn";
 
   return (
-    <div className="shell" data-app-theme={savedTheme}>
+    <div className="shell" data-app-theme={savedTheme} data-rail={rail ? "true" : "false"}>
       <SyncBridge />
       <SupportNudge />
       <UndoSnackbar />
@@ -507,75 +541,99 @@ function Shell() {
       <nav className="side no-print" aria-label="Sections">
         <div className="brand">
           <span className="logo" aria-hidden="true"></span>
-          <b>Nucleus</b>
-          <span className="ver">v{APP_VERSION}</span>
+          {!rail && <b>Nucleus</b>}
+          {!rail && <span className="ver">v{APP_VERSION}</span>}
+          <button
+            className="collapse-btn"
+            onClick={toggleRail}
+            title={rail ? "Expand sidebar" : "Collapse to icons"}
+            data-testid="sidebar-collapse"
+            aria-label={rail ? "Expand sidebar" : "Collapse sidebar to icons"}
+            aria-pressed={rail}
+          >
+            {rail ? <PanelLeftOpen size={15} strokeWidth={1.8} /> : <PanelLeftClose size={15} strokeWidth={1.8} />}
+          </button>
         </div>
-        <button
-          className="nav-search"
-          onClick={() => setPalette(true)}
-          title="Ctrl+K"
-          data-testid="open-palette"
-          aria-haspopup="dialog"
-          aria-expanded={palette || undefined}
-        >
-          <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" />
-            <path d="m16 16 4 4" />
-          </svg>
-          <span className="grow">Search anything</span>
-          <kbd>Ctrl K</kbd>
-        </button>
-        <div className="slabel">Workspace</div>
+        {!rail && (
+          <button
+            className="nav-search"
+            onClick={() => setPalette(true)}
+            title="Ctrl+K"
+            data-testid="open-palette"
+            aria-haspopup="dialog"
+            aria-expanded={palette || undefined}
+          >
+            {ic(Search)}
+            <span className="grow">Search anything</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+        )}
+        {rail && (
+          <button className="nav" title="Search (Ctrl+K)" onClick={() => setPalette(true)} aria-haspopup="dialog" data-testid="open-palette-rail">
+            {ic(Search)}
+          </button>
+        )}
+        {!rail && <div className="slabel">Workspace</div>}
         {SECTIONS.filter((s) => s.group === "workspace" && moduleOn(s.id)).map(navBtn)}
-        <div className="slabel">Modules</div>
+        {!rail && <div className="slabel">Modules</div>}
         {SECTIONS.filter((s) => s.group === "modules" && moduleOn(s.id)).map(navBtn)}
         <div className="side-foot">
           {SECTIONS.filter((s) => s.group === "foot").map(navBtn)}
           <SupportRow />
           <VaultPulse db={db} />
-          <div className="syncfoot">
-            <div className="grow">
-              <div className="who">Phone</div>
-              <div className="when" data-testid="sidebar-sync-status">
-                {whenTxt}
+          {!rail && (
+            <>
+              <div className="syncfoot">
+                <div className="grow">
+                  <div className="who">Phone</div>
+                  <div className="when" data-testid="sidebar-sync-status">
+                    {whenTxt}
+                  </div>
+                </div>
+                <span className={`dot ${dotCls}`} data-testid="sidebar-sync-dot"></span>
               </div>
-            </div>
-            <span className={`dot ${dotCls}`} data-testid="sidebar-sync-dot"></span>
-          </div>
-          <p className="side-note">Your data stays on this computer.</p>
+              <p className="side-note">Your data stays on this computer.</p>
+            </>
+          )}
         </div>
       </nav>
       <main className="main" id="main-content" tabIndex={-1} data-scrolled="false" ref={mainRef} onScroll={onMainScroll}>
         <DropLayer />
-        {/* One sticky title bar for every screen; each screen fills it by portal (§1). */}
+        {/* One sticky title bar for every screen; each screen fills it by portal (§1).
+            It is also the window header: drag + double-click zoom live here, the
+            traffic lights sit on the left edge. */}
         <ToolbarHostProvider value={toolbarHost}>
           <div
             className="toolbar-shell"
             ref={setToolbarHost}
             data-testid="screen-toolbar"
-          />
+            onMouseDown={onHeaderMouseDown}
+            onDoubleClick={onHeaderDoubleClick}
+          >
+            <WinControls />
+          </div>
           <div className="screen-body" key={section} data-testid="screen-body">
-          <ErrorBoundary screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
-          {section === "today" ? <Today onJump={(sec, id) => jump(sec, id)} /> : null}
-          {section === "attention" ? <Attention /> : null}
-          {section === "money" ? <Money /> : null}
-          {section === "vehicles" ? <Vehicles focusId={focus?.id} /> : null}
-          {section === "health" ? <Health /> : null}
-          {section === "home" ? <HomeScreen /> : null}
-          {section === "travel" ? <Travel /> : null}
-          {section === "papers" ? <Papers focusId={focus?.id} /> : null}
-          {section === "notes" ? <NotesKanban focusId={focus?.id} /> : null}
-          {section === "media" ? <Media /> : null}
-          {section === "tools" ? <Tools focusId={focus?.id} /> : null}
-          {section === "rules" ? <Rules /> : null}
-          {section === "dev" ? <Dev /> : null}
-          {section === "builder" ? <Builder onJump={(sec, id) => jump(sec, id)} /> : null}
-          {section === "cycle" ? <Cycle /> : null}
-          {section === "net" ? <Net /> : null}
-          {section === "lab" ? <Lab /> : null}
-          {section === "settings" ? <Settings /> : null}
-          {section === "devlab" ? <DevLab /> : null}
-          </ErrorBoundary>
+            <ErrorBoundary screenLabel={SECTIONS.find((s) => s.id === section)?.label ?? section}>
+            {section === "today" ? <Today onJump={(sec, id) => jump(sec, id)} /> : null}
+            {section === "attention" ? <Attention /> : null}
+            {section === "money" ? <Money /> : null}
+            {section === "vehicles" ? <Vehicles focusId={focus?.id} /> : null}
+            {section === "health" ? <Health /> : null}
+            {section === "home" ? <HomeScreen /> : null}
+            {section === "travel" ? <Travel /> : null}
+            {section === "papers" ? <Papers focusId={focus?.id} /> : null}
+            {section === "notes" ? <NotesKanban focusId={focus?.id} /> : null}
+            {section === "media" ? <Media /> : null}
+            {section === "tools" ? <Tools focusId={focus?.id} /> : null}
+            {section === "rules" ? <Rules /> : null}
+            {section === "dev" ? <Dev /> : null}
+            {section === "builder" ? <Builder onJump={(sec, id) => jump(sec, id)} /> : null}
+            {section === "cycle" ? <Cycle /> : null}
+            {section === "net" ? <Net /> : null}
+            {section === "lab" ? <Lab /> : null}
+            {section === "settings" ? <Settings /> : null}
+            {section === "devlab" ? <DevLab /> : null}
+            </ErrorBoundary>
           </div>
         </ToolbarHostProvider>
       </main>

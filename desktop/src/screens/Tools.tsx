@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { addTxn, upsertSubscription } from "@core/actions";
@@ -122,11 +123,9 @@ function UnitsTool() {
         <Row label="Value">
           <input className="num filter" style={{ width: 140 }} value={val} onChange={(e) => setVal(e.target.value)} onBlur={() => remember({ "units:val": val })} data-testid="units-input" />
         </Row>
-        <select value={from} onChange={(e) => setFrom(e.target.value)} data-testid="units-from">
-          {Object.entries(units).map(([k, u]) => (
-            <option key={k} value={k}>{u.label} ({k})</option>
-          ))}
-        </select>
+        <span className="add-row-field" style={{ width: 170 }} data-testid="units-from">
+          <Select value={from} onChange={setFrom} ariaLabel="From unit" options={Object.entries(units).map(([k, u]) => ({ value: k, label: u.label, hint: k }))} />
+        </span>
         <button
           className="small-btn"
           data-testid="units-swap-button"
@@ -138,11 +137,9 @@ function UnitsTool() {
         >
           ⇅
         </button>
-        <select value={to} onChange={(e) => setTo(e.target.value)} data-testid="units-to">
-          {Object.entries(units).map(([k, u]) => (
-            <option key={k} value={k}>{u.label} ({k})</option>
-          ))}
-        </select>
+        <span className="add-row-field" style={{ width: 170 }} data-testid="units-to">
+          <Select value={to} onChange={setTo} ariaLabel="To unit" options={Object.entries(units).map(([k, u]) => ({ value: k, label: u.label, hint: k }))} />
+        </span>
       </div>
       <ResultBox tool="units" label={`${val || 0} ${from} in ${to}`} value={isNaN(out) ? "—" : `${num(out, Math.abs(out) < 1 ? 6 : 4)} ${to}`} />
     </div>
@@ -366,11 +363,8 @@ function DatesTool() {
             <Row label="Amount">
               <input className="num filter" style={{ width: 110 }} value={n} onChange={(e) => setN(e.target.value)} data-testid="dates-n-input" />
             </Row>
-            <select className="filter" value={unit} onChange={(e) => setUnit(e.target.value as typeof unit)} data-testid="dates-unit" style={{ width: 110 }}>
-              <option value="days">Days</option>
-              <option value="weeks">Weeks</option>
-              <option value="months">Months</option>
-            </select>
+            <span className="add-row-field w-type" data-testid="dates-unit"><Select value={unit} onChange={(u) => setUnit(u as typeof unit)} ariaLabel="Unit" options={[{ value: "days", label: "Days" }, { value: "weeks", label: "Weeks" }, { value: "months", label: "Months" }]} />
+              </span>
           </>
         )}
       </div>
@@ -488,11 +482,9 @@ function CookingTool() {
           <Row label="Amount">
             <input className="num filter" style={{ width: 110 }} value={val} onChange={(e) => setVal(e.target.value)} data-testid="cooking-input" />
           </Row>
-          <select className="filter" value={from} onChange={(e) => setFrom(e.target.value)} data-testid="cooking-unit">
-            {Object.keys(KITCHEN).map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
+          <span className="add-row-field w-cat" data-testid="cooking-unit">
+            <Select value={from} onChange={setFrom} ariaLabel="Kitchen unit" options={Object.keys(KITCHEN).map((u) => ({ value: u, label: u }))} />
+          </span>
         </div>
       )}
       {mode === "volume" ? (

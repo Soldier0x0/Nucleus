@@ -50,10 +50,19 @@ function ensureHost() {
 function show(job: Job) {
   current = job;
   ensureHost();
+  let done = false;
+  // Idempotent + queue-safe: Esc, a second click, or the overlay can race while
+  // the unmount commits. Only the first settle resolves the promise, and only
+  // the settle belonging to the currently-mounted sheet may unmount it and
+  // advance the queue — a stray double-settle from a superseded sheet must not
+  // steal the queued job (that would hang its promise forever).
   const settle = (value: boolean) => {
+    if (done) return;
+    done = true;
     job.resolve(value);
-    root!.render(null);
+    if (current !== job) return;
     current = null;
+    root!.render(null);
     const next = queue.shift();
     if (next) show(next);
   };

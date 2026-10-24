@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { EmptyState } from "../components/EmptyState";
 import { HoldButton } from "../components/HoldButton";
@@ -403,9 +404,9 @@ function Board({ focusId }: { focusId?: string }) {
     <div className="stack">
       <p className="sr-only" role="status" aria-live="polite" data-testid="kan-order-say">{say}</p>
       <div className="toolbar card">
-        <select value={board.id} onChange={(e) => setBoardId(e.target.value)}>
-          {db.kanban.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-        </select>
+        <span className="add-row-field" style={{ width: 180 }}>
+          <Select value={board.id} onChange={setBoardId} ariaLabel="Board" options={db.kanban.map((b) => ({ value: b.id, label: b.name }))} />
+        </span>
         <input
           value={board.name}
           onChange={(e) => patchBoard(board, (x) => ({ ...x, name: e.target.value }))}

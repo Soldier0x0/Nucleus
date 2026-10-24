@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { Stepper } from "../components/Stepper";
+import { ChevronLeft, ChevronRight, RefreshCcw } from "lucide-react";
 import { toast } from "../platform/toast";
 import { useStore } from "../store";
 import { todayISO, addDays, fmtDate, monthKey, monthLabel } from "@core/format";
@@ -76,15 +78,12 @@ function clock(iso: string, format: "12h" | "24h") {
 }
 
 function Bools({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  // A switch, not an Off/On press-pair: one control, truthful direction.
   return (
-    <span className="seg">
-      <button className={value ? "" : "on"} onClick={() => onChange(false)}>
-        Off
-      </button>
-      <button className={value ? "on" : ""} onClick={() => onChange(true)}>
-        On
-      </button>
-    </span>
+    <label className="switch">
+      <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
+      <span className="sr-only">Toggle</span>
+    </label>
   );
 }
 
@@ -280,10 +279,14 @@ export function Cycle() {
 
           <div className="field" style={{ marginTop: 12 }}>
             <span>Month</span>
-            <span className="seg">
-              <button onClick={() => shift(-1)}>‹</button>
-              <button className="on">{monthLabel(cursor) ?? cursor}</button>
-              <button onClick={() => shift(1)}>›</button>
+            <span className="pager" role="group" aria-label="Month">
+              <button onClick={() => shift(-1)} aria-label="Previous month" data-testid="cycle-prev-month">
+                <ChevronLeft size={15} strokeWidth={2} />
+              </button>
+              <span className="pager-title">{monthLabel(cursor) ?? cursor}</span>
+              <button onClick={() => shift(1)} aria-label="Next month" data-testid="cycle-next-month">
+                <ChevronRight size={15} strokeWidth={2} />
+              </button>
             </span>
           </div>
           <div className="weeklet">
@@ -359,7 +362,6 @@ export function Cycle() {
           <div className="add-row">
             <input className="filter" style={{ width: 200 }} value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Add a symptom" />
             <button
-              className="small-btn"
               onClick={() => {
                 const trimmed = custom.trim();
                 if (!trimmed) return;
@@ -451,13 +453,18 @@ export function Cycle() {
             ))}
           </div>
           <div className="row">
-            <button className="small-btn" onClick={() => setCycle(setChangeHours(db.cycle, db.cycle.changeHours - 1))}>
-              −
-            </button>
-            <span>{db.cycle.changeHours} hours</span>
-            <button className="small-btn" onClick={() => setCycle(setChangeHours(db.cycle, db.cycle.changeHours + 1))}>
-              +
-            </button>
+            <div className="grow">
+              <div>Replace every</div>
+              <div className="muted small">The reminder fires when the timer ends.</div>
+            </div>
+            <Stepper
+              value={db.cycle.changeHours}
+              min={1}
+              onChange={(n) => setCycle(setChangeHours(db.cycle, n))}
+              suffix="h"
+              testid="cycle-change-hours"
+              label=""
+            />
           </div>
           {db.cycle.changeEndsAt ? <p>Ends {clock(db.cycle.changeEndsAt, db.settings.timeFormat)}</p> : null}
           {rematchLine(db.cycle) ? <p className="muted small">{rematchLine(db.cycle)}</p> : null}
@@ -469,53 +476,55 @@ export function Cycle() {
 
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Stash</h2>
-          {db.cycle.stash.map((item) => (
-            <div key={item.kind} className="row" style={{ borderTop: "1px solid var(--line)", padding: "8px 0" }}>
-              <div className="grow">
-                <div>{PRODUCTS.find((p) => p.id === item.kind)?.label}</div>
-                <div className="row small muted homebank">
-                  <span className="mono" style={{ width: 36 }}>Home {item.count === null ? "—" : item.count}</span>
-                  <span className="mono" style={{ width: 36 }}>Bag {item.carry === null ? "—" : item.carry}</span>
-                  <span className="mono" style={{ width: 36 }}>Pack {item.pack}</span>
-                </div>
-              </div>
-              <div className="bar-pair">
-                <button className="small-btn" onClick={() => item.count !== null && setCycle(setStashCount(db.cycle, item.kind, item.count - 1))}>
-                  −
-                </button>
-                <button className="small-btn" onClick={() => setCycle(setStashCount(db.cycle, item.kind, (item.count ?? 0) + 1))}>
-                  +
-                </button>
-              </div>
-              <div className="bar-pair">
-                <button className="small-btn" onClick={() => item.carry !== null && setCycle(setStashCarry(db.cycle, item.kind, item.carry - 1))}>
-                  −
-                </button>
-                <button className="small-btn" onClick={() => setCycle(setStashCarry(db.cycle, item.kind, (item.carry ?? 0) + 1))}>
-                  +
-                </button>
-              </div>
-              <div className="bar-pair">
-                <button className="small-btn" onClick={() => setCycle(setStashPack(db.cycle, item.kind, item.pack - 1))}>
-                  −
-                </button>
-                <button className="small-btn" onClick={() => setCycle(setStashPack(db.cycle, item.kind, item.pack + 1))}>
-                  +
-                </button>
-                <button className="small-btn" onClick={() => setCycle(restockPack(db.cycle, item.kind))}>
-                  Restock
-                </button>
-              </div>
-            </div>
-          ))}
-          <div className="row small muted" style={{ marginTop: 6 }}>Low mark</div>
-          <div className="add-row">
+          <div className="stash-rows">
             {db.cycle.stash.map((item) => (
-              <button key={item.kind} className="chip" onClick={() => setCycle(setStashLow(db.cycle, item.kind, item.lowAt >= 9 ? 0 : item.lowAt + 1))}>
-                {PRODUCTS.find((p) => p.id === item.kind)?.label} · {item.lowAt}
-              </button>
+              <div key={item.kind} className="stash-row">
+                <div className="who">
+                  <div className="name">{PRODUCTS.find((p) => p.id === item.kind)?.label}</div>
+                  <button
+                    className="stash-low"
+                    title="The count under which the count tints warm — click to change"
+                    onClick={() => setCycle(setStashLow(db.cycle, item.kind, item.lowAt >= 9 ? 0 : item.lowAt + 1))}
+                    data-testid={`stash-low-${item.kind}`}
+                  >
+                    Low from {item.lowAt}
+                  </button>
+                </div>
+                <Stepper
+                  label="Home"
+                  value={item.count}
+                  onChange={(n) => setCycle(setStashCount(db.cycle, item.kind, n))}
+                  warnBelow={item.lowAt}
+                  testid={`stash-home-${item.kind}`}
+                />
+                <Stepper
+                  label="Bag"
+                  value={item.carry}
+                  onChange={(n) => setCycle(setStashCarry(db.cycle, item.kind, n))}
+                  testid={`stash-bag-${item.kind}`}
+                />
+                <Stepper
+                  label="Pack"
+                  value={item.pack}
+                  onChange={(n) => setCycle(setStashPack(db.cycle, item.kind, n))}
+                  testid={`stash-pack-${item.kind}`}
+                />
+                <button
+                  className="stash-restock"
+                  title={`Full pack of ${PRODUCTS.find((p) => p.id === item.kind)?.label ?? item.kind} — buy fresh, count resets`}
+                  aria-label={`Restock ${PRODUCTS.find((p) => p.id === item.kind)?.label ?? item.kind}`}
+                  onClick={() => setCycle(restockPack(db.cycle, item.kind))}
+                  data-testid={`stash-restock-${item.kind}`}
+                >
+                  <RefreshCcw size={15} strokeWidth={1.8} />
+                </button>
+              </div>
             ))}
           </div>
+          <p className="stash-legend">
+            <span className="dot" aria-hidden="true"></span>
+            Home counts at or under the low mark tint warm. The low mark cycles out of the row's own label.
+          </p>
         </div>
 
         <div className="card">

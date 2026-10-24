@@ -1,3 +1,4 @@
+import { Select } from "../components/Select";
 import { useStore } from "../store";
 import { SNOOZE_CHOICES } from "@core/attention";
 import { addDays, fmtDate, todayISO } from "@core/format";
@@ -52,19 +53,19 @@ export function AttentionRow({ item }: { item: AttentionItem }) {
       ) : (
         <div className="att-actions">
           <button className="small-btn" onClick={markDone}>Done</button>
-          <select
-            className="small-btn"
-            value=""
-            onChange={(e) => {
-              const days = Number(e.target.value);
-              if (days > 0) snooze(days);
-            }}
-          >
-            <option value="">Snooze…</option>
-            {SNOOZE_CHOICES.map((d) => (
-              <option key={d} value={d}>{d} days</option>
-            ))}
-          </select>
+          <span className="add-row-field" style={{ width: 108 }}>
+            <Select
+              look="filter"
+              value=""
+              placeholder="Snooze…"
+              onChange={(d) => {
+                const days = Number(d);
+                if (days > 0) snooze(days);
+              }}
+              ariaLabel="Snooze"
+              options={SNOOZE_CHOICES.map((d) => ({ value: String(d), label: `${d} days` }))}
+            />
+          </span>
         </div>
       )}
     </div>

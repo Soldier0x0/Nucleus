@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { todayISO, uid } from "@core/format";
@@ -96,9 +97,7 @@ export function Media() {
         <section className="card tablecard" style={{ padding: 0, overflow: "hidden" }}>
           <div className="add-row no-print" style={{ padding: "14px 16px" }}>
             <input className="grow filter" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} />
-            <select className="filter" value={kind} onChange={(e) => setKind(e.target.value as MediaKind)}>
-              {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
-            </select>
+            <span className="add-row-field w-cat"><Select value={kind} onChange={(k) => setKind(k as MediaKind)} ariaLabel="Kind" options={KINDS.map((k) => ({ value: k, label: k }))} /></span>
             <button className="primary" onClick={addItem}>Add</button>
           </div>
           <table className="table wide">
@@ -111,18 +110,14 @@ export function Media() {
                   <td className="bold-text">{m.title}</td>
                   <td className="muted small">{m.kind}</td>
                   <td>
-                    <select
-                      className="no-print"
-                      value={m.status}
-                      onChange={(e) =>
-                        update((d) => ({
-                          ...d,
-                          media: d.media.map((x) => (x.id === m.id ? { ...x, status: e.target.value as MediaStatus, updatedAt: todayISO() } : x)),
-                        }))
-                      }
-                    >
-                      {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <span className="add-row-field w-status no-print">
+                      <Select
+                        value={m.status}
+                        onChange={(st) => update((d) => ({ ...d, media: d.media.map((x) => (x.id === m.id ? { ...x, status: st as MediaStatus, updatedAt: todayISO() } : x)) }))}
+                        ariaLabel="Status"
+                        options={STATUSES.map((s) => ({ value: s, label: s }))}
+                      />
+                    </span>
                     <span className="no-view">{m.status}</span>
                   </td>
                   {m.review ? <td className="muted small">{m.review}</td> : <td />}

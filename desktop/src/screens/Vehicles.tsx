@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { PART_LABEL, serviceSchedule } from "@core/serviceCatalog";
@@ -150,10 +151,9 @@ function VehicleDetail({ vehicle }: { vehicle: Vehicle }) {
           <input className="w-amount" inputMode="decimal" placeholder="Litres" value={fuelDraft.litres} onChange={(e) => setFuelDraft({ ...fuelDraft, litres: e.target.value })} />
           <input className="w-amount" inputMode="decimal" placeholder="Rate" value={fuelDraft.rate} onChange={(e) => setFuelDraft({ ...fuelDraft, rate: e.target.value })} />
           <input className="w-cat" placeholder="Station" value={fuelDraft.station} onChange={(e) => setFuelDraft({ ...fuelDraft, station: e.target.value })} />
-          <select value={fuelDraft.fillKind} onChange={(e) => setFuelDraft({ ...fuelDraft, fillKind: e.target.value as FuelFillKind })}>
-            <option value="full">Full tank</option>
-            <option value="partial">Partial</option>
-          </select>
+          <span className="add-row-field" style={{ width: 130 }}>
+            <Select value={fuelDraft.fillKind} onChange={(k) => setFuelDraft({ ...fuelDraft, fillKind: k as FuelFillKind })} ariaLabel="Fill kind" options={[{ value: "full", label: "Full tank" }, { value: "partial", label: "Partial" }]} />
+          </span>
           <button className="primary" onClick={addFuel}>Add</button>
         </div>
         <table className="table wide">

@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { daysBetween, money, todayISO, uid } from "@core/format";
 import type { Appliance, Chore, UtilityBill, UtilityKind } from "@core/types";
 
 const UTILITY_KINDS: UtilityKind[] = ["electricity", "water", "lpg", "internet"];
+const ROOMS = ["Kitchen", "Bedroom", "Bathroom", "Living room", "Study", "Other"];
 
 /** Home module on desktop: appliances, utility bills and chores (v0.14). */
 export function Home() {
@@ -60,9 +62,7 @@ export function Home() {
             <h2>Appliances</h2>
             <div className="add-row no-print">
               <input className="grow filter" placeholder="Appliance name" value={applianceName} onChange={(e) => setApplianceName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAppliance()} />
-              <select className="filter" value={applianceRoom} onChange={(e) => setApplianceRoom(e.target.value)}>
-                {["Kitchen", "Bedroom", "Bathroom", "Living room", "Study", "Other"].map((r) => <option key={r}>{r}</option>)}
-              </select>
+              <span className="add-row-field w-cat"><Select value={applianceRoom} onChange={setApplianceRoom} ariaLabel="Room" options={ROOMS.map((r) => ({ value: r, label: r }))} /></span>
               <button className="primary" onClick={addAppliance}>Add</button>
             </div>
             <table className="table wide">
@@ -83,9 +83,7 @@ export function Home() {
           <section className="card">
             <h2>Utility bills</h2>
             <div className="add-row no-print">
-              <select className="filter" value={billKind} onChange={(e) => setBillKind(e.target.value as UtilityKind)}>
-                {UTILITY_KINDS.map((k) => <option key={k} value={k}>{k[0].toUpperCase() + k.slice(1)}</option>)}
-              </select>
+              <span className="add-row-field w-cat"><Select value={billKind} onChange={(k) => setBillKind(k as UtilityKind)} ariaLabel="Bill kind" options={UTILITY_KINDS.map((k) => ({ value: k, label: k[0].toUpperCase() + k.slice(1) }))} /></span>
               <input type="date" className="filter" value={billDate} onChange={(e) => setBillDate(e.target.value)} />
               <input className="w-amount filter" inputMode="decimal" placeholder="Amount" value={billAmount} onChange={(e) => setBillAmount(e.target.value)} />
               <button className="primary" onClick={addBill}>Add</button>

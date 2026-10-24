@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { Select } from "../components/Select";
 import { useStore } from "../store";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@core/defaults";
 import { categorySplit, monthFlow } from "@core/moneyDesk";
@@ -119,19 +120,18 @@ export function Money() {
         <div className="filters no-print">
           <label className="filter">
             <b>Month</b>
-            <input type="month" value={month} onChange={(e) => setMonth(e.target.value || monthKey(todayISO()))} style={{ border: 0, background: "none", padding: 0 }} />
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value || monthKey(todayISO()))} />
           </label>
-          <label className="filter">
-            <b>{catFilter === "all" ? "All categories" : catFilter}</b>
-            <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} style={{ border: 0, background: "none", padding: 0, color: "inherit", fontSize: "inherit" }}>
-              <option value="all">All categories</option>
-              {namedCategories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </label>
+          <Select
+            look="filter"
+            value={catFilter}
+            onChange={setCatFilter}
+            ariaLabel="Category filter"
+            className="filter"
+            options={[{ value: "all", label: "All categories" }, ...namedCategories.map((c) => ({ value: c, label: c }))]}
+          />
           <div className="filter grow" style={{ maxWidth: 300 }}>
-            <input className="grow" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search transactions" style={{ border: 0, background: "none", padding: 0 }} />
+            <input className="grow" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search transactions" />
           </div>
           <div className="row saved-view-row" data-testid="money-views" style={{ marginLeft: "auto" }}>
             {views.map((v) => (
@@ -145,7 +145,7 @@ export function Money() {
 
         <div className="kpis">
           <section className="kpi card"><span className="lab">In</span><div className="val num">{money(flow.in, currency)}</div><div className="note">money in this month</div></section>
-          <section className="kpi card"><span className="lab">Out</span><div className="val num">{money(flow.out, currency)}</div><div className="note">{split.length} categories touched</div></section>
+          <section className="kpi card"><span className="lab">Out</span><div className="val num">{money(flow.out, currency)}</div><div className="note">{split.length} categor{split.length === 1 ? "y" : "ies"} touched</div></section>
           <section className="kpi card">
             <span className="lab">Net</span>
             <div className="val num">{money(flow.in - flow.out, currency)}</div>
@@ -160,10 +160,18 @@ export function Money() {
         <div className="workcols" style={{ padding: 0 }}>
           <section className="card tablecard" style={{ padding: 0, overflow: "hidden" }}>
             <div className="add-row no-print" style={{ padding: "14px 16px" }}>
-              <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value as Txn["type"] })} className="filter">
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-              </select>
+              <span className="add-row-field w-type">
+                <Select
+                  value={draft.type}
+                  onChange={(type) => setDraft({ ...draft, type: type as Txn["type"] })}
+                  ariaLabel="Entry type"
+                  testid="money-type"
+                  options={[
+                    { value: "expense", label: "Expense" },
+                    { value: "income", label: "Income" },
+                  ]}
+                />
+              </span>
               <input
                 className="filter w-amount"
                 id="money-amount"

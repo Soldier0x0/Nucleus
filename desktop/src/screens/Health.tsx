@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { useStore } from "../store";
 import { fmtDate, todayISO, uid } from "@core/format";
@@ -67,9 +68,7 @@ export function Health() {
               <p className="muted small no-print">Today is already logged as {loggedToday.flow ?? loggedToday.bleeding ?? "noted"}.</p>
             ) : (
               <div className="add-row no-print">
-                <select value={flow} onChange={(e) => setFlow(e.target.value as CycleFlow)}>
-                  {FLOWS.map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
+                <Select value={flow} onChange={(f) => setFlow(f as CycleFlow)} ariaLabel="Flow" options={FLOWS.map((f) => ({ value: f, label: f }))} />
                 <button className="primary" onClick={logToday}>Log flow today</button>
               </div>
             )}

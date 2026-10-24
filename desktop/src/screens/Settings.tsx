@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ScreenToolbar } from "../components/ScreenToolbar";
+import { Select } from "../components/Select";
 import { confirmDialog } from "../components/Dialog";
 import { useStore } from "../store";
 import { MODULES } from "@core/modules";
@@ -176,17 +177,28 @@ export function Settings() {
           <section className="card st-look">
             <h2>Look</h2>
             <label className="field"><span>Theme</span>
-              <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-                <option value="system">Follow the system</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-              </select>
+              <Select
+                value={theme}
+                onChange={setTheme}
+                testid="settings-theme"
+                ariaLabel="Theme"
+                options={[
+                  { value: "system", label: "Follow the system" },
+                  { value: "light", label: "Light" },
+                  { value: "dark", label: "Dark" },
+                ]}
+              />
             </label>
             <label className="field"><span>Distance unit</span>
-              <select value={db.settings.distanceUnit} onChange={(e) => setSettings({ distanceUnit: e.target.value as "km" | "mi" })}>
-                <option value="km">Kilometres</option>
-                <option value="mi">Miles</option>
-              </select>
+              <Select
+                value={db.settings.distanceUnit}
+                onChange={(unit) => setSettings({ distanceUnit: unit as "km" | "mi" })}
+                ariaLabel="Distance unit"
+                options={[
+                  { value: "km", label: "Kilometres" },
+                  { value: "mi", label: "Miles" },
+                ]}
+              />
             </label>
           </section>
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Select } from "../components/Select";
 import { ScreenToolbar } from "../components/ScreenToolbar";
 import { confirmDialog } from "../components/Dialog";
 import { useStore } from "../store";
@@ -299,9 +300,7 @@ function PaperDetail({ paper, onPatch, onDelete }: { paper: Paper; onPatch: (c: 
         </div>
         <div className="paper-fields">
           <label className="field"><span>Kind</span>
-            <select value={paper.kind} onChange={(e) => onPatch({ kind: e.target.value as PaperKind, tags: paperTagsFromKind(e.target.value as PaperKind) })}>
-              {(Object.keys(KIND_LABEL) as PaperKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-            </select>
+            <Select value={paper.kind} onChange={(k) => onPatch({ kind: k as PaperKind, tags: paperTagsFromKind(k as PaperKind) })} ariaLabel="Kind" options={(Object.keys(KIND_LABEL) as PaperKind[]).map((k) => ({ value: k, label: KIND_LABEL[k] }))} />
           </label>
           <label className="field"><span>Number</span>
             <input value={paper.number ?? ""} onChange={(e) => onPatch({ number: e.target.value || undefined })} />
