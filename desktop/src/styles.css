@@ -26,9 +26,9 @@
   --error-ink: #ffffff;
   --error-soft: rgba(177, 63, 63, 0.12);
   --shadow: 0 1px 2px rgba(20, 20, 22, 0.04), 0 10px 26px -20px rgba(20, 20, 22, 0.24);
-  --radius: 14px;
-  --r-md: 10px;
-  --r-sm: 8px;
+  --radius: 16px;
+  --r-md: 12px;
+  --r-sm: 9px;
   --accent-line: rgba(181, 103, 23, 0.5);
   --material: rgba(250, 250, 252, 0.6);
   --material-strong: rgba(250, 250, 252, 0.78);
@@ -39,9 +39,9 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #101012;
-  --panel: #1b1b1d;
-  --panel-2: #151517;
+  --bg: #0a0a0c;
+  --panel: #1c1c1f;
+  --panel-2: #131316;
   /* Elevated neutrals, not colour-washed charcoal: ink on true steps of gray. */
   --ink: #f5f5f7;
   --muted: rgba(245, 245, 247, 0.62);
@@ -50,7 +50,9 @@
   --accent: #e5a44f;
   --accent-strong: #f0b768;
   --accent-ink: #1c130a;
-  --accent-soft: rgba(229, 164, 79, 0.13);
+  /* Amber washes over graphite read as BROWN: dark-mode selection surfaces stay
+     neutral; the accent survives in small cues (icons, checks, flow day). */
+  --accent-soft: rgba(245, 245, 247, 0.08);
   --ok: #58c47f;
   --ok-soft: rgba(88, 196, 127, 0.14);
   --warn: #e0b455;
@@ -61,8 +63,8 @@
   --error-soft: rgba(224, 104, 104, 0.14);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -22px rgba(0, 0, 0, 0.7);
   --accent-line: rgba(240, 183, 104, 0.55);
-  --material: rgba(14, 14, 16, 0.5);
-  --material-strong: rgba(14, 14, 16, 0.72);
+  --material: rgba(9, 9, 11, 0.55);
+  --material-strong: rgba(9, 9, 11, 0.8);
   --elev-2: 0 1px 2px rgba(0, 0, 0, 0.45);
   --elev-8: 0 8px 30px -10px rgba(0, 0, 0, 0.66);
   --sel-line: rgba(245, 245, 247, 0.06);
@@ -323,7 +325,7 @@ textarea {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 18px;
   box-shadow: var(--shadow);
 }
 .wide-card {
@@ -365,7 +367,7 @@ textarea {
   align-items: center;
   gap: 6px;
   height: var(--ctl-sm);
-  border-radius: 7px;
+  border-radius: 8px;
   padding: 0 10px;
   font-size: var(--t-foot);
   font-weight: 520;
@@ -886,7 +888,7 @@ textarea {
   gap: 9px;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 9px 11px;
 }
 .syncfoot .who {
@@ -940,7 +942,7 @@ textarea {
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: var(--elev-8);
   color: var(--ink);
   animation: nudge-in 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
@@ -1268,7 +1270,7 @@ textarea {
 .bento {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 14px;
+  gap: 16px;
   align-items: start;
 }
 .bento > .card {
@@ -1557,7 +1559,7 @@ input.filter:focus {
 .kpis {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 13px;
+  gap: 16px;
 }
 .kpi {
   grid-column: span 3;
@@ -1811,7 +1813,7 @@ input.filter:focus {
     "sections sections"
     "about about";
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 14px;
+  gap: 16px;
   align-items: start;
 }
 .settings-grid > .st-general {
@@ -1853,7 +1855,7 @@ input.filter:focus {
   flex-wrap: wrap;
 }
 .qr-box {
-  background: #f4f1ea;
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 8px;
@@ -2062,7 +2064,7 @@ input.filter:focus {
 .pal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(20, 15, 8, 0.55);
+  background: rgba(0, 0, 0, 0.45);
   animation: pal-overlay-in 120ms cubic-bezier(0.4, 0, 0.2, 1) both;
   display: flex;
   align-items: flex-start;
@@ -2167,7 +2169,7 @@ input.filter:focus {
 .look-ask {
   position: fixed;
   inset: 0;
-  background: rgba(20, 15, 8, 0.6);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2301,7 +2303,7 @@ input.filter:focus {
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   box-shadow: var(--elev-8);
   animation: undo-in var(--spring) both;
 }
@@ -2618,7 +2620,7 @@ input.filter:focus {
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   box-shadow: var(--elev-8);
   animation: toast-in var(--spring) both;
 }
@@ -2838,6 +2840,13 @@ html {
 .tile,
 .kpi {
   position: relative;
+  transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1), box-shadow 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* the card lifts a breath on hover — content feedback without decoration */
+.tile:hover,
+.kpi:hover {
+  transform: translateY(-1.5px);
+  box-shadow: var(--elev-8);
 }
 .tile::after,
 .kpi::after {
@@ -2863,6 +2872,10 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .tile::after,
   .kpi::after {
+    transition: none;
+  }
+  .tile,
+  .kpi {
     transition: none;
   }
 }
@@ -2989,7 +3002,7 @@ html[data-hidden] .sk-bone::after {
   position: fixed;
   inset: 0;
   z-index: 90; /* above the palette (60) and drop layer (80); toasts (200) float over */
-  background: rgba(20, 15, 8, 0.5); /* dimming layer */
+  background: rgba(0, 0, 0, 0.5); /* dimming layer */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2998,7 +3011,7 @@ html[data-hidden] .sk-bone::after {
 }
 .dialog-card {
   width: min(400px, calc(100vw - 32px));
-  border-radius: 11px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--panel) 62%, transparent);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
@@ -3149,7 +3162,7 @@ html[data-hidden] .sk-bone::after {
   z-index: 95;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--panel) 84%, transparent);
   -webkit-backdrop-filter: var(--blur);
   backdrop-filter: var(--blur);
@@ -3259,7 +3272,7 @@ html[data-hidden] .sk-bone::after {
   align-items: center;
   height: 30px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--panel);
   overflow: hidden;
   font-variant-numeric: tabular-nums;
@@ -3329,7 +3342,7 @@ html[data-hidden] .sk-bone::after {
   gap: 4px;
   height: var(--ctl-h);
   padding: 0 4px;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--panel);
 }
@@ -3453,12 +3466,27 @@ html[data-hidden] .sk-bone::after {
 .screen-body .split > .workcol > :nth-child(2) { animation-delay: 60ms; }
 .screen-body .split > .workcol > :nth-child(3) { animation-delay: 120ms; }
 .screen-body .split > .workcol > :nth-child(n+4) { animation-delay: 180ms; }
+/* Today/Cycle bento boards and Settings cards cascade with the columns */
+.screen-body .bento > .card,
+.screen-body .settings-grid > .card {
+  animation: rise-in 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.screen-body .bento > .card:nth-child(1) { animation-delay: 0ms; }
+.screen-body .bento > .card:nth-child(2) { animation-delay: 30ms; }
+.screen-body .bento > .card:nth-child(3) { animation-delay: 60ms; }
+.screen-body .bento > .card:nth-child(4) { animation-delay: 90ms; }
+.screen-body .bento > .card:nth-child(n+5) { animation-delay: 115ms; }
+.screen-body .settings-grid > .card:nth-child(n+2) { animation-delay: 40ms; }
+.screen-body .settings-grid > .card:nth-child(n+3) { animation-delay: 80ms; }
+.screen-body .settings-grid > .card:nth-child(n+4) { animation-delay: 115ms; }
 @media (prefers-reduced-motion: reduce) {
   .screen-body .workcol > *,
   .screen-body .workcols > *,
   .screen-body .filters,
   .screen-body .kpis,
-  .screen-body .split > .workcol > * {
+  .screen-body .split > .workcol > *,
+  .screen-body .bento > .card,
+  .screen-body .settings-grid > .card {
     animation: none;
   }
 }

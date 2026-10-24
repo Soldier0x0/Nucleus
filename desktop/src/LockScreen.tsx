@@ -1,6 +1,7 @@
 /**
- * PIN lock: first run creates a 4+ digit PIN, every launch asks for it.
- * No Windows Hello yet (owner decision); the PIN opens the Stronghold vault.
+ * PIN lock: first run can set a 4+ digit PIN or skip (optional lock, v0.18);
+ * every launch asks for the PIN when one is set. The PIN opens the Stronghold
+ * vault; with no PIN the app opens straight to the data.
  */
 import { useEffect, useState } from "react";
 import { PIN_MIN_DIGITS, backoffLabel, backoffRemainingMs, isValidPin } from "./platform/security";
@@ -86,6 +87,23 @@ export function LockScreen({ mode, onUnlocked }: { mode: "create" | "unlock"; on
     window.location.reload();
   };
 
+  const skip = async () => {
+    if (
+      !(await confirmDialog({
+        title: "Open without a PIN?",
+        body: "Nucleus opens straight to your data on this computer, and anyone who uses this computer can read it. The saved document stays encrypted either way. You can add a PIN later in Settings → Security.",
+        confirmLabel: "Open without a PIN",
+      }))
+    )
+      return;
+    try {
+      await createSecure(null);
+      onUnlocked();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not set up the key store.");
+    }
+  };
+
   return (
     <div className="lock-wrap">
       <WinControls overlay />
@@ -121,9 +139,14 @@ export function LockScreen({ mode, onUnlocked }: { mode: "create" | "unlock"; on
         <button className="primary" type="submit" disabled={busy || waitMs > 0 || pin.length < PIN_MIN_DIGITS}>
           {mode === "create" ? "Create PIN" : waitMs > 0 ? `Wait ${backoffLabel(waitMs)}` : "Unlock"}
         </button>
-        {mode === "unlock" ? (
+        { mode === "unlock" ? (
           <button className="link danger" type="button" onClick={reset}>
             Forgot the PIN? Reset this computer
+          </button>
+        ) : null}
+        {mode === "create" ? (
+          <button className="link" type="button" data-testid="lock-skip-pin" onClick={() => void skip()}>
+            Skip — open without a PIN
           </button>
         ) : null}
         <p className="muted small">Your data stays on this computer. There is no recovery if the PIN and backups are lost.</p>

@@ -6,7 +6,7 @@ import { useStore } from "../store";
 import { MODULES } from "@core/modules";
 import { countsOf } from "@core/merge";
 import { isValidPin } from "../platform/security";
-import { WrongPinError, changeSecurePin, lockSecure } from "../platform/secure";
+import { WrongPinError, changeSecurePin, lockSecure, securePinStatus } from "../platform/secure";
 import { applyThemePref, storedThemePref, THEME_KEY } from "../platform/theme";
 import { autostartEnabled, autostartSet } from "../platform/autostart";
 import { localPrefs } from "../platform/storage";
@@ -24,11 +24,12 @@ import type { ModuleId } from "@core/types";
 // here, so every row below is an ordinary switch in the sidebar's order.
 const SECTION_ORDER: ModuleId[] = ["money", "vehicles", "health", "cycle", "home", "travel", "papers", "notes", "media", "kanban", "tools", "rules", "dev", "builder", "net", "lab"];
 
-export function Settings() {
+export function Settings({ pinOn, onPinChanged }: { pinOn: boolean | null; onPinChanged: (pin: boolean) => void }) {
   const { db, setSettings, replace } = useStore();
   const [theme, setTheme] = useState(storedThemePref());
   const [pinDraft, setPinDraft] = useState({ current: "", next: "", again: "" });
   const [pinMsg, setPinMsg] = useState("");
+  // the lock state lives in App (survives remounts and HMR resets); this card just renders it
   const [exportPw, setExportPw] = useState("");
   const [dataMsg, setDataMsg] = useState("");
   const [pending, setPending] = useState<{ picked: PickedBackup & { kind: "encrypted" }; name: string } | null>(null);
@@ -46,7 +47,8 @@ export function Settings() {
 
   useEffect(() => {
     void autostartEnabled().then(setStartWithPc).catch(() => {});
-  }, []);
+    if (pinOn === null) void securePinStatus().then(onPinChanged).catch(() => onPinChanged(true));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- fill the hint once
 
   const toggleAutostart = async (on: boolean) => {
     setStartMsg("");
@@ -78,6 +80,44 @@ export function Settings() {
       await changeSecurePin(pinDraft.current, pinDraft.next);
       setPinDraft({ current: "", next: "", again: "" });
       setPinMsg("PIN changed.");
+    } catch (err) {
+      setPinMsg(err instanceof WrongPinError ? "The current PIN is wrong." : err instanceof Error ? err.message : "Could not change the PIN.");
+    }
+  };
+
+  // The app lock is optional (v0.18): turning it on re-seals the key store
+  // with a new PIN, turning it off requires the current PIN as confirmation.
+  const turnPinOn = async () => {
+    setPinMsg("");
+    if (!isValidPin(pinDraft.next)) return setPinMsg("The new PIN needs at least 4 digits.");
+    if (pinDraft.next !== pinDraft.again) return setPinMsg("The new PINs do not match.");
+    try {
+      await changeSecurePin(null, pinDraft.next);
+      onPinChanged(true); // the card flips to the locked layout in place
+      setPinDraft({ current: "", next: "", again: "" });
+      setPinMsg("PIN on. Nucleus asks for it from the next launch on.");
+    } catch (err) {
+      setPinMsg(err instanceof Error ? err.message : "Could not set the PIN.");
+    }
+  };
+
+  const turnPinOff = async () => {
+    setPinMsg("");
+    if (
+      !(await confirmDialog({
+        title: "Turn off the app lock?",
+        body: "Nucleus opens straight to your data on this computer, and anyone who uses this computer can read it.\n\nThe saved document stays encrypted, and backups keep that encryption.",
+        confirmLabel: "Turn off",
+        danger: true,
+      }))
+    )
+      return;
+    if (!pinDraft.current) return setPinMsg("Type your current PIN first, then press Turn off PIN again.");
+    try {
+      await changeSecurePin(pinDraft.current, null);
+      onPinChanged(false); // the card flips to the open layout in place
+      setPinDraft({ current: "", next: "", again: "" });
+      setPinMsg("PIN off. Nucleus opens without a lock now.");
     } catch (err) {
       setPinMsg(err instanceof WrongPinError ? "The current PIN is wrong." : err instanceof Error ? err.message : "Could not change the PIN.");
     }
@@ -204,15 +244,35 @@ export function Settings() {
 
           <section className="card st-security">
             <h2>Security</h2>
-            <p className="muted">The PIN opens the key store on this computer. The document is always encrypted with that key.</p>
-            <label className="field"><span>Current PIN</span><input type="password" inputMode="numeric" value={pinDraft.current} onChange={(e) => setPinDraft({ ...pinDraft, current: e.target.value.replace(/\D+/g, "") })} /></label>
-            <label className="field"><span>New PIN</span><input type="password" inputMode="numeric" value={pinDraft.next} onChange={(e) => setPinDraft({ ...pinDraft, next: e.target.value.replace(/\D+/g, "") })} /></label>
-            <label className="field"><span>Repeat new PIN</span><input type="password" inputMode="numeric" value={pinDraft.again} onChange={(e) => setPinDraft({ ...pinDraft, again: e.target.value.replace(/\D+/g, "") })} /></label>
-            {pinMsg ? <p className={pinMsg === "PIN changed." ? "ok-text" : "error"}>{pinMsg}</p> : null}
-            <div className="row">
-              <button className="primary" onClick={changePin} disabled={!pinDraft.current || !pinDraft.next}>Change PIN</button>
-              <button className="small-btn" onClick={() => { lockSecure(); window.location.reload(); }}>Lock now</button>
-            </div>
+            <p className="muted">
+              {pinOn === false
+                ? "No lock — Nucleus opens straight to your data on this computer. The saved document stays encrypted either way."
+                : "The PIN opens the key store on this computer. The document is always encrypted with that key."}
+            </p>
+            {pinOn === null ? <p className="muted small" data-testid="settings-pin-status">Checking…</p> : null}
+            {pinOn ? (
+              <>
+                <label className="field"><span>Current PIN</span><input type="password" inputMode="numeric" value={pinDraft.current} onChange={(e) => setPinDraft({ ...pinDraft, current: e.target.value.replace(/\D+/g, "") })} /></label>
+                <label className="field"><span>New PIN</span><input type="password" inputMode="numeric" value={pinDraft.next} onChange={(e) => setPinDraft({ ...pinDraft, next: e.target.value.replace(/\D+/g, "") })} /></label>
+                <label className="field"><span>Repeat new PIN</span><input type="password" inputMode="numeric" value={pinDraft.again} onChange={(e) => setPinDraft({ ...pinDraft, again: e.target.value.replace(/\D+/g, "") })} /></label>
+                {pinMsg ? <p className={pinMsg.startsWith("PIN ") ? "ok-text" : "error"} data-testid="pin-msg">{pinMsg}</p> : null}
+                <div className="row">
+                  <button className="primary" onClick={changePin} disabled={!pinDraft.current || !pinDraft.next}>Change PIN</button>
+                  <button className="danger-btn" data-testid="settings-pin-off" onClick={() => void turnPinOff()}>Turn off PIN</button>
+                  <button className="small-btn" onClick={() => { lockSecure(); window.location.reload(); }}>Lock now</button>
+                </div>
+              </>
+            ) : null}
+            {pinOn === false ? (
+              <>
+                <label className="field"><span>New PIN</span><input type="password" inputMode="numeric" value={pinDraft.next} onChange={(e) => setPinDraft({ ...pinDraft, next: e.target.value.replace(/\D+/g, "") })} /></label>
+                <label className="field"><span>Repeat new PIN</span><input type="password" inputMode="numeric" value={pinDraft.again} onChange={(e) => setPinDraft({ ...pinDraft, again: e.target.value.replace(/\D+/g, "") })} /></label>
+                {pinMsg ? <p className={pinMsg.startsWith("PIN ") ? "ok-text" : "error"} data-testid="pin-msg">{pinMsg}</p> : null}
+                <div className="row">
+                  <button className="primary" data-testid="settings-pin-on" onClick={() => void turnPinOn()} disabled={!pinDraft.next || !pinDraft.again}>Turn on PIN</button>
+                </div>
+              </>
+            ) : null}
           </section>
 
           <div className="st-devices">

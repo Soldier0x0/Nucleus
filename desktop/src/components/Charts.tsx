@@ -1,5 +1,5 @@
 /** Small hand-rolled SVG charts. No chart or UI framework. */
-export const PALETTE = ["#c98b2d", "#3f7f5f", "#b0532f", "#4a6fa5", "#8a5fa8", "#9b8430", "#4f8fa8", "#a85f7a", "#6b8f3f", "#8c6b4f", "#5a7fb0", "#b08a3f"];
+export const PALETTE = ["#c98b2d", "#4a6fa5", "#3f7f5f", "#8a5fa8", "#4f8fa8", "#a85f7a", "#5a7fb0", "#6b8f3f", "#b06045", "#3f8f8f", "#565fa0", "#707a8a"];
 
 export type Slice = { label: string; value: number; color?: string };
 

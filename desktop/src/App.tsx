@@ -31,7 +31,7 @@ import { StoreProvider, useStore } from "./store";
 import { LockScreen } from "./LockScreen";
 import { SyncBridge } from "./sync/SyncBridge";
 import { WinControls } from "./components/WinControls";
-import { secureStatus, lockSecure } from "./platform/secure";
+import { lockSecure, probeSecure, securePinStatus } from "./platform/secure";
 import { localPrefs } from "./platform/storage";
 import { storedThemePref, THEME_KEY } from "./platform/theme";
 import { isTauri } from "./platform/env";
@@ -71,7 +71,7 @@ import { BMC_URL, openExternal } from "./platform/support";
 export type SectionId = "today" | "attention" | "money" | "vehicles" | "health" | "cycle" | "home" | "travel" | "papers" | "notes" | "media" | "tools" | "rules" | "dev" | "builder" | "net" | "lab" | "settings" | "devlab";
 
 /** Bumped per release; also shown as the sidebar chip. */
-export const APP_VERSION = "0.17.0";
+export const APP_VERSION = "0.18.0";
 
 /** Idle time before the desktop locks itself, like the phone does. */
 const IDLE_LOCK_MS = 15 * 60_000;
@@ -239,31 +239,56 @@ const RAIL_KEY = "nucleus.desktop.rail";
 
 /**
  * Desktop shell. The PIN opens the key store first; only then is the
- * encrypted document read. Every section is a real editor over the phone's
- * core rules, so imports merge back cleanly in phase D2.
+ * encrypted document read — with no PIN set, the store is already open and
+ * the shell mounts straight away. Every section is a real editor over the
+ * phone's core rules, so imports merge back cleanly in phase D2.
  */
 export function App() {
   const [lockMode, setLockMode] = useState<"create" | "unlock" | null>(null);
   const [unlocked, setUnlocked] = useState(false);
+  /** Whether an app-lock PIN is set. The boot probe knows it, unlock/create
+   *  refresh it, and Settings receives it so its card shows the true layout
+   *  from the first paint instead of re-probing behind the scenes. */
+  const [pinOn, setPinOn] = useState<boolean | null>(null);
 
-  // 15 idle minutes send the app back to the lock screen, like the phone.
+  // After 15 idle minutes the app re-locks like the phone — but only when a
+  // PIN exists: the idle probe re-opens the store and no-ops otherwise.
   const idleLock = useCallback(() => {
-    lockSecure();
-    setUnlocked(false);
+    void probeSecure()
+      .then(({ mode }) => {
+        if (mode === "open") return;
+        lockSecure();
+        setUnlocked(false);
+        setLockMode("unlock");
+      })
+      .catch(() => {
+        lockSecure();
+        setUnlocked(false);
+        setLockMode("unlock");
+      });
   }, []);
   useIdleLock(unlocked, idleLock);
 
   useEffect(() => {
     let alive = true;
-    secureStatus()
-      .then(({ initialized }) => alive && setLockMode(initialized ? "unlock" : "create"))
-      .catch(() => alive && setLockMode("create"));
+    probeSecure()
+      .then(({ mode }) => {
+        if (!alive) return;
+        setPinOn(mode === "lock");
+        if (mode === "open") setUnlocked(true); // no PIN: straight to the data
+        else setLockMode(mode === "lock" ? "unlock" : "create");
+      })
+      .catch(() => {
+        if (!alive) return;
+        setPinOn(true); // a broken store is treated as locked, like the probe
+        setLockMode("create");
+      });
     return () => {
       alive = false;
     };
   }, []);
 
-  if (!lockMode) {
+  if (!unlocked && !lockMode) {
     return (
       <div className="boot">
         <WinControls overlay />
@@ -272,16 +297,31 @@ export function App() {
       </div>
     );
   }
-  if (!unlocked) return <LockScreen mode={lockMode} onUnlocked={() => setUnlocked(true)} />;
+  if (!unlocked && lockMode)
+    return (
+      <LockScreen
+        mode={lockMode}
+        onUnlocked={() => {
+          // Unlock or first-run create just re-remembered the PIN state
+          // upstream; pick it up before the shell (and the Settings card) show.
+          void securePinStatus()
+            .then((pin) => {
+              setPinOn(pin);
+              setUnlocked(true);
+            })
+            .catch(() => setUnlocked(true));
+        }}
+      />
+    );
   return (
     <StoreProvider>
-      <Shell />
+      <Shell pinOn={pinOn} onPinChanged={setPinOn} />
     </StoreProvider>
   );
 }
 
 /** What the sidebar foot adds up to: a glanceable sync line, not a panel. */
-function Shell() {
+function Shell({ pinOn, onPinChanged }: { pinOn: boolean | null; onPinChanged: (pin: boolean) => void }) {
   const { db, ready, unreadable, retryLoad, discardUnreadable } = useStore();
   const [section, setSection] = useState<SectionId>(() => {
     const h = window.location.hash.replace("#/", "");
@@ -631,7 +671,7 @@ function Shell() {
             {section === "cycle" ? <Cycle /> : null}
             {section === "net" ? <Net /> : null}
             {section === "lab" ? <Lab /> : null}
-            {section === "settings" ? <Settings /> : null}
+            {section === "settings" ? <Settings pinOn={pinOn} onPinChanged={onPinChanged} /> : null}
             {section === "devlab" ? <DevLab /> : null}
             </ErrorBoundary>
           </div>

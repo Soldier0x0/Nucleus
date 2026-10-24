@@ -20,7 +20,7 @@ export function QrCode({ text, size = 200 }: { text: string; size?: number }) {
   const cell = size / cells.n;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Pairing code">
-      <rect x={0} y={0} width={size} height={size} fill="#F4F1EA" />
+      <rect x={0} y={0} width={size} height={size} fill="#FFFFFF" />
       {cells.dark.map(([row, col]) => (
         <rect key={`${row}-${col}`} x={col * cell} y={row * cell} width={cell} height={cell} fill="#0B0D12" />
       ))}

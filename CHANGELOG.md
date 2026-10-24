@@ -10,6 +10,15 @@ A republished app is allowed only when the points name the file, say that nothin
 
 From v0.8.3 on, write each bullet as a short line: Fixed …, Added …, Changed …, or I fixed … / I added … / I changed …. Concrete, the way a developer would say it.
 
+## v0.18
+
+- Added an optional app lock: choose "Skip — open without a PIN" on first run, and Settings → Security can turn the PIN on or off any time (turning it off asks for the current PIN). Without a PIN Nucleus opens straight to its data; the saved document stays encrypted either way.
+- Fixed the Security card showing a stale lock state after booting without a PIN or after changing it — the card now follows the real lock state in place.
+- Fixed turning the lock off carrying the old PIN record into the new key store, which made the next launch ask for a PIN anyway.
+- Fixed a missing key-store file silently coming back as an empty store: reads now refuse a missing snapshot before it can be re-sealed over the path.
+- Fixed "reset this computer" on the lock screen leaving the old encrypted document behind, which greeted the next run with an unreadable-document screen — the erase now removes it too.
+- Changed the dark theme to true black: the brown-warm surfaces are now neutral ink, with a consistent radius scale, softer overlays and quieter charts so the desktop reads the same in every Linux build.
+
 ## v0.17
 
 - Added an Apple-grade desktop redesign: one Material light/dark control stack, lucide icon set with a shared sidebar rail, custom-built traffic lights, and a portal toolbar that keeps every screen's tools under one title.
