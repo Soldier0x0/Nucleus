@@ -34,8 +34,8 @@ const RES = "../../../frontend/modules/nucleus-android/android/src/main/res";
 
 test("v015 · styles.css is the Warm Paper board rewrite", () => {
   const css = read(`${DESK}/src/styles.css`);
-  assert.ok(css.includes("#f5f1ea"), "paper light background token");
-  assert.ok(css.includes("#d8934c"), "paper dark accent");
+  assert.ok(css.includes("#f2f2f6"), "paper light background token");
+  assert.ok(css.includes("#0a0a0c"), "true-ink dark background token (de-browned in v0.18)");
   assert.ok(css.includes(".toolbar-shell") && css.includes(".caption"), "page toolbar");
   assert.ok(/\.workcols\s*\{/.test(css), "two-column board grid");
   assert.ok(/\.bento\s*\{/.test(css), "today bento grid on the board");
@@ -50,9 +50,13 @@ test("v015 · print keeps the list rows and media status visible", () => {
   assert.ok(/\.no-view\s*\{/.test(css.match(/@media print[\s\S]*$/)?.[0] ?? ""), "media status prints");
 });
 
-test("v015 · the shell jumps straight from Today and stamps v0.15", () => {
+test("v015 · the shell jumps straight from Today and stamps the release", () => {
   const app = read(`${DESK}/src/App.tsx`);
-  assert.match(app, /APP_VERSION\s*=\s*"0\.16(\.\d+)?"/, "version export drives the sidebar chip and About");
+  const conf = read(`${DESK}/src-tauri/tauri.conf.json`);
+  const stamped = app.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
+  assert.ok(stamped, "version export drives the sidebar chip and About");
+  const confVersion = conf.match(/"version":\s*"([^"]+)"/)?.[1];
+  assert.ok(confVersion && stamped === confVersion, `the shell stamp moves with the release (${stamped} vs ${confVersion})`);
   assert.ok(app.includes("onJump"), "Today talks back to the shell");
 });
 
