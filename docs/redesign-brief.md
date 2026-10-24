@@ -73,10 +73,20 @@ record the frame path for every entry.
 
 | Area | Status | Frames | Expected vs shown / issues |
 |---|---|---|---|
-| (appends below) |
+| Boot opening v2 | seen | /tmp/opencode/b2-045.png, b2-16.png, mf-1.png | One cinematic beat: mark+ring+word arrive together over a warm bloom (~0.8s settle), amber shuttle orbits during the 45s derivation, cross-fade into dark Today. Awaiting user replay verdict. |
+| Window corners | todo | /tmp/opencode/c2-corner.png | The application window is square 90° on X11. Fix: transparent surface + rounded shell root (Rust `transparent(true)`; needs dev-server restart to verify). |
+| Window controls | todo | v2-t2.png (toolbar trio), hover-dot.png | THREE problems: (1) they sit top-LEFT inside the content toolbar, user wants top-RIGHT; (2) color-coded red close, user wants graphite; (3) clicking the toolbar trio DOES NOT close the app (WM path only) and hover shows no glyph — broken affordance. A separate functional fixed overlay exists on boot screens (top-left) — unify into one right-top set. |
+| Today screen | todo | mf-1.png | Context strip "0 things want you · 24 Oct 2026" — awkward copy; toolbar dots crowd the strip edge; "No phone yet pairing lives in Settings" pill is repeated verbatim as a link line below (redundant duplicate); KPI pair inconsistent: left card shows caption under the number, right card shows pill inline with it (baseline mismatch); "With your phone" card leaves its grid row's right cell empty (orphan). |
+| Sidebar foot | todo | mf-1.png | Fingerprint pill `6cb29023` lives on the MAIN PAGE — user: belongs in Settings (About). Clutter risk: brand row (logo pill + name + v0.18.0 + rail icon), search, Support row, fingerprint, phone card. Hierarchy needs one decider + one quiet line. |
+| Money screen | todo | v2-t2.png | (1) Add-row overflows its card: the Note field is CLIPPED mid-label at the card edge ("Note (o…") and "Add expense" wraps to its own line — the promised single-line add-row is broken at this width. (2) In/Out/Net/Rows KPI cards have bottom-heavy voids and content baselines not shared (Б₹0.00 vs pill-inline variants). (3) Categories card: label then huge empty void. (4) 6-month trend: giant empty band above tiny baseline labels — ratio dishonest. (5) amber primary "Add expense" row hangs left with uneven gap rhythm. |
+| Settings | todo | — | scroll LAG reported by user; audit every card visually before touching. |
+| Toggle (liquid switch) | todo | — | still "broken buttons"; redesign deferred to the toggle item. |
 
 ## Openings & fixes log
 
 - 2026-10-24: opening animation v1 implemented (inline theme first-paint,
   BootScreen intro→leaving→done veil). User verdict: rework → cinematic, fast,
   good graphic. Done in v2 this day.
+- 2026-10-24: v2 opening (bloom + unified beat) captured live: b2-*. Mid-fade
+  stills still uncaptured (detector fires ~90% through the 540ms veil);
+  low priority, will re-verify after the chrome passes land.
